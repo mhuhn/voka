@@ -67,6 +67,10 @@ ul{padding:0;list-style:none}
 h2{font:600 1.1875rem/1.2 var(--serif)}
 .sec-head{display:flex;align-items:baseline;justify-content:space-between;margin:26px 0 12px}
 .sec-head:first-child{margin-top:6px}
+.trow{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:10px}
+.trow .row-title{display:block}
+.trash-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.btn.small{min-height:42px;font-size:.95rem;border-radius:12px;padding:0 10px}
 .link{border:0;background:none;color:var(--accent);font-weight:600;padding:8px 0 8px 12px;font-size:.98rem}
 
 .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:52px;border-radius:14px;border:1px solid transparent;font-weight:600;font-size:1.0625rem;padding:0 20px;background:var(--surface);color:var(--ink)}
@@ -336,42 +340,69 @@ function defaultLabels(tags) {
   const t = (tags || []).find(x => LANGS[x] && x !== 'de');
   return t ? { q: 'Deutsch', a: LANGS[t][1] } : { q: 'Frage', a: 'Antwort' };
 }
+function sanitizeList(l) {
+  l = l || {};
+  const tags = [...new Set((Array.isArray(l.tags) ? l.tags : []).map(normalizeTag).filter(Boolean))];
+  const dl = defaultLabels(tags);
+  return {
+    id: clean(l.id, 40) || uid(),
+    title: clean(l.title, 80) || 'Liste',
+    tags,
+    labelQ: clean(l.labelQ, 30) || dl.q,
+    labelA: clean(l.labelA, 30) || dl.a,
+    round: Math.max(0, parseInt(l.round, 10) || 0),
+    lastEnd: Math.min(Date.now(), Math.max(0, Number(l.lastEnd) || 0)),
+    cards: (Array.isArray(l.cards) ? l.cards : []).map(c => {
+      c = c || {};
+      return {
+        id: clean(c.id, 40) || uid(),
+        de: clean(c.de, 200), fl: clean(c.fl, 200),
+        streak: Math.max(0, Math.min(GOAL, parseInt(c.streak, 10) || 0)),
+        due: Math.max(0, parseInt(c.due, 10) || 0)
+      };
+    }).filter(c => c.de || c.fl)
+  };
+}
+// Papierkorb: gelöschte Listen liegen getrennt in p.trash (mit Zeitpunkt des Löschens) und tauchen sonst nirgends auf
+function sanitizeTrashList(l) {
+  const x = sanitizeList(l);
+  x.deletedAt = Math.min(Date.now(), Math.max(0, Number(l && l.deletedAt) || 0));
+  return x;
+}
+function trashList(p, id, now) {
+  const i = p.lists.findIndex(l => l.id === id);
+  if (i < 0) return null;
+  const l = p.lists.splice(i, 1)[0];
+  l.deletedAt = now;
+  p.trash = (p.trash || []).filter(t => t.id !== id);
+  p.trash.unshift(l);
+  return l;
+}
+function restoreList(p, id) {
+  const t = p.trash || [];
+  const i = t.findIndex(l => l.id === id);
+  if (i < 0) return null;
+  const l = t.splice(i, 1)[0];
+  delete l.deletedAt;
+  if (p.lists.some(x => x.id === l.id)) l.id = uid();
+  p.lists.push(l);
+  return l;
+}
 function sanitizeProfile(p) {
   p = p || {};
   return {
     id: clean(p.id, 40) || uid(),
     name: clean(p.name, 40) || 'Profil',
     pause: PAUSES.includes(Number(p.pause)) ? Number(p.pause) : DEFAULT_PAUSE,
-    lists: (Array.isArray(p.lists) ? p.lists : []).map(l => {
-      l = l || {};
-      const tags = [...new Set((Array.isArray(l.tags) ? l.tags : []).map(normalizeTag).filter(Boolean))];
-      const dl = defaultLabels(tags);
-      return {
-        id: clean(l.id, 40) || uid(),
-        title: clean(l.title, 80) || 'Liste',
-        tags,
-        labelQ: clean(l.labelQ, 30) || dl.q,
-        labelA: clean(l.labelA, 30) || dl.a,
-        round: Math.max(0, parseInt(l.round, 10) || 0),
-        lastEnd: Math.min(Date.now(), Math.max(0, Number(l.lastEnd) || 0)),
-        cards: (Array.isArray(l.cards) ? l.cards : []).map(c => {
-          c = c || {};
-          return {
-            id: clean(c.id, 40) || uid(),
-            de: clean(c.de, 200), fl: clean(c.fl, 200),
-            streak: Math.max(0, Math.min(GOAL, parseInt(c.streak, 10) || 0)),
-            due: Math.max(0, parseInt(c.due, 10) || 0)
-          };
-        }).filter(c => c.de || c.fl)
-      };
-    })
+    lists: (Array.isArray(p.lists) ? p.lists : []).map(sanitizeList),
+    trash: (Array.isArray(p.trash) ? p.trash : []).map(sanitizeTrashList)
   };
 }
 /*LOGIC-END*/
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '2.0';
+const VERSION = '2.1';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -519,7 +550,24 @@ function viewHome() {
     '<div class="sec-head"><h2>Meine Listen</h2><button class="link" data-a="new-list">Neue Liste</button></div>' +
     chips + bar +
     (rows ? '<ul class="rows">' + rows + '</ul>' : '<div class="empty">' + none + '</div>') +
+    '<div style="margin-top:22px"><button class="btn quiet" data-a="to-trash">Papierkorb' + ((p.trash || []).length ? ' (' + p.trash.length + ')' : '') + '</button></div>' +
     backupNote() + '</main></div>';
+}
+
+function viewTrash() {
+  const p = P(), t = p.trash || [];
+  const rows = t.map(l =>
+    '<div class="trow"><span class="row-title">' + flagsOf(l) + esc(l.title) + '</span>' +
+    '<span class="row-meta" style="display:block">' + nn(l.cards.length, 'Karte', 'Karten') + '</span>' +
+    '<div class="trash-actions"><button class="btn quiet small" data-a="restore-list" data-id="' + esc(l.id) + '">Wiederherstellen</button>' +
+    '<button class="btn danger small" data-a="purge-list" data-id="' + esc(l.id) + '">Endgültig löschen</button></div></div>').join('');
+  return '<div class="screen"><header class="bar"><button class="icon-btn" data-a="to-home" aria-label="Zurück zu den Listen">' + I.back + '</button>' +
+    '<h1 class="bar-title">Papierkorb</h1><span></span></header>' +
+    '<main class="body">' +
+    (t.length ? '<p class="note" style="margin:4px 0 14px">Gelöschte Listen von ' + esc(p.name) + '. Sie tauchen nirgends sonst auf.</p>' + rows +
+      '<div style="margin-top:20px"><button class="btn danger" data-a="empty-trash">Papierkorb leeren</button></div>'
+      : '<div class="empty" style="margin-top:10px">Der Papierkorb ist leer.</div>') +
+    '</main></div>';
 }
 
 function viewList() {
@@ -660,7 +708,7 @@ function render() {
   if (route.name === 'quiz' && (!session || !session.queue.length)) route = session ? { name: 'result' } : { name: 'home' };
   const key = route.name + ':' + (route.id || '');
   const sc = $('.body') && key === lastKey ? $('.body').scrollTop : 0;
-  const views = { profiles: viewProfiles, home: viewHome, list: viewList, pick: viewPick, quiz: viewQuiz, result: viewResult, settings: viewSettings };
+  const views = { profiles: viewProfiles, home: viewHome, list: viewList, pick: viewPick, trash: viewTrash, quiz: viewQuiz, result: viewResult, settings: viewSettings };
   $('#app').innerHTML = views[route.name]();
   lastKey = key;
   lastSig = lockSig();
@@ -747,6 +795,7 @@ function sheetCard(id) {
     '<label class="field"><span>' + esc(L().labelQ) + '</span><input name="de" value="' + esc(c.de) + '" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false"></label>' +
     '<p class="err" id="editerr" role="alert" hidden></p>' +
     '<label class="field"><span>' + esc(L().labelA) + '</span><input name="fl" value="' + esc(c.fl) + '" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false"></label>' +
+    '<button type="button" class="btn quiet small" data-a="swap-card" style="margin:-2px 0 14px">⇅ Frage und Antwort tauschen</button>' +
     '<div class="sheet-actions"><button type="button" class="btn danger" data-a="del-card" data-id="' + esc(id) + '">Löschen</button>' +
     '<button class="btn primary" type="submit">Speichern</button></div></form>');
 }
@@ -838,10 +887,32 @@ const actions = {
   },
   'del-list'() {
     const l = L();
-    confirmSheet('Liste löschen?', '„' + l.title + '“ mit ' + nn(l.cards.length, 'Karte', 'Karten') + ' wird gelöscht. Das lässt sich nicht rückgängig machen.', 'Löschen', () => {
-      const p = P(); p.lists = p.lists.filter(x => x.id !== l.id);
-      save(); closeSheet(); go({ name: 'home' });
+    confirmSheet('Liste löschen?', '„' + l.title + '“ mit ' + nn(l.cards.length, 'Karte', 'Karten') + ' kommt in den Papierkorb. Dort kannst du sie wiederherstellen oder endgültig löschen.', 'Löschen', () => {
+      trashList(P(), l.id, Date.now());
+      save(); closeSheet(); go({ name: 'home' }); toast('In den Papierkorb gelegt');
     });
+  },
+  'to-trash'() { go({ name: 'trash' }); },
+  'restore-list'(el) {
+    const l = restoreList(P(), el.dataset.id); if (!l) return;
+    save(); render(); toast('„' + l.title + '“ wiederhergestellt');
+  },
+  'purge-list'(el) {
+    const p = P(), l = (p.trash || []).find(x => x.id === el.dataset.id); if (!l) return;
+    confirmSheet('Endgültig löschen?', '„' + l.title + '“ mit ' + nn(l.cards.length, 'Karte', 'Karten') + ' wird dauerhaft gelöscht. Das lässt sich nicht rückgängig machen.', 'Endgültig löschen', () => {
+      p.trash = p.trash.filter(x => x.id !== l.id); save(); closeSheet(); render();
+    });
+  },
+  'empty-trash'() {
+    const p = P(), n = (p.trash || []).length; if (!n) return;
+    confirmSheet('Papierkorb leeren?', nn(n, 'Liste wird', 'Listen werden') + ' mit allen Karten dauerhaft gelöscht. Das lässt sich nicht rückgängig machen.', 'Papierkorb leeren', () => {
+      p.trash = []; save(); closeSheet(); render();
+    });
+  },
+  'swap-card'() {
+    const f = $('.sheet form[data-form=card]'); if (!f) return;
+    const a = f.de.value; f.de.value = f.fl.value; f.fl.value = a;
+    const er = $('#editerr'); if (er) er.hidden = true;
   },
   'reset-progress'() {
     const l = L();
@@ -916,7 +987,7 @@ const forms = {
     const id = f.dataset.id;
     if (id) { db.profiles.find(p => p.id === id).name = name; }
     else {
-      const p = { id: uid(), name, pause: DEFAULT_PAUSE, lists: [] }; db.profiles.push(p);
+      const p = { id: uid(), name, pause: DEFAULT_PAUSE, lists: [], trash: [] }; db.profiles.push(p);
       if (route.name === 'profiles') { db.lastProfile = p.id; homeFilter = []; route = { name: 'home' }; }
     }
     save(); closeSheet(); render();
