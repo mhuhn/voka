@@ -325,6 +325,13 @@ function findDup(list, de, exceptId) {
   const k = termKey(de);
   return list.cards.find(c => c.id !== exceptId && termKey(c.de) === k) || null;
 }
+// Sprach-Tags: Flagge und Name der Sprache (für Icons und Standard-Beschriftungen)
+const LANGS = { en:['🇬🇧','Englisch'], fr:['🇫🇷','Französisch'], es:['🇪🇸','Spanisch'], it:['🇮🇹','Italienisch'], de:['🇩🇪','Deutsch'], nl:['🇳🇱','Niederländisch'], pt:['🇵🇹','Portugiesisch'], ru:['🇷🇺','Russisch'], pl:['🇵🇱','Polnisch'], tr:['🇹🇷','Türkisch'], el:['🇬🇷','Griechisch'], sv:['🇸🇪','Schwedisch'], da:['🇩🇰','Dänisch'], no:['🇳🇴','Norwegisch'], fi:['🇫🇮','Finnisch'], cs:['🇨🇿','Tschechisch'], sk:['🇸🇰','Slowakisch'], hu:['🇭🇺','Ungarisch'], ro:['🇷🇴','Rumänisch'], bg:['🇧🇬','Bulgarisch'], hr:['🇭🇷','Kroatisch'], sr:['🇷🇸','Serbisch'], sl:['🇸🇮','Slowenisch'], uk:['🇺🇦','Ukrainisch'], ja:['🇯🇵','Japanisch'], zh:['🇨🇳','Chinesisch'], ko:['🇰🇷','Koreanisch'], ar:['🇸🇦','Arabisch'], he:['🇮🇱','Hebräisch'], hi:['🇮🇳','Hindi'], th:['🇹🇭','Thailändisch'], vi:['🇻🇳','Vietnamesisch'], id:['🇮🇩','Indonesisch'], ga:['🇮🇪','Irisch'], is:['🇮🇸','Isländisch'], et:['🇪🇪','Estnisch'], lv:['🇱🇻','Lettisch'], lt:['🇱🇹','Litauisch'], la:['🏛️','Latein'] };
+// Standard-Beschriftungen: mit Sprach-Tag "Deutsch" / Name der Sprache, sonst "Frage" / "Antwort"
+function defaultLabels(tags) {
+  const t = (tags || []).find(x => LANGS[x] && x !== 'de');
+  return t ? { q: 'Deutsch', a: LANGS[t][1] } : { q: 'Frage', a: 'Antwort' };
+}
 function sanitizeProfile(p) {
   p = p || {};
   return {
@@ -333,10 +340,14 @@ function sanitizeProfile(p) {
     pause: PAUSES.includes(Number(p.pause)) ? Number(p.pause) : DEFAULT_PAUSE,
     lists: (Array.isArray(p.lists) ? p.lists : []).map(l => {
       l = l || {};
+      const tags = [...new Set((Array.isArray(l.tags) ? l.tags : []).map(normalizeTag).filter(Boolean))];
+      const dl = defaultLabels(tags);
       return {
         id: clean(l.id, 40) || uid(),
         title: clean(l.title, 80) || 'Liste',
-        tags: [...new Set((Array.isArray(l.tags) ? l.tags : []).map(normalizeTag).filter(Boolean))],
+        tags,
+        labelQ: clean(l.labelQ, 30) || dl.q,
+        labelA: clean(l.labelA, 30) || dl.a,
         round: Math.max(0, parseInt(l.round, 10) || 0),
         lastEnd: Math.min(Date.now(), Math.max(0, Number(l.lastEnd) || 0)),
         cards: (Array.isArray(l.cards) ? l.cards : []).map(c => {
@@ -356,7 +367,7 @@ function sanitizeProfile(p) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '1.5';
+const VERSION = '1.6';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -390,7 +401,8 @@ const svg = d => '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" st
 const I = {
   back: svg('<path d="M15 5l-7 7 7 7"/>'),
   chev: svg('<path d="M9 5l7 7-7 7"/>'),
-  save: svg('<path d="M12 4v11M8 11l4 4 4-4M5 19h14"/>'),
+  gear: svg('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>'),
+  pencil: svg('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>'),
   undo: svg('<path d="M9 14L4 9l5-5"/><path d="M4 9h9a6 6 0 010 12h-3"/>'),
   clock: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>')
 };
@@ -406,7 +418,7 @@ const P = () => db.profiles.find(p => p.id === db.lastProfile);
 const L = () => { const p = P(); return p && route.id ? p.lists.find(l => l.id === route.id) : null; };
 const dots = c => '<span class="dots" role="img" aria-label="' + c.streak + ' von ' + GOAL + ' in Folge gewusst">' +
   [0, 1, 2].map(i => '<i class="' + (i < c.streak ? 'on' : '') + '"></i>').join('') + '</span>';
-const FLAGS = { en:'🇬🇧', fr:'🇫🇷', es:'🇪🇸', it:'🇮🇹', de:'🇩🇪', nl:'🇳🇱', pt:'🇵🇹', ru:'🇷🇺', pl:'🇵🇱', tr:'🇹🇷', el:'🇬🇷', sv:'🇸🇪', da:'🇩🇰', no:'🇳🇴', fi:'🇫🇮', cs:'🇨🇿', sk:'🇸🇰', hu:'🇭🇺', ro:'🇷🇴', bg:'🇧🇬', hr:'🇭🇷', sr:'🇷🇸', sl:'🇸🇮', uk:'🇺🇦', ja:'🇯🇵', zh:'🇨🇳', ko:'🇰🇷', ar:'🇸🇦', he:'🇮🇱', hi:'🇮🇳', th:'🇹🇭', vi:'🇻🇳', id:'🇮🇩', ga:'🇮🇪', is:'🇮🇸', et:'🇪🇪', lv:'🇱🇻', lt:'🇱🇹', la:'🏛️' };
+const FLAGS = Object.fromEntries(Object.entries(LANGS).map(([k, v]) => [k, v[0]]));
 const flagsOf = l => { const f = []; l.tags.forEach(t => { if (FLAGS[t] && !f.includes(FLAGS[t])) f.push(FLAGS[t]); }); return f.length ? '<i class="flags" aria-hidden="true">' + f.join('') + '</i>' : ''; };
 let showAnswers = false;
 // Tags für die Filter: Sprach-Tags (mit Flagge) zuerst, danach die übrigen, jeweils alphabetisch
@@ -448,7 +460,7 @@ function viewProfiles() {
       '<span class="chev">' + I.chev + '</span></span></button></li>';
   }).join('');
   return '<div class="screen"><header class="bar"><span></span><span></span>' +
-    '<button class="icon-btn" data-a="settings" aria-label="Sichern und Wiederherstellen">' + I.save + '</button></header>' +
+    '<button class="icon-btn" data-a="settings" aria-label="Einstellungen und Sicherung">' + I.gear + '</button></header>' +
     '<main class="body"><div class="hero"><h1 class="display">Vokabeln</h1>' +
     (db.profiles.length ? '' : '<p class="sub">Lege ein Profil an, um loszulegen.</p>') + '</div>' +
     (rows ? '<ul class="rows">' + rows + '</ul>' : '') +
@@ -511,23 +523,23 @@ function viewList() {
     (showAnswers ? '<span class="row-meta" style="display:block">' + esc(c.fl) + '</span>' : '') + '</span>' +
     '<span class="side">' + roundsBadge(c, l) + dots(c) + '</span></span></button></li>').join('');
   return '<div class="screen"><header class="bar"><button class="icon-btn" data-a="to-home" aria-label="Zurück zu den Listen">' + I.back + '</button>' +
-    '<h1 class="bar-title">' + flagsOf(l) + esc(l.title) + '</h1><span></span></header>' +
+    '<h1 class="bar-title">' + flagsOf(l) + esc(l.title) + '</h1>' +
+    '<button class="icon-btn" data-a="edit-list" aria-label="Liste bearbeiten">' + I.pencil + '</button></header>' +
     '<main class="body">' +
     (l.tags.length ? '<div class="tags" style="margin:0 0 6px">' + l.tags.map(t => '<span class="tag">' + esc(t) + '</span>').join('') + '</div>' : '') +
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span class="note">' +
-    (s.total ? s.done + ' von ' + s.total + ' gelernt' : 'Noch keine Karten') + '</span>' +
-    '<button class="link" data-a="edit-list">Titel und Tags ändern</button></div>' +
+    '<div style="margin-bottom:14px"><span class="note">' +
+    (s.total ? s.done + ' von ' + s.total + ' gelernt' : 'Noch keine Karten') + '</span></div>' +
     '<button class="btn primary" data-a="quiz-list"' + (!s.total || left ? ' disabled' : '') + '>' +
     (allDone ? 'Alle noch einmal abfragen' : 'Diese Liste abfragen') + '</button>' +
     (note ? '<p class="note center-note">' + note + '</p>' : '') +
     (s.done ? '<div style="text-align:center;margin-top:4px"><button class="link" data-a="reset-progress">Fortschritt zurücksetzen</button></div>' : '') +
     '<div class="sec-head"><h2>Neue Karte</h2></div>' +
     '<form class="addcard" data-form="add-card" autocomplete="off">' +
-    '<label class="field"><span>Deutsch / Frage</span><input name="de" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next"></label>' +
+    '<label class="field"><span>' + esc(l.labelQ) + '</span><input name="de" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next"></label>' +
     '<p class="err" id="adderr" role="alert" hidden></p>' +
-    '<label class="field"><span>Fremdsprache / Antwort</span><input name="fl" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done"></label>' +
+    '<label class="field"><span>' + esc(l.labelA) + '</span><input name="fl" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done"></label>' +
     '<button class="btn primary" type="submit">Karte hinzufügen</button></form>' +
-    '<div class="sec-head"><h2>Karten (' + s.total + ')</h2>' + (s.total ? '<span class="switch">Antworten<button type="button" role="switch" data-a="toggle-answers" aria-pressed="' + showAnswers + '" aria-label="Antworten anzeigen"></button></span>' : '') + '</div>' +
+    '<div class="sec-head"><h2>Karten (' + s.total + ')</h2>' + (s.total ? '<span class="switch">' + esc(l.labelA) + '<button type="button" role="switch" data-a="toggle-answers" aria-pressed="' + showAnswers + '" aria-label="' + esc(l.labelA) + ' anzeigen"></button></span>' : '') + '</div>' +
     (s.total ? '<p class="note" style="margin:-2px 0 10px">Die Zahl zeigt, in der wievielten Runde die Karte wieder abgefragt wird.</p>' : '') +
     (cards ? '<ul class="rows">' + cards + '</ul>' : '<div class="empty">Hier erscheinen deine Karten.</div>') +
     '<div style="margin-top:30px"><button class="btn danger" data-a="del-list">Liste löschen</button></div>' +
@@ -572,6 +584,7 @@ function actionsHtml(s) {
 function viewQuiz() {
   const s = session, c = s.cards[s.queue[0]];
   const w = (t) => '<p class="word' + (t.length > 36 ? ' long' : '') + '">' + esc(t) + '</p>';
+  const lst = s.info[s.queue[0]].list;
   const asked = s.total - s.queue.length;
   const pct = s.total ? Math.round(asked / s.total * 100) : 0;
   return '<div class="screen"><header class="bar"><button class="icon-btn txt" data-a="quiz-exit">Beenden</button>' +
@@ -579,9 +592,9 @@ function viewQuiz() {
     '<button class="icon-btn" data-a="quiz-undo" aria-label="Letzte Antwort zurücknehmen"' + (s.undo ? '' : ' disabled') + '>' + I.undo + '</button></header>' +
     '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="' + s.total + '" aria-valuenow="' + asked + '"><i style="width:' + pct + '%"></i></div>' +
     '<main class="stage"><div class="flip' + (s.revealed ? ' on' : '') + '" data-a="quiz-flip" role="button" tabindex="0" aria-label="Karte umdrehen"><div class="flip-in">' +
-    '<div class="face front"><div class="face-head"><span>Deutsch / Frage</span>' + dots(c) + '</div>' +
+    '<div class="face front"><div class="face-head"><span>' + esc(lst.labelQ) + '</span>' + dots(c) + '</div>' +
     '<div class="face-body">' + w(c.de) + '<span class="hint">Tippen zum Umdrehen</span></div></div>' +
-    '<div class="face back"><div class="face-head"><span>Fremdsprache / Antwort</span>' + dots(c) + '</div>' +
+    '<div class="face back"><div class="face-head"><span>' + esc(lst.labelA) + '</span>' + dots(c) + '</div>' +
     '<div class="face-body">' + w(c.fl) + '</div></div>' +
     '</div></div></main><footer class="actions" id="actions">' + actionsHtml(s) + '</footer></div>';
 }
@@ -693,12 +706,15 @@ function sheetProfile(id) {
 function sheetList(id) {
   const l = id && P().lists.find(x => x.id === id);
   const known = tagList(P());
-  openSheet('<h2 class="sheet-title">' + (l ? 'Titel und Tags' : 'Neue Liste') + '</h2>' +
+  const dl = defaultLabels(l ? l.tags : []);
+  openSheet('<h2 class="sheet-title">' + (l ? 'Liste bearbeiten' : 'Neue Liste') + '</h2>' +
     '<form data-form="list" data-id="' + esc(id || '') + '" autocomplete="off">' +
     '<label class="field"><span>Titel</span><input name="title" value="' + esc(l ? l.title : '') + '" maxlength="80" enterkeyhint="next"></label>' +
     '<label class="field"><span>Tags, mit Leerzeichen getrennt (optional)</span><input name="tags" value="' + esc(l ? l.tags.join(' ') : '') + '" maxlength="200" placeholder="z. B. englisch unit-3" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done"></label>' +
     '<p class="err" id="tagerr" role="alert" hidden></p>' +
     (known.length ? '<div class="chips small" style="margin:-4px 0 14px">' + known.map(t => '<button type="button" class="chip" data-a="add-tag-text" data-v="' + esc(t.label) + '" aria-pressed="false">' + esc(t.label) + '</button>').join('') + '</div>' : '') +
+    '<label class="field"><span>Beschriftung der Frage-Seite</span><input name="labelq" value="' + esc(l ? l.labelQ : '') + '" placeholder="' + esc(dl.q) + '" maxlength="30" enterkeyhint="next"></label>' +
+    '<label class="field"><span>Beschriftung der Antwort-Seite</span><input name="labela" value="' + esc(l ? l.labelA : '') + '" placeholder="' + esc(dl.a) + '" maxlength="30" enterkeyhint="done"></label>' +
     '<div class="sheet-actions"><button type="button" class="btn quiet" data-a="sheet-close">Abbrechen</button>' +
     '<button class="btn primary" type="submit">' + (l ? 'Speichern' : 'Anlegen') + '</button></div></form>',
     w => $('input', w).focus());
@@ -716,9 +732,9 @@ function sheetCard(id) {
   if (!c) return;
   openSheet('<h2 class="sheet-title">Karte bearbeiten</h2>' +
     '<form data-form="card" data-id="' + esc(id) + '" autocomplete="off">' +
-    '<label class="field"><span>Deutsch / Frage</span><input name="de" value="' + esc(c.de) + '" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false"></label>' +
+    '<label class="field"><span>' + esc(L().labelQ) + '</span><input name="de" value="' + esc(c.de) + '" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false"></label>' +
     '<p class="err" id="editerr" role="alert" hidden></p>' +
-    '<label class="field"><span>Fremdsprache / Antwort</span><input name="fl" value="' + esc(c.fl) + '" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false"></label>' +
+    '<label class="field"><span>' + esc(L().labelA) + '</span><input name="fl" value="' + esc(c.fl) + '" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false"></label>' +
     '<div class="sheet-actions"><button type="button" class="btn danger" data-a="del-card" data-id="' + esc(id) + '">Löschen</button>' +
     '<button class="btn primary" type="submit">Speichern</button></div></form>');
 }
@@ -902,8 +918,10 @@ const forms = {
       er.hidden = false; f.tags.focus(); return;
     }
     const tags = r.tags, id = f.dataset.id, p = P();
-    if (id) { const l = p.lists.find(x => x.id === id); l.title = title; l.tags = tags; save(); closeSheet(); render(); }
-    else { const l = { id: uid(), title, tags, round: 0, lastEnd: 0, cards: [] }; p.lists.push(l); save(); closeSheet(); showAnswers = false; go({ name: 'list', id: l.id }); }
+    const dl = defaultLabels(tags);
+    const labelQ = clean(f.labelq.value, 30) || dl.q, labelA = clean(f.labela.value, 30) || dl.a;
+    if (id) { const l = p.lists.find(x => x.id === id); l.title = title; l.tags = tags; l.labelQ = labelQ; l.labelA = labelA; save(); closeSheet(); render(); }
+    else { const l = { id: uid(), title, tags, labelQ, labelA, round: 0, lastEnd: 0, cards: [] }; p.lists.push(l); save(); closeSheet(); showAnswers = false; go({ name: 'list', id: l.id }); }
   },
   card(f) {
     const de = clean(f.de.value, 200), fl = clean(f.fl.value, 200);
@@ -952,6 +970,7 @@ document.addEventListener('input', e => {
     const a = i.selectionStart, b = i.selectionEnd, low = i.value.toLowerCase();
     if (low !== i.value) { i.value = low; try { i.setSelectionRange(a, b); } catch (_) {} }
     const er = $('#tagerr'); if (er) er.hidden = true;
+    if (i.form && i.form.labelq) { const d = defaultLabels(parseTags(i.value).tags); i.form.labelq.placeholder = d.q; i.form.labela.placeholder = d.a; }
   } else if (i.matches && i.matches('input[name=de]') && i.form) {
     const er = $(i.form.dataset.form === 'card' ? '#editerr' : '#adderr'); if (er) er.hidden = true;
   }
