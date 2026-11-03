@@ -2,7 +2,7 @@
 // - Die App-Seite wird immer zuerst vom Server geholt (am Browser-Cache vorbei);
 //   nur ohne Internet (oder bei sehr langsamer Verbindung) kommt die gespeicherte Kopie.
 // - Icons und Manifest kommen aus dem Cache und werden im Hintergrund aufgefrischt.
-const CACHE = 'vokabelkarten-v4';
+const CACHE = 'vokabelkarten-v5';
 const ASSETS = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 const SLOW_MS = 3000;
 
@@ -33,15 +33,22 @@ const isPage = (req) => {
   return p.endsWith('/') || p.endsWith('/index.html');
 };
 
-async function pageResponse(req) {
+// Holt die Seite mit eindeutiger Adresse und ohne Cache: so liefert weder der Browser-Cache
+// noch ein Zwischenspeicher von GitHub eine veraltete Version.
+const freshUrl = () => new URL('index.html', self.registration.scope).href + '?_=' + Date.now();
+
+async function pageResponse(req, e) {
   const cache = await caches.open(CACHE);
-  const fresh = fetch(new Request(req.url, { cache: 'no-cache' })).then(res => {
+  const fresh = fetch(freshUrl(), { cache: 'no-store' }).then(res => {
     if (!res.ok) return null;
     cache.put('./index.html', res.clone());
     return res;
   }).catch(() => null);
-  const timeout = new Promise(r => setTimeout(() => r(null), SLOW_MS));
-  const res = await Promise.race([fresh, timeout]);
+  e.waitUntil(fresh);
+  // Beim Start nur kurz auf den Server warten; die Seite prüft danach selbst noch einmal auf Updates.
+  const res = req.mode === 'navigate'
+    ? await Promise.race([fresh, new Promise(r => setTimeout(() => r(null), SLOW_MS))])
+    : await fresh;
   if (res) return res;
   const cached = await cache.match('./index.html');
   if (cached) return cached;
@@ -63,5 +70,5 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   if (new URL(req.url).origin !== self.location.origin) return;
-  e.respondWith(isPage(req) ? pageResponse(req) : assetResponse(req, e));
+  e.respondWith(isPage(req) ? pageResponse(req, e) : assetResponse(req, e));
 });

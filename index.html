@@ -196,9 +196,11 @@ const lc = s => String(s).toLowerCase();
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 function clean(v, max) { return String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, max); }
 
-// Tags: durch Leerzeichen getrennt; Kleinbuchstaben, Ziffern, Punkt, Bindestrich; beginnt mit einem Buchstaben.
+// Tags: durch Leerzeichen getrennt; Kleinbuchstaben, Ziffern, Punkt, Bindestrich und Emojis; beginnt mit einem Buchstaben oder Emoji.
 // Großbuchstaben zählen als Kleinbuchstaben.
-const TAG_RE = /^\p{Ll}[\p{Ll}\d.\-]{0,29}$/u;
+const EMO_START = '\\p{Extended_Pictographic}\\u{1F1E6}-\\u{1F1FF}';
+const EMO_MORE = EMO_START + '\\p{Emoji_Modifier}\\uFE0F\\u200D';
+const TAG_RE = new RegExp('^[\\p{Ll}' + EMO_START + '][\\p{Ll}\\d.\\-' + EMO_MORE + ']{0,29}$', 'u');
 function parseTags(str) {
   const seen = new Set(), tags = [], invalid = [];
   String(str || '').split(/\s+/).forEach(raw => {
@@ -211,9 +213,9 @@ function parseTags(str) {
 }
 // Macht alte oder importierte Tags gültig (z. B. "Unit 3" -> "unit-3")
 function normalizeTag(raw) {
-  let t = lc(raw == null ? '' : raw).trim().replace(/\s+/g, '-').replace(/[^\p{Ll}\d.\-]/gu, '');
-  t = t.replace(/^[^\p{Ll}]+/u, '');
-  return t.slice(0, 30);
+  let t = lc(raw == null ? '' : raw).trim().replace(/\s+/g, '-').replace(new RegExp('[^\\p{Ll}\\d.\\-' + EMO_MORE + ']', 'gu'), '');
+  t = t.replace(new RegExp('^[^\\p{Ll}' + EMO_START + ']+', 'u'), '');
+  return Array.from(t).slice(0, 30).join('');
 }
 function tagsOfProfile(p) {
   const set = new Set();
@@ -367,7 +369,7 @@ function sanitizeProfile(p) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '1.6';
+const VERSION = '1.7';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -461,7 +463,7 @@ function viewProfiles() {
   }).join('');
   return '<div class="screen"><header class="bar"><span></span><span></span>' +
     '<button class="icon-btn" data-a="settings" aria-label="Einstellungen und Sicherung">' + I.gear + '</button></header>' +
-    '<main class="body"><div class="hero"><h1 class="display">Vokabeln</h1>' +
+    '<main class="body"><div class="hero"><h1 class="display">Voka</h1>' +
     (db.profiles.length ? '' : '<p class="sub">Lege ein Profil an, um loszulegen.</p>') + '</div>' +
     (rows ? '<ul class="rows">' + rows + '</ul>' : '') +
     '<div style="margin-top:14px"><button class="btn ' + (db.profiles.length ? 'quiet' : 'primary') + '" data-a="add-profile">Profil anlegen</button></div>' +
@@ -914,7 +916,7 @@ const forms = {
     const r = parseTags(f.tags.value);
     if (r.invalid.length) {
       const er = $('#tagerr');
-      er.textContent = 'Ungültig: „' + r.invalid.join('“, „') + '“. Ein Tag beginnt mit einem Buchstaben und besteht nur aus Kleinbuchstaben, Ziffern, Punkt und Bindestrich. Mehrere Tags trennst du mit Leerzeichen.';
+      er.textContent = 'Ungültig: „' + r.invalid.join('“, „') + '“. Ein Tag beginnt mit einem Buchstaben oder Emoji und besteht nur aus Kleinbuchstaben, Ziffern, Punkt, Bindestrich und Emojis. Mehrere Tags trennst du mit Leerzeichen.';
       er.hidden = false; f.tags.focus(); return;
     }
     const tags = r.tags, id = f.dataset.id, p = P();
@@ -998,27 +1000,44 @@ $('#file').addEventListener('change', e => {
 });
 
 render();
+// ---------- Updates ----------
+// Neu laden, sobald nichts Wichtiges offen ist (nie mitten in der Abfrage, bei offenem Dialog oder beim Tippen)
+let reloading = false;
+const reloadWhenIdle = () => {
+  if (reloading) return;
+  const el = document.activeElement;
+  const typing = el && /^(INPUT|TEXTAREA)$/.test(el.tagName);
+  const busy = route.name === 'quiz' || route.name === 'result' || $('.sheet-wrap') || typing;
+  if (busy) { setTimeout(reloadWhenIdle, 3000); return; }
+  reloading = true; location.reload();
+};
+// Fragt den Server (mit eindeutiger Adresse, am Cache vorbei) nach der aktuellen Version
+let lastCheck = 0;
+async function checkForUpdate() {
+  if (reloading || Date.now() - lastCheck < 20000) return;
+  lastCheck = Date.now();
+  try {
+    const res = await fetch('index.html?_=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return;
+    const m = (await res.text()).match(/const VERSION = '([^']+)'/);
+    if (!m || m[1] === VERSION) return;
+    let tried = null;
+    try { tried = sessionStorage.getItem('vk.reload'); sessionStorage.setItem('vk.reload', m[1]); } catch (_) {}
+    if (tried !== m[1]) reloadWhenIdle();   // höchstens ein Versuch pro Version und Sitzung
+  } catch (e) {}
+}
 if ('serviceWorker' in navigator) {
-  // Wurde ein neuer Service Worker aktiv, wird die App neu geladen - aber nie mitten in einer Abfrage,
-  // bei offenem Dialog oder während getippt wird.
   const hadController = !!navigator.serviceWorker.controller;
-  let reloading = false;
-  const reloadWhenIdle = () => {
-    const el = document.activeElement;
-    const typing = el && /^(INPUT|TEXTAREA)$/.test(el.tagName);
-    const busy = route.name === 'quiz' || route.name === 'result' || $('.sheet-wrap') || typing;
-    if (busy) { setTimeout(reloadWhenIdle, 3000); return; }
-    reloading = true; location.reload();
-  };
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (hadController && !reloading) reloadWhenIdle();
-  });
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) reloadWhenIdle(); });
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').then(reg => {
       document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
     }).catch(() => {});
   });
 }
+window.addEventListener('load', () => setTimeout(checkForUpdate, 500));
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
+window.addEventListener('pageshow', e => { if (e.persisted) checkForUpdate(); });
 })();
 </script>
 </body>
