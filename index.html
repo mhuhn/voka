@@ -70,6 +70,15 @@ h2{font:600 1.1875rem/1.2 var(--serif)}
 .trow{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:10px}
 .trow .row-title{display:block}
 .trash-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.sheet-label{font-weight:600;margin:6px 0 4px}
+.selrows{display:grid;gap:8px;margin:2px 0 12px;max-height:38vh;overflow-y:auto}
+.selrow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:11px 14px;min-height:52px}
+.selrow .box{flex:none;width:24px;height:24px;border-radius:7px;border:2px solid var(--muted);position:relative}
+.selrow[aria-checked=true]{border-color:var(--accent);background:var(--accent-soft)}
+.selrow[aria-checked=true] .box{background:var(--accent);border-color:var(--accent)}
+.selrow[aria-checked=true] .box::after{content:"";position:absolute;left:6px;top:2px;width:6px;height:11px;border:solid var(--accent-ink);border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
+.selrow-t{font:600 1.05rem/1.25 var(--serif);overflow-wrap:anywhere}
+.selrow-t small{display:block;font:400 .88rem var(--sans);color:var(--muted)}
 .listtools{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 .btn.small{min-height:42px;font-size:.95rem;border-radius:12px;padding:0 10px}
 .link{border:0;background:none;color:var(--accent);font-weight:600;padding:8px 0 8px 12px;font-size:.98rem}
@@ -412,25 +421,39 @@ function exportListObj(l, withProgress) {
   list.cards = l.cards.map(c => withProgress ? { de: c.de, fl: c.fl, streak: c.streak, due: c.due } : { de: c.de, fl: c.fl });
   return { app: 'vokabelkarten', version: 1, type: 'list', exported: new Date().toISOString(), withProgress: !!withProgress, list };
 }
-// Liest den Text einer geteilten Liste. Ergebnis: { list } (neue Kennungen, ohne Pause) oder { error }
+// Mehrere Listen in einem Text (ohne Profil). Eine einzelne Liste behält das Einzel-Format.
+function exportListsObj(lists, withProgress) {
+  if (lists.length === 1) return exportListObj(lists[0], withProgress);
+  return { app: 'vokabelkarten', version: 1, type: 'lists', exported: new Date().toISOString(), withProgress: !!withProgress,
+    lists: lists.map(l => exportListObj(l, withProgress).list) };
+}
+// Liest den Text geteilter Listen (eine oder mehrere). Ergebnis: { lists } (neue Kennungen, ohne Pause) oder { error }
 function parseListImport(text) {
+  const bad = { error: 'Das ist keine geteilte Liste.' };
   let obj;
-  try { obj = JSON.parse(String(text || '').trim()); } catch (e) { return { error: 'Das ist keine geteilte Liste.' }; }
-  if (!obj || typeof obj !== 'object') return { error: 'Das ist keine geteilte Liste.' };
-  if (obj.app && obj.app !== 'vokabelkarten') return { error: 'Das ist keine geteilte Liste.' };
-  const src = obj.list && typeof obj.list === 'object' ? obj.list : (Array.isArray(obj.cards) ? obj : null);
-  if (!src) return { error: Array.isArray(obj.profiles) ? 'Das ist eine Gesamtsicherung, keine einzelne Liste. Lade sie unter Einstellungen.' : 'Das ist keine geteilte Liste.' };
-  const l = sanitizeList(src);
-  l.id = uid(); l.lastEnd = 0;
-  const seen = new Set();
-  l.cards = l.cards.filter(c => { const k = termKey(c.de); if (seen.has(k)) return false; seen.add(k); return true; }).map(c => Object.assign(c, { id: uid() }));
-  return { list: l };
+  try { obj = JSON.parse(String(text || '').trim()); } catch (e) { return bad; }
+  if (!obj || typeof obj !== 'object') return bad;
+  if (obj.app && obj.app !== 'vokabelkarten') return bad;
+  const isObj = x => x && typeof x === 'object' && !Array.isArray(x);
+  let srcs = [];
+  if (Array.isArray(obj.lists)) srcs = obj.lists.filter(isObj);
+  else if (isObj(obj.list)) srcs = [obj.list];
+  else if (Array.isArray(obj.cards)) srcs = [obj];
+  if (!srcs.length) return { error: Array.isArray(obj.profiles) ? 'Das ist eine Gesamtsicherung, keine einzelne Liste. Lade sie unter Einstellungen.' : 'Das ist keine geteilte Liste.' };
+  const lists = srcs.slice(0, 200).map(src => {
+    const l = sanitizeList(src);
+    l.id = uid(); l.lastEnd = 0;
+    const seen = new Set();
+    l.cards = l.cards.filter(c => { const k = termKey(c.de); if (seen.has(k)) return false; seen.add(k); return true; }).map(c => Object.assign(c, { id: uid() }));
+    return l;
+  });
+  return { lists };
 }
 /*LOGIC-END*/
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '2.2';
+const VERSION = '2.3';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -572,14 +595,15 @@ function viewHome() {
   const none = homeFilter.length ? 'Keine Liste hat alle gewählten Tags.' : 'Noch keine Liste. Lege deine erste Vokabelliste an, zum Beispiel „Unit 3“.';
   return '<div class="screen"><header class="bar"><button class="icon-btn" data-a="to-profiles" aria-label="Profil wechseln">' + I.back + '</button>' +
     '<h1 class="bar-title">' + esc(p.name) + '</h1>' +
-    '<button class="icon-btn" data-a="home-settings" aria-label="Pause zwischen Abfragen einstellen">' + I.clock + '</button></header>' +
+    '<button class="icon-btn" data-a="edit-profile" aria-label="Profil bearbeiten">' + I.pencil + '</button></header>' +
     '<main class="body"><button class="btn primary big" data-a="to-pick"' + (all.total ? '' : ' disabled') + '>Abfragen' +
     '<small>' + sub + '</small></button>' +
     '<div class="sec-head"><h2>Meine Listen</h2><button class="link" data-a="new-list">Neue Liste</button></div>' +
     chips + bar +
     (rows ? '<ul class="rows">' + rows + '</ul>' : '<div class="empty">' + none + '</div>') +
-    '<div class="listtools" style="margin-top:22px"><button class="btn quiet" data-a="import-list">Importieren</button>' +
-    '<button class="btn quiet" data-a="to-trash">Papierkorb' + ((p.trash || []).length ? ' (' + p.trash.length + ')' : '') + '</button></div>' +
+    '<div class="listtools" style="margin-top:22px"><button class="btn quiet" data-a="share-lists"' + (p.lists.length ? '' : ' disabled') + '>Teilen</button>' +
+    '<button class="btn quiet" data-a="import-list">Importieren</button>' +
+    '<button class="btn quiet" style="grid-column:1/-1" data-a="to-trash">Papierkorb' + ((p.trash || []).length ? ' (' + p.trash.length + ')' : '') + '</button></div>' +
     backupNote() + '</main></div>';
 }
 
@@ -811,11 +835,16 @@ function sheetList(id) {
 }
 function sheetPause() {
   const p = P();
-  openSheet('<h2 class="sheet-title">Pause zwischen Abfragen</h2>' +
-    '<p>So lange ist eine Liste nach einer Abfrage gesperrt, bevor sie wieder abgefragt werden kann. Gilt für alle Listen von ' + esc(p.name) + '.</p>' +
+  openSheet('<h2 class="sheet-title">Profil bearbeiten</h2>' +
+    '<form data-form="profile" data-id="' + esc(p.id) + '" autocomplete="off"><label class="field"><span>Name</span>' +
+    '<input name="name" value="' + esc(p.name) + '" maxlength="40" autocapitalize="words" enterkeyhint="done"></label>' +
+    '<p class="sheet-label">Pause zwischen Abfragen</p>' +
+    '<p class="note" style="margin:0 0 8px">So lange ist eine Liste nach einer Abfrage gesperrt, bevor sie wieder abgefragt werden kann. Gilt für alle Listen von ' + esc(p.name) + '. Wird sofort übernommen.</p>' +
     '<div class="chips" id="pausechips">' + PAUSES.map(m =>
       '<button type="button" class="chip" data-a="set-pause" data-v="' + m + '" aria-pressed="' + (m === p.pause) + '">' + pauseShort(m) + '</button>').join('') + '</div>' +
-    '<div class="sheet-actions one" style="margin-top:18px"><button class="btn primary" data-a="sheet-close">Fertig</button></div>');
+    '<div class="sheet-actions" style="margin-top:18px"><button type="button" class="btn quiet" data-a="sheet-close">Schließen</button>' +
+    '<button class="btn primary" type="submit">Speichern</button></div>' +
+    '<button type="button" class="btn danger" style="margin-top:12px" data-a="delete-profile" data-id="' + esc(p.id) + '">Profil löschen</button></form>');
 }
 function sheetCard(id) {
   const c = L().cards.find(x => x.id === id);
@@ -849,14 +878,15 @@ async function exportFile() {
   setTimeout(() => URL.revokeObjectURL(url), 4000);
   markBackup();
 }
-async function shareList(l, withProgress) {
-  const json = JSON.stringify(exportListObj(l, withProgress));
+async function shareLists(lists, withProgress) {
+  const json = JSON.stringify(exportListsObj(lists, withProgress));
+  const title = lists.length === 1 ? lists[0].title : nn(lists.length, 'Liste', 'Listen');
   if (navigator.share) {
-    try { await navigator.share({ title: l.title, text: json }); return; }
+    try { await navigator.share({ title, text: json }); return; }
     catch (e) { if (e && e.name === 'AbortError') return; }
   }
   try { await navigator.clipboard.writeText(json); toast('Kopiert. Füge den Text z. B. in eine Nachricht ein.'); return; } catch (e) {}
-  openSheet('<h2 class="sheet-title">Liste teilen</h2><p>Markiere den Text, kopiere ihn und schicke ihn weiter.</p>' +
+  openSheet('<h2 class="sheet-title">' + (lists.length === 1 ? 'Liste teilen' : 'Listen teilen') + '</h2><p>Markiere den Text, kopiere ihn und schicke ihn weiter.</p>' +
     '<label class="field"><span>Liste</span><textarea readonly id="out">' + esc(json) + '</textarea></label>' +
     '<div class="sheet-actions one"><button class="btn primary" data-a="sheet-close">Fertig</button></div>',
     w => { const t = $('#out', w); t.focus(); t.select(); });
@@ -864,11 +894,38 @@ async function shareList(l, withProgress) {
 function addImportedList(text) {
   const r = parseListImport(text);
   if (r.error) return r.error;
-  const p = P(), l = r.list;
-  l.title = uniqueTitle(p.lists, l.title);
-  p.lists.push(l); save(); closeSheet(); showAnswers = false; go({ name: 'list', id: l.id });
-  toast('„' + l.title + '“ importiert (' + nn(l.cards.length, 'Karte', 'Karten') + ')');
+  const p = P();
+  r.lists.forEach(l => { l.title = uniqueTitle(p.lists, l.title); p.lists.push(l); });
+  save(); closeSheet(); showAnswers = false;
+  if (r.lists.length === 1) {
+    const l = r.lists[0];
+    go({ name: 'list', id: l.id });
+    toast('„' + l.title + '“ importiert (' + nn(l.cards.length, 'Karte', 'Karten') + ')');
+  } else {
+    go({ name: 'home' });
+    toast(nn(r.lists.length, 'Liste', 'Listen') + ' importiert (' + nn(r.lists.reduce((n, l) => n + l.cards.length, 0), 'Karte', 'Karten') + ')');
+  }
   return null;
+}
+// Auswahl mehrerer Listen zum Teilen (Profilseite)
+let shareSel = new Set();
+function sheetShareLists() {
+  const p = P(); if (!p.lists.length) return;
+  shareSel = new Set();
+  const rows = p.lists.map(l => '<button type="button" class="selrow" data-a="toggle-share" data-id="' + esc(l.id) + '" role="checkbox" aria-checked="false">' +
+    '<span class="box" aria-hidden="true"></span><span class="selrow-t">' + flagsOf(l) + esc(l.title) + '<small>' + nn(l.cards.length, 'Karte', 'Karten') + '</small></span></button>').join('');
+  openSheet('<h2 class="sheet-title">Listen teilen</h2><p>Wähle die Listen von ' + esc(p.name) + ', die du teilen möchtest. Das Profil selbst wird nicht mitgeteilt.</p>' +
+    '<div class="selrows">' + rows + '</div>' +
+    '<div style="text-align:right;margin:-4px 0 10px"><button type="button" class="link" data-a="toggle-share-all">Alle auswählen</button></div>' +
+    '<div style="display:grid;gap:10px"><button class="btn primary" data-a="do-share-sel" data-v="1" disabled>Mit Lernfortschritt teilen</button>' +
+    '<button class="btn quiet" data-a="do-share-sel" data-v="0" disabled>Ohne Lernfortschritt teilen</button>' +
+    '<button class="btn quiet" data-a="sheet-close">Abbrechen</button></div>');
+}
+function syncShareSheet() {
+  const p = P(), all = shareSel.size === p.lists.length;
+  document.querySelectorAll('.selrow').forEach(b => { const on = shareSel.has(b.dataset.id); b.setAttribute('aria-checked', String(on)); });
+  document.querySelectorAll('[data-a=do-share-sel]').forEach(b => { b.disabled = !shareSel.size; });
+  const a = $('[data-a=toggle-share-all]'); if (a) a.textContent = all ? 'Auswahl aufheben' : 'Alle auswählen';
 }
 function sheetPasteList(msg) {
   openSheet('<h2 class="sheet-title">Liste importieren</h2><p>' + (msg ? esc(msg) + ' ' : '') + 'Kopiere den Text einer geteilten Liste und füge ihn hier ein.</p>' +
@@ -917,7 +974,7 @@ const actions = {
   'confirm-ok'() { const f = pendingConfirm; pendingConfirm = null; if (f) f(); },
   'to-profiles'() { go({ name: 'profiles' }); },
   'pick-profile'(el) { db.lastProfile = el.dataset.id; homeFilter = []; save(); go({ name: 'home' }); },
-  'home-settings'() { sheetPause(); },
+  'edit-profile'() { sheetPause(); },
   'set-pause'(el) {
     const p = P(); p.pause = Number(el.dataset.v); save();
     document.querySelectorAll('#pausechips .chip').forEach(c => c.setAttribute('aria-pressed', String(Number(c.dataset.v) === p.pause)));
@@ -986,7 +1043,14 @@ const actions = {
       '<button class="btn quiet" data-a="do-share" data-v="0">Ohne Lernfortschritt teilen</button>' +
       '<button class="btn quiet" data-a="sheet-close">Abbrechen</button></div>');
   },
-  'do-share'(el) { const l = L(); closeSheet(); if (l) shareList(l, el.dataset.v === '1'); },
+  'do-share'(el) { const l = L(); closeSheet(); if (l) shareLists([l], el.dataset.v === '1'); },
+  'share-lists'() { sheetShareLists(); },
+  'toggle-share'(el) { const id = el.dataset.id; if (shareSel.has(id)) shareSel.delete(id); else shareSel.add(id); syncShareSheet(); },
+  'toggle-share-all'() { const p = P(); if (shareSel.size === p.lists.length) shareSel.clear(); else p.lists.forEach(l => shareSel.add(l.id)); syncShareSheet(); },
+  'do-share-sel'(el) {
+    const p = P(), lists = p.lists.filter(l => shareSel.has(l.id)); if (!lists.length) return;
+    closeSheet(); shareLists(lists, el.dataset.v === '1');
+  },
   'import-list'() { importFromClipboard(); },
   'reset-progress'() {
     const l = L();
