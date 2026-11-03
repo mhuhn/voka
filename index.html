@@ -70,6 +70,7 @@ h2{font:600 1.1875rem/1.2 var(--serif)}
 .trow{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:10px}
 .trow .row-title{display:block}
 .trash-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.listtools{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 .btn.small{min-height:42px;font-size:.95rem;border-radius:12px;padding:0 10px}
 .link{border:0;background:none;color:var(--accent);font-weight:600;padding:8px 0 8px 12px;font-size:.98rem}
 
@@ -398,11 +399,38 @@ function sanitizeProfile(p) {
     trash: (Array.isArray(p.trash) ? p.trash : []).map(sanitizeTrashList)
   };
 }
+// ---- Listen teilen und importieren ----
+// Gleicher Name schon vorhanden? Dann " 2", " 3", ... anhängen (Groß-/Kleinschreibung egal)
+function uniqueTitle(lists, title) {
+  const base = clean(title, 76) || 'Liste', used = new Set(lists.map(l => l.title.trim().toLowerCase()));
+  if (!used.has(base.toLowerCase())) return base;
+  for (let n = 2; ; n++) { const t = base + ' ' + n; if (!used.has(t.toLowerCase())) return t; }
+}
+function exportListObj(l, withProgress) {
+  const list = { title: l.title, tags: l.tags.slice(), labelQ: l.labelQ, labelA: l.labelA };
+  if (withProgress) list.round = l.round;
+  list.cards = l.cards.map(c => withProgress ? { de: c.de, fl: c.fl, streak: c.streak, due: c.due } : { de: c.de, fl: c.fl });
+  return { app: 'vokabelkarten', version: 1, type: 'list', exported: new Date().toISOString(), withProgress: !!withProgress, list };
+}
+// Liest den Text einer geteilten Liste. Ergebnis: { list } (neue Kennungen, ohne Pause) oder { error }
+function parseListImport(text) {
+  let obj;
+  try { obj = JSON.parse(String(text || '').trim()); } catch (e) { return { error: 'Das ist keine geteilte Liste.' }; }
+  if (!obj || typeof obj !== 'object') return { error: 'Das ist keine geteilte Liste.' };
+  if (obj.app && obj.app !== 'vokabelkarten') return { error: 'Das ist keine geteilte Liste.' };
+  const src = obj.list && typeof obj.list === 'object' ? obj.list : (Array.isArray(obj.cards) ? obj : null);
+  if (!src) return { error: Array.isArray(obj.profiles) ? 'Das ist eine Gesamtsicherung, keine einzelne Liste. Lade sie unter Einstellungen.' : 'Das ist keine geteilte Liste.' };
+  const l = sanitizeList(src);
+  l.id = uid(); l.lastEnd = 0;
+  const seen = new Set();
+  l.cards = l.cards.filter(c => { const k = termKey(c.de); if (seen.has(k)) return false; seen.add(k); return true; }).map(c => Object.assign(c, { id: uid() }));
+  return { list: l };
+}
 /*LOGIC-END*/
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '2.1';
+const VERSION = '2.2';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -550,7 +578,8 @@ function viewHome() {
     '<div class="sec-head"><h2>Meine Listen</h2><button class="link" data-a="new-list">Neue Liste</button></div>' +
     chips + bar +
     (rows ? '<ul class="rows">' + rows + '</ul>' : '<div class="empty">' + none + '</div>') +
-    '<div style="margin-top:22px"><button class="btn quiet" data-a="to-trash">Papierkorb' + ((p.trash || []).length ? ' (' + p.trash.length + ')' : '') + '</button></div>' +
+    '<div class="listtools" style="margin-top:22px"><button class="btn quiet" data-a="import-list">Importieren</button>' +
+    '<button class="btn quiet" data-a="to-trash">Papierkorb' + ((p.trash || []).length ? ' (' + p.trash.length + ')' : '') + '</button></div>' +
     backupNote() + '</main></div>';
 }
 
@@ -592,7 +621,8 @@ function viewList() {
     '<button class="btn primary" data-a="quiz-list"' + (!s.total || left ? ' disabled' : '') + '>' +
     (allDone ? 'Alle noch einmal abfragen' : 'Diese Liste abfragen') + '</button>' +
     (note ? '<p class="note center-note">' + note + '</p>' : '') +
-    (s.done ? '<div style="text-align:center;margin-top:4px"><button class="link" data-a="reset-progress">Fortschritt zurücksetzen</button></div>' : '') +
+    '<div class="listtools"><button class="btn quiet small" data-a="share-list"' + (s.total ? '' : ' disabled') + '>Teilen</button>' +
+    '<button class="btn quiet small" data-a="reset-progress"' + (l.round || l.lastEnd || l.cards.some(c => c.streak || c.due) ? '' : ' disabled') + '>Zurücksetzen</button></div>' +
     '<div class="sec-head"><h2>Neue Karte</h2></div>' +
     '<form class="addcard" data-form="add-card" autocomplete="off">' +
     '<label class="field"><span>' + esc(l.labelQ) + '</span><input name="de" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next"></label>' +
@@ -819,6 +849,41 @@ async function exportFile() {
   setTimeout(() => URL.revokeObjectURL(url), 4000);
   markBackup();
 }
+async function shareList(l, withProgress) {
+  const json = JSON.stringify(exportListObj(l, withProgress));
+  if (navigator.share) {
+    try { await navigator.share({ title: l.title, text: json }); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  try { await navigator.clipboard.writeText(json); toast('Kopiert. Füge den Text z. B. in eine Nachricht ein.'); return; } catch (e) {}
+  openSheet('<h2 class="sheet-title">Liste teilen</h2><p>Markiere den Text, kopiere ihn und schicke ihn weiter.</p>' +
+    '<label class="field"><span>Liste</span><textarea readonly id="out">' + esc(json) + '</textarea></label>' +
+    '<div class="sheet-actions one"><button class="btn primary" data-a="sheet-close">Fertig</button></div>',
+    w => { const t = $('#out', w); t.focus(); t.select(); });
+}
+function addImportedList(text) {
+  const r = parseListImport(text);
+  if (r.error) return r.error;
+  const p = P(), l = r.list;
+  l.title = uniqueTitle(p.lists, l.title);
+  p.lists.push(l); save(); closeSheet(); showAnswers = false; go({ name: 'list', id: l.id });
+  toast('„' + l.title + '“ importiert (' + nn(l.cards.length, 'Karte', 'Karten') + ')');
+  return null;
+}
+function sheetPasteList(msg) {
+  openSheet('<h2 class="sheet-title">Liste importieren</h2><p>' + (msg ? esc(msg) + ' ' : '') + 'Kopiere den Text einer geteilten Liste und füge ihn hier ein.</p>' +
+    '<form data-form="paste-list"><label class="field"><span>Geteilte Liste</span><textarea name="text" spellcheck="false"></textarea></label>' +
+    '<p class="err" id="pasteerr" role="alert" hidden></p>' +
+    '<div class="sheet-actions"><button type="button" class="btn quiet" data-a="sheet-close">Abbrechen</button>' +
+    '<button class="btn primary" type="submit">Importieren</button></div></form>', w => $('textarea', w).focus());
+}
+async function importFromClipboard() {
+  let text = '';
+  try { text = await navigator.clipboard.readText(); } catch (e) {}
+  if (!text || !text.trim()) { sheetPasteList('Die Zwischenablage ist leer oder nicht lesbar.'); return; }
+  const err = addImportedList(text);
+  if (err) sheetPasteList(err);
+}
 async function exportText() {
   const json = JSON.stringify(exportObj());
   try { await navigator.clipboard.writeText(json); toast('Kopiert. Füge den Text z. B. in eine Notiz ein.'); markBackup(); return; } catch (e) {}
@@ -914,10 +979,19 @@ const actions = {
     const a = f.de.value; f.de.value = f.fl.value; f.fl.value = a;
     const er = $('#editerr'); if (er) er.hidden = true;
   },
+  'share-list'() {
+    const l = L(); if (!l) return;
+    openSheet('<h2 class="sheet-title">Liste teilen</h2><p>„' + esc(l.title) + '“ mit ' + nn(l.cards.length, 'Karte', 'Karten') + ' wird als Text geteilt. Der andere fügt ihn bei sich unter „Importieren“ ein.</p>' +
+      '<div style="display:grid;gap:10px"><button class="btn primary" data-a="do-share" data-v="1">Mit Lernfortschritt teilen</button>' +
+      '<button class="btn quiet" data-a="do-share" data-v="0">Ohne Lernfortschritt teilen</button>' +
+      '<button class="btn quiet" data-a="sheet-close">Abbrechen</button></div>');
+  },
+  'do-share'(el) { const l = L(); closeSheet(); if (l) shareList(l, el.dataset.v === '1'); },
+  'import-list'() { importFromClipboard(); },
   'reset-progress'() {
     const l = L();
-    confirmSheet('Fortschritt zurücksetzen?', 'Alle Karten in dieser Liste gelten wieder als neu.', 'Zurücksetzen', () => {
-      l.cards.forEach(c => { c.streak = 0; c.due = 0; }); save(); closeSheet(); render();
+    confirmSheet('Fortschritt zurücksetzen?', 'Der Lernfortschritt aller Karten in „' + l.title + '“ wird entfernt. Alle Karten gelten wieder als neu, und die Liste kann sofort wieder abgefragt werden.', 'Zurücksetzen', () => {
+      l.cards.forEach(c => { c.streak = 0; c.due = 0; }); l.round = 0; l.lastEnd = 0; save(); closeSheet(); render(); toast('Fortschritt zurückgesetzt');
     });
   },
   'edit-card'(el) { sheetCard(el.dataset.id); },
@@ -1034,7 +1108,11 @@ const forms = {
     save(); render();
     const inp = $('input[name=de]'); if (inp) inp.focus();
   },
-  paste(f) { importText(f.text.value); }
+  paste(f) { importText(f.text.value); },
+  'paste-list'(f) {
+    const err = addImportedList(f.text.value);
+    if (err) { const er = $('#pasteerr'); er.textContent = err; er.hidden = false; }
+  }
 };
 
 // ---------- Ereignisse ----------
