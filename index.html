@@ -125,7 +125,8 @@ h2{font:600 1.1875rem/1.2 var(--serif)}
 .sheet-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
 .sheet-actions.one{grid-template-columns:1fr}
 .sheet-sep{height:10px}
-.sheet .err{background:var(--no-soft);color:var(--no-ink);border-radius:10px;padding:10px 12px;font-size:.92rem;margin:-6px 0 14px}
+.filterbar{display:flex;justify-content:space-between;align-items:center;margin:-2px 0 10px}
+.err,.sheet .err{background:var(--no-soft);color:var(--no-ink);border-radius:10px;padding:10px 12px;font-size:.92rem;margin:-6px 0 14px}
 .center-note{text-align:center;margin-top:8px}
 .match li.dim{opacity:.7}
 
@@ -174,7 +175,8 @@ h2{font:600 1.1875rem/1.2 var(--serif)}
 /*LOGIC-START*/
 const GOAL = 3;                 // so oft in Folge gewusst = Karte gelernt
 const GAPS = [2, 6, 19];        // Runden bis zur nächsten Abfrage: nach "nicht gewusst" / 1x / 2x richtig in Folge
-const LOCK_MS = 10 * 60 * 1000; // Pause einer Liste nach dem Ende ihrer Abfrage
+const PAUSES = [1, 3, 10, 30, 60, 120, 240, 480, 960]; // wählbare Pausen in Minuten (pro Profil)
+const DEFAULT_PAUSE = 120;      // Standard für neue Profile: 2 Stunden
 
 const lc = s => String(s).toLowerCase();
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
@@ -229,7 +231,7 @@ function shuffle(a) {
 // Eine Abfrage ist eine Runde. Jede Liste zählt ihre Runden (round); jede Karte merkt sich,
 // ab welcher Runde sie wieder dran ist (due). Gibt es in der nächsten Runde nichts zu fragen,
 // springt die Liste zur frühesten fälligen Karte vor.
-function lockLeft(l, now) { return Math.max(0, (l.lastEnd || 0) + LOCK_MS - now); }
+function lockLeft(l, now, pauseMin) { return Math.max(0, (l.lastEnd || 0) + pauseMin * 60000 - now); }
 function openCardsOf(l) { return l.cards.filter(c => !isDone(c)); }
 function effRound(l) {
   const open = openCardsOf(l);
@@ -240,10 +242,10 @@ function pendingCount(l) {
   const e = effRound(l);
   return openCardsOf(l).filter(c => c.due <= e).length;
 }
-function newSession(lists, includeDone, now) {
+function newSession(lists, includeDone, now, pauseMin) {
   const info = {}, queue = [], used = [], cards = {};
   lists.forEach(l => {
-    if (lockLeft(l, now) > 0) return;
+    if (lockLeft(l, now, pauseMin) > 0) return;
     if (includeDone) l.cards.forEach(c => { if (isDone(c)) { c.streak = 0; c.due = 0; } });
     const e = effRound(l);
     let n = 0;
@@ -295,11 +297,26 @@ function unfinishSession(s) {
 function abortSession(s) {
   s.lists.forEach(x => { x.list.round = Math.max(x.list.round, x.eff); });
 }
+const pauseShort = m => m < 60 ? m + ' Min.' : (m / 60) + ' Std.';
+const pauseText = m => m < 60 ? m + (m === 1 ? ' Minute' : ' Minuten') : (m / 60) + (m === 60 ? ' Stunde' : ' Stunden');
+// Restzeit der Pause, aufgerundet auf Minuten: "7 Min.", "2 Std.", "1 Std. 25 Min."
+function lockText(ms) {
+  const t = Math.ceil(ms / 60000), h = Math.floor(t / 60), m = t % 60;
+  if (!h) return m + ' Min.';
+  return h + ' Std.' + (m ? ' ' + m + ' Min.' : '');
+}
+// Zwei Karten einer Liste dürfen nicht denselben Begriff auf der Frage-Seite haben (Groß-/Kleinschreibung und Leerzeichen egal)
+function termKey(s) { return clean(s, 200).normalize('NFC').toLowerCase(); }
+function findDup(list, de, exceptId) {
+  const k = termKey(de);
+  return list.cards.find(c => c.id !== exceptId && termKey(c.de) === k) || null;
+}
 function sanitizeProfile(p) {
   p = p || {};
   return {
     id: clean(p.id, 40) || uid(),
     name: clean(p.name, 40) || 'Profil',
+    pause: PAUSES.includes(Number(p.pause)) ? Number(p.pause) : DEFAULT_PAUSE,
     lists: (Array.isArray(p.lists) ? p.lists : []).map(l => {
       l = l || {};
       return {
@@ -325,7 +342,7 @@ function sanitizeProfile(p) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '1.1';
+const VERSION = '1.2';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -360,7 +377,8 @@ const I = {
   back: svg('<path d="M15 5l-7 7 7 7"/>'),
   chev: svg('<path d="M9 5l7 7-7 7"/>'),
   save: svg('<path d="M12 4v11M8 11l4 4 4-4M5 19h14"/>'),
-  undo: svg('<path d="M9 14L4 9l5-5"/><path d="M4 9h9a6 6 0 010 12h-3"/>')
+  undo: svg('<path d="M9 14L4 9l5-5"/><path d="M4 9h9a6 6 0 010 12h-3"/>'),
+  clock: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>')
 };
 let toastTimer;
 function toast(msg) {
@@ -374,11 +392,10 @@ const P = () => db.profiles.find(p => p.id === db.lastProfile);
 const L = () => { const p = P(); return p && route.id ? p.lists.find(l => l.id === route.id) : null; };
 const dots = c => '<span class="dots" role="img" aria-label="' + c.streak + ' von ' + GOAL + ' in Folge gewusst">' +
   [0, 1, 2].map(i => '<i class="' + (i < c.streak ? 'on' : '') + '"></i>').join('') + '</span>';
-const lockMin = ms => Math.ceil(ms / 60000) + ' Min.';
-const readyOf = (l, now) => lockLeft(l, now) > 0 ? 0 : pendingCount(l);
+const readyOf = (l, now, pause) => lockLeft(l, now, pause) > 0 ? 0 : pendingCount(l);
 function lockSig() {
   const now = Date.now();
-  return db.profiles.map(p => p.lists.map(l => Math.ceil(lockLeft(l, now) / 60000)).join(',')).join(';');
+  return db.profiles.map(p => p.pause + ':' + p.lists.map(l => Math.ceil(lockLeft(l, now, p.pause) / 60000)).join(',')).join(';');
 }
 function backupNote() {
   const total = db.profiles.reduce((n, p) => n + countCards(p.lists).total, 0);
@@ -392,6 +409,7 @@ function backupNote() {
 let route = { name: 'profiles' };
 let session = null;
 let pick = { tags: [], includeDone: false };
+let homeFilter = [];   // Tag-Filter der Listenübersicht (nur im Speicher, gilt für das aktuelle Profil)
 if (P()) route = { name: 'home' };
 
 function viewProfiles() {
@@ -415,43 +433,52 @@ function viewProfiles() {
 function viewHome() {
   const p = P(), now = Date.now();
   const all = countCards(p.lists);
-  const ready = p.lists.reduce((n, l) => n + readyOf(l, now), 0);
-  const waiting = p.lists.filter(l => openCardsOf(l).length && lockLeft(l, now) > 0);
+  const ready = p.lists.reduce((n, l) => n + readyOf(l, now, p.pause), 0);
+  const waiting = p.lists.filter(l => openCardsOf(l).length && lockLeft(l, now, p.pause) > 0);
   let sub;
   if (!all.total) sub = 'Lege zuerst Karten an';
   else if (ready) sub = nn(ready, 'Karte', 'Karten') + ' bereit';
-  else if (waiting.length) sub = 'Pause, wieder möglich in ' + lockMin(Math.min(...waiting.map(l => lockLeft(l, now))));
+  else if (waiting.length) sub = 'Pause, wieder möglich in ' + lockText(Math.min(...waiting.map(l => lockLeft(l, now, p.pause))));
   else sub = 'Alles gelernt';
-  const rows = p.lists.map(l => {
+  const tags = tagsOfProfile(p);
+  homeFilter = homeFilter.filter(k => tags.some(t => t.key === k));
+  const shown = listsWithTags(p, homeFilter);
+  const rows = shown.map(l => {
     const s = countCards([l]);
-    const left = lockLeft(l, now);
+    const left = lockLeft(l, now, p.pause);
     const pct = s.total ? Math.round(s.done / s.total * 100) : 0;
     return '<li><button class="row" data-a="open-list" data-id="' + esc(l.id) + '"><span class="row-main"><span class="row-text">' +
       '<span class="row-title">' + esc(l.title) + '</span>' +
       (l.tags.length ? '<span class="tags">' + l.tags.map(t => '<span class="tag">' + esc(t) + '</span>').join('') + '</span>' : '') +
       '<span class="row-meta" style="display:block">' + nn(s.total, 'Karte', 'Karten') + (s.total ? ', ' + s.done + ' gelernt' : '') +
-      (left ? ', Pause noch ' + lockMin(left) : '') + '</span>' +
+      (left ? ', Pause noch ' + lockText(left) : '') + '</span>' +
       '</span><span class="chev">' + I.chev + '</span></span>' +
       (s.total ? '<span class="meter" style="display:block"><i style="width:' + pct + '%"></i></span>' : '') +
       '</button></li>';
   }).join('');
+  const chips = tags.length ? '<div class="chips small" style="margin:0 0 12px">' + tags.map(t =>
+    '<button class="chip" data-a="toggle-hfilter" data-v="' + esc(t.key) + '" aria-pressed="' + homeFilter.includes(t.key) + '">' + esc(t.label) + '</button>').join('') + '</div>' : '';
+  const bar = homeFilter.length ? '<div class="filterbar"><span class="note">' + shown.length + ' von ' + nn(p.lists.length, 'Liste', 'Listen') +
+    '</span><button class="link" data-a="clear-hfilter">Filter aufheben</button></div>' : '';
+  const none = homeFilter.length ? 'Keine Liste hat alle gewählten Tags.' : 'Noch keine Liste. Lege deine erste Vokabelliste an, zum Beispiel „Unit 3“.';
   return '<div class="screen"><header class="bar"><button class="icon-btn" data-a="to-profiles" aria-label="Profil wechseln">' + I.back + '</button>' +
-    '<h1 class="bar-title">' + esc(p.name) + '</h1><span></span></header>' +
+    '<h1 class="bar-title">' + esc(p.name) + '</h1>' +
+    '<button class="icon-btn" data-a="home-settings" aria-label="Pause zwischen Abfragen einstellen">' + I.clock + '</button></header>' +
     '<main class="body"><button class="btn primary big" data-a="to-pick"' + (all.total ? '' : ' disabled') + '>Abfragen' +
     '<small>' + sub + '</small></button>' +
     '<div class="sec-head"><h2>Meine Listen</h2><button class="link" data-a="new-list">Neue Liste</button></div>' +
-    (rows ? '<ul class="rows">' + rows + '</ul>' :
-      '<div class="empty">Noch keine Liste. Lege deine erste Vokabelliste an, zum Beispiel „Unit 3“.</div>') +
+    chips + bar +
+    (rows ? '<ul class="rows">' + rows + '</ul>' : '<div class="empty">' + none + '</div>') +
     backupNote() + '</main></div>';
 }
 
 function viewList() {
-  const l = L(), now = Date.now();
+  const l = L(), p = P(), now = Date.now();
   const s = countCards([l]);
-  const left = lockLeft(l, now);
+  const left = lockLeft(l, now, p.pause);
   const allDone = s.total > 0 && s.open === 0;
   let note = '';
-  if (s.total) note = left ? 'Pause: wieder möglich in ' + lockMin(left) : (allDone ? 'Alle Karten sind gelernt.' : nn(pendingCount(l), 'Karte', 'Karten') + ' bereit');
+  if (s.total) note = left ? 'Pause: wieder möglich in ' + lockText(left) : (allDone ? 'Alle Karten sind gelernt.' : nn(pendingCount(l), 'Karte', 'Karten') + ' bereit');
   const cards = l.cards.map(c =>
     '<li><button class="row" data-a="edit-card" data-id="' + esc(c.id) + '"><span class="cardrow"><span class="row-text">' +
     '<span class="row-title" style="display:block">' + esc(c.de) + '</span>' +
@@ -470,6 +497,7 @@ function viewList() {
     '<div class="sec-head"><h2>Neue Karte</h2></div>' +
     '<form class="addcard" data-form="add-card" autocomplete="off">' +
     '<label class="field"><span>Deutsch / Frage</span><input name="de" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next"></label>' +
+    '<p class="err" id="adderr" role="alert" hidden></p>' +
     '<label class="field"><span>Fremdsprache / Antwort</span><input name="fl" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done"></label>' +
     '<button class="btn primary" type="submit">Karte hinzufügen</button></form>' +
     '<div class="sec-head"><h2>Karten (' + s.total + ')</h2></div>' +
@@ -483,15 +511,15 @@ function viewPick() {
   const p = P(), now = Date.now();
   const tags = tagsOfProfile(p);
   const lists = pickLists();
-  const free = lists.filter(l => lockLeft(l, now) === 0);
+  const free = lists.filter(l => lockLeft(l, now, p.pause) === 0);
   const n = free.reduce((k, l) => k + (pick.includeDone ? l.cards.length : pendingCount(l)), 0);
   let head;
   if (!lists.length) head = 'Keine passende Liste';
   else if (!free.length) head = 'Alle passenden Listen machen Pause';
   else head = nn(free.length, 'Liste', 'Listen') + ', ' + nn(n, 'Karte', 'Karten') + ' bereit';
   const items = lists.map(l => {
-    const left = lockLeft(l, now);
-    return '<li' + (left ? ' class="dim"' : '') + '>' + esc(l.title) + (left ? ' (Pause, noch ' + lockMin(left) + ')' : '') + '</li>';
+    const left = lockLeft(l, now, p.pause);
+    return '<li' + (left ? ' class="dim"' : '') + '>' + esc(l.title) + (left ? ' (Pause, noch ' + lockText(left) + ')' : '') + '</li>';
   }).join('');
   const match = '<strong>' + head + '</strong>' + (lists.length ? '<ul>' + items + '</ul>' : '<ul><li>Keine Liste hat alle gewählten Tags.</li></ul>');
   let label = 'Start';
@@ -504,7 +532,7 @@ function viewPick() {
     (tags.length ? '<div class="chips">' + tags.map(t => '<button class="chip" data-a="toggle-tag" data-v="' + esc(t.key) + '" aria-pressed="' + (pick.tags.includes(t.key)) + '">' + esc(t.label) + '</button>').join('') + '</div>' : '') +
     '<div class="match">' + match + '</div>' +
     '<label class="switch"><input type="checkbox" data-a="toggle-incl"' + (pick.includeDone ? ' checked' : '') + '><span>Auch gelernte Karten noch einmal abfragen</span></label>' +
-    '<p class="note" style="margin-top:12px">Jede Karte wird pro Abfrage einmal gefragt. Eine Liste ist 10 Minuten nach ihrer letzten Abfrage wieder frei.</p>' +
+    '<p class="note" style="margin-top:12px">Jede Karte wird pro Abfrage einmal gefragt. Eine Liste ist ' + pauseText(p.pause) + ' nach ihrer letzten Abfrage wieder frei.</p>' +
     '</main><footer class="foot"><button class="btn primary" data-a="start-quiz"' + (n ? '' : ' disabled') + '>' + label + '</button></footer></div>';
 }
 
@@ -531,7 +559,7 @@ function viewQuiz() {
 }
 
 function viewResult() {
-  const s = session;
+  const s = session, p = P();
   const right = s.answers - s.wrong;
   const q = s.answers ? Math.round(right / s.answers * 100) : 0;
   const fully = s.lists.filter(x => x.list.cards.length && x.list.cards.every(isDone)).length;
@@ -539,7 +567,7 @@ function viewResult() {
   if (s.learned.size) lines.push(nn(s.learned.size, 'Karte', 'Karten') + ' neu gelernt.');
   if (fully) lines.push(s.lists.length === 1 ? 'Die ganze Liste ist gelernt.' : nn(fully, 'Liste ist', 'Listen sind') + ' komplett gelernt.');
   if (s.wrong) lines.push('Nicht gewusste Karten kommen bald wieder dran.');
-  lines.push(s.lists.length === 1 ? 'Diese Liste ist in 10 Minuten wieder frei.' : 'Die Listen sind in 10 Minuten wieder frei.');
+  lines.push((s.lists.length === 1 ? 'Diese Liste ist in ' : 'Die Listen sind in ') + pauseText(p.pause) + ' wieder frei.');
   return '<div class="screen"><header class="bar"><span></span><span></span><span></span></header><main class="body center">' +
     '<div class="hero"><h1 class="display">Geschafft</h1><p class="sub">' + nn(s.total, 'Karte', 'Karten') + ' abgefragt.</p></div>' +
     '<div class="stats"><div class="stat"><b>' + s.answers + '</b><span>Antworten</span></div>' +
@@ -647,12 +675,21 @@ function sheetList(id) {
     '<button class="btn primary" type="submit">' + (l ? 'Speichern' : 'Anlegen') + '</button></div></form>',
     w => $('input', w).focus());
 }
+function sheetPause() {
+  const p = P();
+  openSheet('<h2 class="sheet-title">Pause zwischen Abfragen</h2>' +
+    '<p>So lange ist eine Liste nach einer Abfrage gesperrt, bevor sie wieder abgefragt werden kann. Gilt für alle Listen von ' + esc(p.name) + '.</p>' +
+    '<div class="chips" id="pausechips">' + PAUSES.map(m =>
+      '<button type="button" class="chip" data-a="set-pause" data-v="' + m + '" aria-pressed="' + (m === p.pause) + '">' + pauseShort(m) + '</button>').join('') + '</div>' +
+    '<div class="sheet-actions one" style="margin-top:18px"><button class="btn primary" data-a="sheet-close">Fertig</button></div>');
+}
 function sheetCard(id) {
   const c = L().cards.find(x => x.id === id);
   if (!c) return;
   openSheet('<h2 class="sheet-title">Karte bearbeiten</h2>' +
     '<form data-form="card" data-id="' + esc(id) + '" autocomplete="off">' +
     '<label class="field"><span>Deutsch / Frage</span><input name="de" value="' + esc(c.de) + '" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false"></label>' +
+    '<p class="err" id="editerr" role="alert" hidden></p>' +
     '<label class="field"><span>Fremdsprache / Antwort</span><input name="fl" value="' + esc(c.fl) + '" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false"></label>' +
     '<div class="sheet-actions"><button type="button" class="btn danger" data-a="del-card" data-id="' + esc(id) + '">Löschen</button>' +
     '<button class="btn primary" type="submit">Speichern</button></div></form>');
@@ -709,7 +746,19 @@ const actions = {
   'sheet-close'() { closeSheet(); },
   'confirm-ok'() { const f = pendingConfirm; pendingConfirm = null; if (f) f(); },
   'to-profiles'() { go({ name: 'profiles' }); },
-  'pick-profile'(el) { db.lastProfile = el.dataset.id; save(); go({ name: 'home' }); },
+  'pick-profile'(el) { db.lastProfile = el.dataset.id; homeFilter = []; save(); go({ name: 'home' }); },
+  'home-settings'() { sheetPause(); },
+  'set-pause'(el) {
+    const p = P(); p.pause = Number(el.dataset.v); save();
+    document.querySelectorAll('#pausechips .chip').forEach(c => c.setAttribute('aria-pressed', String(Number(c.dataset.v) === p.pause)));
+    render();
+  },
+  'toggle-hfilter'(el) {
+    const k = el.dataset.v, i = homeFilter.indexOf(k);
+    if (i >= 0) homeFilter.splice(i, 1); else homeFilter.push(k);
+    render();
+  },
+  'clear-hfilter'() { homeFilter = []; render(); },
   'add-profile'() { sheetProfile(); },
   'settings'() { go({ name: 'settings' }); },
   'leave-settings'() { go(P() ? { name: 'home' } : { name: 'profiles' }); },
@@ -791,7 +840,7 @@ const actions = {
 };
 
 function startQuiz(lists, includeDone, origin) {
-  const s = newSession(lists, includeDone, Date.now());
+  const s = newSession(lists, includeDone, Date.now(), P().pause);
   if (!s.queue.length) { toast('Gerade sind keine Karten bereit.'); render(); return; }
   s.origin = origin; session = s; save();
   go({ name: 'quiz' });
@@ -810,8 +859,8 @@ const forms = {
     const id = f.dataset.id;
     if (id) { db.profiles.find(p => p.id === id).name = name; }
     else {
-      const p = { id: uid(), name, lists: [] }; db.profiles.push(p);
-      if (route.name === 'profiles') { db.lastProfile = p.id; route = { name: 'home' }; }
+      const p = { id: uid(), name, pause: DEFAULT_PAUSE, lists: [] }; db.profiles.push(p);
+      if (route.name === 'profiles') { db.lastProfile = p.id; homeFilter = []; route = { name: 'home' }; }
     }
     save(); closeSheet(); render();
   },
@@ -830,12 +879,27 @@ const forms = {
   card(f) {
     const de = clean(f.de.value, 200), fl = clean(f.fl.value, 200);
     if (!de || !fl) { (de ? f.fl : f.de).focus(); return; }
-    const c = L().cards.find(x => x.id === f.dataset.id); c.de = de; c.fl = fl;
+    const c = L().cards.find(x => x.id === f.dataset.id);
+    if (termKey(de) !== termKey(c.de)) {
+      const dup = findDup(L(), de, c.id);
+      if (dup) {
+        const er = $('#editerr');
+        er.textContent = '„' + dup.de + '“ gibt es in dieser Liste schon (' + dup.fl + '). Jeder Begriff darf nur einmal vorkommen.';
+        er.hidden = false; f.de.focus(); return;
+      }
+    }
+    c.de = de; c.fl = fl;
     save(); closeSheet(); render();
   },
   'add-card'(f) {
     const de = clean(f.de.value, 200), fl = clean(f.fl.value, 200);
     if (!de || !fl) { (de ? f.fl : f.de).focus(); return; }
+    const dup = findDup(L(), de, null);
+    if (dup) {
+      const er = $('#adderr');
+      er.textContent = '„' + dup.de + '“ gibt es in dieser Liste schon (' + dup.fl + '). Jeder Begriff darf nur einmal vorkommen.';
+      er.hidden = false; f.de.focus(); return;
+    }
     L().cards.push({ id: uid(), de, fl, streak: 0, due: 0 });
     save(); render();
     const inp = $('input[name=de]'); if (inp) inp.focus();
@@ -859,6 +923,8 @@ document.addEventListener('input', e => {
     const a = i.selectionStart, b = i.selectionEnd, low = i.value.toLowerCase();
     if (low !== i.value) { i.value = low; try { i.setSelectionRange(a, b); } catch (_) {} }
     const er = $('#tagerr'); if (er) er.hidden = true;
+  } else if (i.matches && i.matches('input[name=de]') && i.form) {
+    const er = $(i.form.dataset.form === 'card' ? '#editerr' : '#adderr'); if (er) er.hidden = true;
   }
 });
 document.addEventListener('submit', e => {
