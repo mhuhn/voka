@@ -342,7 +342,7 @@ function sanitizeProfile(p) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '1.2';
+const VERSION = '1.3';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -951,7 +951,25 @@ $('#file').addEventListener('change', e => {
 
 render();
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+  // Wurde ein neuer Service Worker aktiv, wird die App neu geladen - aber nie mitten in einer Abfrage,
+  // bei offenem Dialog oder während getippt wird.
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
+  const reloadWhenIdle = () => {
+    const el = document.activeElement;
+    const typing = el && /^(INPUT|TEXTAREA)$/.test(el.tagName);
+    const busy = route.name === 'quiz' || route.name === 'result' || $('.sheet-wrap') || typing;
+    if (busy) { setTimeout(reloadWhenIdle, 3000); return; }
+    reloading = true; location.reload();
+  };
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hadController && !reloading) reloadWhenIdle();
+  });
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
+    }).catch(() => {});
+  });
 }
 })();
 </script>
