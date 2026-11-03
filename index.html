@@ -112,6 +112,18 @@ h2{font:600 1.1875rem/1.2 var(--serif)}
 .cardrow .row-title{font-weight:500;font-size:1.06rem}
 .cardrow .row-meta{margin-top:1px;font-size:.95rem}
 .dots{display:inline-flex;gap:5px;flex:none}
+.cardrow .side{display:flex;flex-direction:column;align-items:flex-end;gap:7px;flex:none}
+.rounds{min-width:26px;text-align:center;font:600 .78rem/1 var(--sans,system-ui);color:var(--muted);border:1px solid var(--line);border-radius:9px;padding:3px 6px;background:var(--surface)}
+.rounds.done{color:var(--ok);border-color:var(--ok)}
+.row.lv1{background:#f1f6ee;background:color-mix(in srgb,var(--ok) 9%,var(--surface))}
+.row.lv2{background:#e4efdf;background:color-mix(in srgb,var(--ok) 18%,var(--surface))}
+.row.lv3{background:#d5e7cf;background:color-mix(in srgb,var(--ok) 30%,var(--surface))}
+.switch{display:flex;align-items:center;gap:8px;font-size:.93rem;color:var(--muted)}
+.switch button{width:46px;height:28px;border-radius:14px;border:1px solid var(--line);background:var(--surface);position:relative;padding:0}
+.switch button::after{content:"";position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:var(--muted);transition:transform .2s}
+.switch button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent)}
+.switch button[aria-pressed=true]::after{transform:translateX(18px);background:var(--accent)}
+.flags{margin-right:6px;font-style:normal;white-space:nowrap}
 .dots i{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--muted);display:block}
 .dots i.on{background:var(--ok);border-color:var(--ok)}
 
@@ -342,7 +354,7 @@ function sanitizeProfile(p) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '1.3';
+const VERSION = '1.4';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -392,6 +404,14 @@ const P = () => db.profiles.find(p => p.id === db.lastProfile);
 const L = () => { const p = P(); return p && route.id ? p.lists.find(l => l.id === route.id) : null; };
 const dots = c => '<span class="dots" role="img" aria-label="' + c.streak + ' von ' + GOAL + ' in Folge gewusst">' +
   [0, 1, 2].map(i => '<i class="' + (i < c.streak ? 'on' : '') + '"></i>').join('') + '</span>';
+const FLAGS = { en:'🇬🇧', fr:'🇫🇷', es:'🇪🇸', it:'🇮🇹', de:'🇩🇪', nl:'🇳🇱', pt:'🇵🇹', ru:'🇷🇺', pl:'🇵🇱', tr:'🇹🇷', el:'🇬🇷', sv:'🇸🇪', da:'🇩🇰', no:'🇳🇴', fi:'🇫🇮', cs:'🇨🇿', sk:'🇸🇰', hu:'🇭🇺', ro:'🇷🇴', bg:'🇧🇬', hr:'🇭🇷', sr:'🇷🇸', sl:'🇸🇮', uk:'🇺🇦', ja:'🇯🇵', zh:'🇨🇳', ko:'🇰🇷', ar:'🇸🇦', he:'🇮🇱', hi:'🇮🇳', th:'🇹🇭', vi:'🇻🇳', id:'🇮🇩', ga:'🇮🇪', is:'🇮🇸', et:'🇪🇪', lv:'🇱🇻', lt:'🇱🇹', la:'🏛️' };
+const flagsOf = l => { const f = []; l.tags.forEach(t => { if (FLAGS[t] && !f.includes(FLAGS[t])) f.push(FLAGS[t]); }); return f.length ? '<i class="flags" aria-hidden="true">' + f.join('') + '</i>' : ''; };
+let showAnswers = false;
+const roundsBadge = (c, l) => {
+  if (isDone(c)) return '<span class="rounds done" title="gelernt" aria-label="gelernt">✓</span>';
+  const n = Math.max(1, c.due - effRound(l) + 1);
+  return '<span class="rounds" title="Wird in ' + n + (n === 1 ? ' Runde' : ' Runden') + ' wieder abgefragt" aria-label="Wird in ' + n + (n === 1 ? ' Runde' : ' Runden') + ' wieder abgefragt">' + n + '</span>';
+};
 const readyOf = (l, now, pause) => lockLeft(l, now, pause) > 0 ? 0 : pendingCount(l);
 function lockSig() {
   const now = Date.now();
@@ -423,8 +443,8 @@ function viewProfiles() {
   }).join('');
   return '<div class="screen"><header class="bar"><span></span><span></span>' +
     '<button class="icon-btn" data-a="settings" aria-label="Sichern und Wiederherstellen">' + I.save + '</button></header>' +
-    '<main class="body"><div class="hero"><h1 class="display">Vokabeln</h1><p class="sub">' +
-    (db.profiles.length ? 'Wer lernt heute?' : 'Lege ein Profil an, um loszulegen.') + '</p></div>' +
+    '<main class="body"><div class="hero"><h1 class="display">Vokabeln</h1>' +
+    (db.profiles.length ? '' : '<p class="sub">Lege ein Profil an, um loszulegen.</p>') + '</div>' +
     (rows ? '<ul class="rows">' + rows + '</ul>' : '') +
     '<div style="margin-top:14px"><button class="btn ' + (db.profiles.length ? 'quiet' : 'primary') + '" data-a="add-profile">Profil anlegen</button></div>' +
     backupNote() + '</main></div>';
@@ -448,7 +468,7 @@ function viewHome() {
     const left = lockLeft(l, now, p.pause);
     const pct = s.total ? Math.round(s.done / s.total * 100) : 0;
     return '<li><button class="row" data-a="open-list" data-id="' + esc(l.id) + '"><span class="row-main"><span class="row-text">' +
-      '<span class="row-title">' + esc(l.title) + '</span>' +
+      '<span class="row-title">' + flagsOf(l) + esc(l.title) + '</span>' +
       (l.tags.length ? '<span class="tags">' + l.tags.map(t => '<span class="tag">' + esc(t) + '</span>').join('') + '</span>' : '') +
       '<span class="row-meta" style="display:block">' + nn(s.total, 'Karte', 'Karten') + (s.total ? ', ' + s.done + ' gelernt' : '') +
       (left ? ', Pause noch ' + lockText(left) : '') + '</span>' +
@@ -480,11 +500,12 @@ function viewList() {
   let note = '';
   if (s.total) note = left ? 'Pause: wieder möglich in ' + lockText(left) : (allDone ? 'Alle Karten sind gelernt.' : nn(pendingCount(l), 'Karte', 'Karten') + ' bereit');
   const cards = l.cards.map(c =>
-    '<li><button class="row" data-a="edit-card" data-id="' + esc(c.id) + '"><span class="cardrow"><span class="row-text">' +
+    '<li><button class="row lv' + Math.min(GOAL, c.streak) + '" data-a="edit-card" data-id="' + esc(c.id) + '"><span class="cardrow"><span class="row-text">' +
     '<span class="row-title" style="display:block">' + esc(c.de) + '</span>' +
-    '<span class="row-meta" style="display:block">' + esc(c.fl) + '</span></span>' + dots(c) + '</span></button></li>').join('');
+    (showAnswers ? '<span class="row-meta" style="display:block">' + esc(c.fl) + '</span>' : '') + '</span>' +
+    '<span class="side">' + roundsBadge(c, l) + dots(c) + '</span></span></button></li>').join('');
   return '<div class="screen"><header class="bar"><button class="icon-btn" data-a="to-home" aria-label="Zurück zu den Listen">' + I.back + '</button>' +
-    '<h1 class="bar-title">' + esc(l.title) + '</h1><span></span></header>' +
+    '<h1 class="bar-title">' + flagsOf(l) + esc(l.title) + '</h1><span></span></header>' +
     '<main class="body">' +
     (l.tags.length ? '<div class="tags" style="margin:0 0 6px">' + l.tags.map(t => '<span class="tag">' + esc(t) + '</span>').join('') + '</div>' : '') +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span class="note">' +
@@ -500,7 +521,8 @@ function viewList() {
     '<p class="err" id="adderr" role="alert" hidden></p>' +
     '<label class="field"><span>Fremdsprache / Antwort</span><input name="fl" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done"></label>' +
     '<button class="btn primary" type="submit">Karte hinzufügen</button></form>' +
-    '<div class="sec-head"><h2>Karten (' + s.total + ')</h2></div>' +
+    '<div class="sec-head"><h2>Karten (' + s.total + ')</h2>' + (s.total ? '<span class="switch">Antworten<button type="button" role="switch" data-a="toggle-answers" aria-pressed="' + showAnswers + '" aria-label="Antworten anzeigen"></button></span>' : '') + '</div>' +
+    (s.total ? '<p class="note" style="margin:-2px 0 10px">Die Zahl zeigt, in der wievielten Runde die Karte wieder abgefragt wird.</p>' : '') +
     (cards ? '<ul class="rows">' + cards + '</ul>' : '<div class="empty">Hier erscheinen deine Karten.</div>') +
     '<div style="margin-top:30px"><button class="btn danger" data-a="del-list">Liste löschen</button></div>' +
     '</main></div>';
@@ -622,7 +644,7 @@ function refreshLocks() {
 }
 setInterval(refreshLocks, 15000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLocks(); });
-const go = (r) => { route = r; render(); };
+const go = (r) => { if (r.name === 'list' && route.name !== 'list') showAnswers = false; route = r; render(); };
 
 // ---------- Sheets ----------
 function fitSheet() {
@@ -773,7 +795,8 @@ const actions = {
   },
   'to-home'() { go({ name: 'home' }); },
   'new-list'() { sheetList(); },
-  'open-list'(el) { go({ name: 'list', id: el.dataset.id }); },
+  'open-list'(el) { showAnswers = false; go({ name: 'list', id: el.dataset.id }); },
+  'toggle-answers'() { showAnswers = !showAnswers; render(); },
   'edit-list'() { sheetList(route.id); },
   'add-tag-text'(el) {
     const inp = $('.sheet input[name=tags]'); if (!inp) return;
@@ -874,7 +897,7 @@ const forms = {
     }
     const tags = r.tags, id = f.dataset.id, p = P();
     if (id) { const l = p.lists.find(x => x.id === id); l.title = title; l.tags = tags; save(); closeSheet(); render(); }
-    else { const l = { id: uid(), title, tags, round: 0, lastEnd: 0, cards: [] }; p.lists.push(l); save(); closeSheet(); go({ name: 'list', id: l.id }); }
+    else { const l = { id: uid(), title, tags, round: 0, lastEnd: 0, cards: [] }; p.lists.push(l); save(); closeSheet(); showAnswers = false; go({ name: 'list', id: l.id }); }
   },
   card(f) {
     const de = clean(f.de.value, 200), fl = clean(f.fl.value, 200);
