@@ -35,7 +35,7 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:17px/1.4 var(--sans);-webkit-text-size-adjust:100%;touch-action:manipulation}
-body{overscroll-behavior:none;-webkit-user-select:none;user-select:none}
+body{position:relative;overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none}
 input,textarea{-webkit-user-select:text;user-select:text}
 button{font:inherit;color:inherit;cursor:pointer}
 button:disabled{opacity:.45;cursor:default}
@@ -43,7 +43,7 @@ button:disabled{opacity:.45;cursor:default}
 h1,h2,p,ul{margin:0}
 ul{padding:0;list-style:none}
 
-#app{position:fixed;inset:0;display:flex;justify-content:center}
+#app{position:absolute;inset:0;display:flex;justify-content:center}
 .screen{width:100%;max-width:520px;height:100%;display:flex;flex-direction:column;padding-top:var(--sat)}
 
 .bar{flex:none;height:52px;display:grid;grid-template-columns:96px 1fr 96px;align-items:center;padding:0 6px}
@@ -369,7 +369,7 @@ function sanitizeProfile(p) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '1.8';
+const VERSION = '1.9';
 let db = loadDb();
 function loadDb() {
   let raw = null;
