@@ -1,7 +1,7 @@
 // Service Worker: legt die App-Dateien im Cache ab, damit alles offline läuft.
 // Dateien werden zuerst aus dem Cache geliefert und im Hintergrund aktualisiert,
 // Änderungen sind also beim übernächsten Öffnen mit Internet sichtbar.
-const CACHE = 'vokabelkarten-v1';
+const CACHE = 'vokabelkarten-v2';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

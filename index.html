@@ -125,6 +125,9 @@ h2{font:600 1.1875rem/1.2 var(--serif)}
 .sheet-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
 .sheet-actions.one{grid-template-columns:1fr}
 .sheet-sep{height:10px}
+.sheet .err{background:var(--no-soft);color:var(--no-ink);border-radius:10px;padding:10px 12px;font-size:.92rem;margin:-6px 0 14px}
+.center-note{text-align:center;margin-top:8px}
+.match li.dim{opacity:.7}
 
 .toast{position:fixed;left:50%;bottom:calc(24px + var(--sab));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:22px;font-size:.95rem;z-index:80;max-width:88%;text-align:center}
 
@@ -170,26 +173,36 @@ h2{font:600 1.1875rem/1.2 var(--serif)}
 
 /*LOGIC-START*/
 const GOAL = 3;                 // so oft in Folge gewusst = Karte gelernt
-const GAPS = [2, 6, 19];        // Karten dazwischen: nach "nicht gewusst" / 1x / 2x richtig in Folge
+const GAPS = [2, 6, 19];        // Runden bis zur nächsten Abfrage: nach "nicht gewusst" / 1x / 2x richtig in Folge
+const LOCK_MS = 10 * 60 * 1000; // Pause einer Liste nach dem Ende ihrer Abfrage
 
 const lc = s => String(s).toLowerCase();
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 function clean(v, max) { return String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, max); }
 
+// Tags: durch Leerzeichen getrennt; Kleinbuchstaben, Ziffern, Punkt, Bindestrich; beginnt mit einem Buchstaben.
+// Großbuchstaben zählen als Kleinbuchstaben.
+const TAG_RE = /^\p{Ll}[\p{Ll}\d.\-]{0,29}$/u;
 function parseTags(str) {
-  const seen = new Set(), out = [];
-  String(str || '').split(/[,;\n]/).forEach(t => {
-    t = clean(t, 30);
+  const seen = new Set(), tags = [], invalid = [];
+  String(str || '').split(/\s+/).forEach(raw => {
+    const t = lc(raw);
     if (!t) return;
-    const k = lc(t);
-    if (!seen.has(k)) { seen.add(k); out.push(t); }
+    if (!TAG_RE.test(t)) { if (!invalid.includes(t)) invalid.push(t); return; }
+    if (!seen.has(t)) { seen.add(t); tags.push(t); }
   });
-  return out;
+  return { tags, invalid };
+}
+// Macht alte oder importierte Tags gültig (z. B. "Unit 3" -> "unit-3")
+function normalizeTag(raw) {
+  let t = lc(raw == null ? '' : raw).trim().replace(/\s+/g, '-').replace(/[^\p{Ll}\d.\-]/gu, '');
+  t = t.replace(/^[^\p{Ll}]+/u, '');
+  return t.slice(0, 30);
 }
 function tagsOfProfile(p) {
-  const m = new Map();
-  p.lists.forEach(l => l.tags.forEach(t => { if (!m.has(lc(t))) m.set(lc(t), t); }));
-  return [...m].map(([key, label]) => ({ key, label })).sort((a, b) => a.label.localeCompare(b.label, 'de'));
+  const set = new Set();
+  p.lists.forEach(l => l.tags.forEach(t => set.add(lc(t))));
+  return [...set].map(t => ({ key: t, label: t })).sort((a, b) => a.label.localeCompare(b.label, 'de'));
 }
 // Listen, in denen ALLE gewählten Tags vorkommen (ohne Auswahl: alle Listen)
 function listsWithTags(p, selectedKeys) {
@@ -212,39 +225,75 @@ function shuffle(a) {
   }
   return a;
 }
-function newSession(lists, includeDone) {
-  const cards = {}, queue = [];
-  lists.forEach(l => l.cards.forEach(c => {
-    if (isDone(c)) { if (!includeDone) return; c.streak = 0; }
-    cards[c.id] = c; queue.push(c.id);
-  }));
-  shuffle(queue);
-  return { queue, cards, total: queue.length, done: new Set(), answers: 0, wrong: 0, revealed: false, undo: null };
+
+// Eine Abfrage ist eine Runde. Jede Liste zählt ihre Runden (round); jede Karte merkt sich,
+// ab welcher Runde sie wieder dran ist (due). Gibt es in der nächsten Runde nichts zu fragen,
+// springt die Liste zur frühesten fälligen Karte vor.
+function lockLeft(l, now) { return Math.max(0, (l.lastEnd || 0) + LOCK_MS - now); }
+function openCardsOf(l) { return l.cards.filter(c => !isDone(c)); }
+function effRound(l) {
+  const open = openCardsOf(l);
+  if (!open.length) return l.round;
+  return Math.max(l.round, Math.min(...open.map(c => c.due)));
 }
+function pendingCount(l) {
+  const e = effRound(l);
+  return openCardsOf(l).filter(c => c.due <= e).length;
+}
+function newSession(lists, includeDone, now) {
+  const info = {}, queue = [], used = [], cards = {};
+  lists.forEach(l => {
+    if (lockLeft(l, now) > 0) return;
+    if (includeDone) l.cards.forEach(c => { if (isDone(c)) { c.streak = 0; c.due = 0; } });
+    const e = effRound(l);
+    let n = 0;
+    l.cards.forEach(c => {
+      if (!isDone(c) && c.due <= e) { info[c.id] = { list: l, eff: e }; cards[c.id] = c; queue.push(c.id); n++; }
+    });
+    if (n) used.push({ list: l, eff: e });
+  });
+  shuffle(queue);
+  return { queue, cards, info, lists: used, total: queue.length, answers: 0, wrong: 0, learned: new Set(), revealed: false, undo: null, finished: null };
+}
+// Liefert true, wenn die letzte Karte beantwortet wurde
 function answer(s, knew) {
-  if (!s.queue.length) return;
-  const id = s.queue[0], c = s.cards[id];
-  s.undo = { queue: s.queue.slice(), id, streak: c.streak, answers: s.answers, wrong: s.wrong, done: new Set(s.done) };
+  if (!s.queue.length) return false;
+  const id = s.queue[0], c = s.cards[id], eff = s.info[id].eff;
+  s.undo = { queue: s.queue.slice(), id, streak: c.streak, due: c.due, answers: s.answers, wrong: s.wrong, learned: new Set(s.learned) };
   s.queue.shift();
   s.answers++;
+  s.revealed = false;
   if (knew) {
     c.streak++;
-    if (c.streak >= GOAL) s.done.add(id);
-    else s.queue.splice(Math.min(GAPS[c.streak], s.queue.length), 0, id);
+    if (c.streak >= GOAL) s.learned.add(id);
+    else c.due = eff + GAPS[c.streak];
   } else {
     s.wrong++;
     c.streak = 0;
-    s.queue.splice(Math.min(GAPS[0], s.queue.length), 0, id);
+    c.due = eff + GAPS[0];
   }
-  s.revealed = false;
+  return s.queue.length === 0;
 }
 function undoAnswer(s) {
   if (!s.undo) return false;
-  const u = s.undo;
-  s.queue = u.queue; s.cards[u.id].streak = u.streak;
-  s.answers = u.answers; s.wrong = u.wrong; s.done = u.done;
+  const u = s.undo, c = s.cards[u.id];
+  s.queue = u.queue; c.streak = u.streak; c.due = u.due;
+  s.answers = u.answers; s.wrong = u.wrong; s.learned = u.learned;
   s.undo = null; s.revealed = false;
   return true;
+}
+function finishSession(s, now) {
+  s.finished = s.lists.map(x => ({ list: x.list, round: x.list.round, lastEnd: x.list.lastEnd }));
+  s.lists.forEach(x => { x.list.round = x.eff + 1; x.list.lastEnd = now; });
+}
+function unfinishSession(s) {
+  if (!s.finished) return;
+  s.finished.forEach(f => { f.list.round = f.round; f.list.lastEnd = f.lastEnd; });
+  s.finished = null;
+}
+// Abbruch: bereits beantwortete Karten bleiben geplant, die Liste bekommt keine Pause
+function abortSession(s) {
+  s.lists.forEach(x => { x.list.round = Math.max(x.list.round, x.eff); });
 }
 function sanitizeProfile(p) {
   p = p || {};
@@ -256,13 +305,16 @@ function sanitizeProfile(p) {
       return {
         id: clean(l.id, 40) || uid(),
         title: clean(l.title, 80) || 'Liste',
-        tags: parseTags(Array.isArray(l.tags) ? l.tags.join(',') : ''),
+        tags: [...new Set((Array.isArray(l.tags) ? l.tags : []).map(normalizeTag).filter(Boolean))],
+        round: Math.max(0, parseInt(l.round, 10) || 0),
+        lastEnd: Math.min(Date.now(), Math.max(0, Number(l.lastEnd) || 0)),
         cards: (Array.isArray(l.cards) ? l.cards : []).map(c => {
           c = c || {};
           return {
             id: clean(c.id, 40) || uid(),
             de: clean(c.de, 200), fl: clean(c.fl, 200),
-            streak: Math.max(0, Math.min(GOAL, parseInt(c.streak, 10) || 0))
+            streak: Math.max(0, Math.min(GOAL, parseInt(c.streak, 10) || 0)),
+            due: Math.max(0, parseInt(c.due, 10) || 0)
           };
         }).filter(c => c.de || c.fl)
       };
@@ -273,7 +325,7 @@ function sanitizeProfile(p) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '1.0';
+const VERSION = '1.1';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -322,6 +374,12 @@ const P = () => db.profiles.find(p => p.id === db.lastProfile);
 const L = () => { const p = P(); return p && route.id ? p.lists.find(l => l.id === route.id) : null; };
 const dots = c => '<span class="dots" role="img" aria-label="' + c.streak + ' von ' + GOAL + ' in Folge gewusst">' +
   [0, 1, 2].map(i => '<i class="' + (i < c.streak ? 'on' : '') + '"></i>').join('') + '</span>';
+const lockMin = ms => Math.ceil(ms / 60000) + ' Min.';
+const readyOf = (l, now) => lockLeft(l, now) > 0 ? 0 : pendingCount(l);
+function lockSig() {
+  const now = Date.now();
+  return db.profiles.map(p => p.lists.map(l => Math.ceil(lockLeft(l, now) / 60000)).join(',')).join(';');
+}
 function backupNote() {
   const total = db.profiles.reduce((n, p) => n + countCards(p.lists).total, 0);
   if (!total) return '';
@@ -355,15 +413,24 @@ function viewProfiles() {
 }
 
 function viewHome() {
-  const p = P();
+  const p = P(), now = Date.now();
   const all = countCards(p.lists);
+  const ready = p.lists.reduce((n, l) => n + readyOf(l, now), 0);
+  const waiting = p.lists.filter(l => openCardsOf(l).length && lockLeft(l, now) > 0);
+  let sub;
+  if (!all.total) sub = 'Lege zuerst Karten an';
+  else if (ready) sub = nn(ready, 'Karte', 'Karten') + ' bereit';
+  else if (waiting.length) sub = 'Pause, wieder möglich in ' + lockMin(Math.min(...waiting.map(l => lockLeft(l, now))));
+  else sub = 'Alles gelernt';
   const rows = p.lists.map(l => {
     const s = countCards([l]);
+    const left = lockLeft(l, now);
     const pct = s.total ? Math.round(s.done / s.total * 100) : 0;
     return '<li><button class="row" data-a="open-list" data-id="' + esc(l.id) + '"><span class="row-main"><span class="row-text">' +
       '<span class="row-title">' + esc(l.title) + '</span>' +
       (l.tags.length ? '<span class="tags">' + l.tags.map(t => '<span class="tag">' + esc(t) + '</span>').join('') + '</span>' : '') +
-      '<span class="row-meta" style="display:block">' + nn(s.total, 'Karte', 'Karten') + (s.total ? ', ' + s.done + ' gelernt' : '') + '</span>' +
+      '<span class="row-meta" style="display:block">' + nn(s.total, 'Karte', 'Karten') + (s.total ? ', ' + s.done + ' gelernt' : '') +
+      (left ? ', Pause noch ' + lockMin(left) : '') + '</span>' +
       '</span><span class="chev">' + I.chev + '</span></span>' +
       (s.total ? '<span class="meter" style="display:block"><i style="width:' + pct + '%"></i></span>' : '') +
       '</button></li>';
@@ -371,7 +438,7 @@ function viewHome() {
   return '<div class="screen"><header class="bar"><button class="icon-btn" data-a="to-profiles" aria-label="Profil wechseln">' + I.back + '</button>' +
     '<h1 class="bar-title">' + esc(p.name) + '</h1><span></span></header>' +
     '<main class="body"><button class="btn primary big" data-a="to-pick"' + (all.total ? '' : ' disabled') + '>Abfragen' +
-    '<small>' + (all.total ? nn(all.open, 'offene Karte', 'offene Karten') + ' in ' + nn(p.lists.length, 'Liste', 'Listen') : 'Lege zuerst Karten an') + '</small></button>' +
+    '<small>' + sub + '</small></button>' +
     '<div class="sec-head"><h2>Meine Listen</h2><button class="link" data-a="new-list">Neue Liste</button></div>' +
     (rows ? '<ul class="rows">' + rows + '</ul>' :
       '<div class="empty">Noch keine Liste. Lege deine erste Vokabelliste an, zum Beispiel „Unit 3“.</div>') +
@@ -379,8 +446,12 @@ function viewHome() {
 }
 
 function viewList() {
-  const l = L();
+  const l = L(), now = Date.now();
   const s = countCards([l]);
+  const left = lockLeft(l, now);
+  const allDone = s.total > 0 && s.open === 0;
+  let note = '';
+  if (s.total) note = left ? 'Pause: wieder möglich in ' + lockMin(left) : (allDone ? 'Alle Karten sind gelernt.' : nn(pendingCount(l), 'Karte', 'Karten') + ' bereit');
   const cards = l.cards.map(c =>
     '<li><button class="row" data-a="edit-card" data-id="' + esc(c.id) + '"><span class="cardrow"><span class="row-text">' +
     '<span class="row-title" style="display:block">' + esc(c.de) + '</span>' +
@@ -392,7 +463,9 @@ function viewList() {
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span class="note">' +
     (s.total ? s.done + ' von ' + s.total + ' gelernt' : 'Noch keine Karten') + '</span>' +
     '<button class="link" data-a="edit-list">Titel und Tags ändern</button></div>' +
-    '<button class="btn primary" data-a="quiz-list"' + (s.open || s.total ? '' : ' disabled') + '>Diese Liste abfragen</button>' +
+    '<button class="btn primary" data-a="quiz-list"' + (!s.total || left ? ' disabled' : '') + '>' +
+    (allDone ? 'Alle noch einmal abfragen' : 'Diese Liste abfragen') + '</button>' +
+    (note ? '<p class="note center-note">' + note + '</p>' : '') +
     (s.done ? '<div style="text-align:center;margin-top:4px"><button class="link" data-a="reset-progress">Fortschritt zurücksetzen</button></div>' : '') +
     '<div class="sec-head"><h2>Neue Karte</h2></div>' +
     '<form class="addcard" data-form="add-card" autocomplete="off">' +
@@ -407,15 +480,22 @@ function viewList() {
 
 function pickLists() { return listsWithTags(P(), pick.tags); }
 function viewPick() {
-  const p = P();
+  const p = P(), now = Date.now();
   const tags = tagsOfProfile(p);
   const lists = pickLists();
-  const st = countCards(lists);
-  const n = pick.includeDone ? st.total : st.open;
-  let match;
-  if (!lists.length) match = '<strong>Keine passende Liste</strong><ul><li>Keine Liste hat alle gewählten Tags.</li></ul>';
-  else match = '<strong>' + nn(lists.length, 'Liste', 'Listen') + ', ' + nn(n, 'Karte', 'Karten') + ' zum Abfragen</strong>' +
-    '<ul>' + lists.map(l => '<li>' + esc(l.title) + '</li>').join('') + '</ul>';
+  const free = lists.filter(l => lockLeft(l, now) === 0);
+  const n = free.reduce((k, l) => k + (pick.includeDone ? l.cards.length : pendingCount(l)), 0);
+  let head;
+  if (!lists.length) head = 'Keine passende Liste';
+  else if (!free.length) head = 'Alle passenden Listen machen Pause';
+  else head = nn(free.length, 'Liste', 'Listen') + ', ' + nn(n, 'Karte', 'Karten') + ' bereit';
+  const items = lists.map(l => {
+    const left = lockLeft(l, now);
+    return '<li' + (left ? ' class="dim"' : '') + '>' + esc(l.title) + (left ? ' (Pause, noch ' + lockMin(left) + ')' : '') + '</li>';
+  }).join('');
+  const match = '<strong>' + head + '</strong>' + (lists.length ? '<ul>' + items + '</ul>' : '<ul><li>Keine Liste hat alle gewählten Tags.</li></ul>');
+  let label = 'Start';
+  if (!n && lists.length) label = free.length ? 'Alles gelernt' : 'Pause';
   return '<div class="screen"><header class="bar"><button class="icon-btn" data-a="to-home" aria-label="Zurück">' + I.back + '</button>' +
     '<h1 class="bar-title">Abfragen</h1><span></span></header>' +
     '<main class="body"><p class="lead">' + (tags.length ?
@@ -424,8 +504,8 @@ function viewPick() {
     (tags.length ? '<div class="chips">' + tags.map(t => '<button class="chip" data-a="toggle-tag" data-v="' + esc(t.key) + '" aria-pressed="' + (pick.tags.includes(t.key)) + '">' + esc(t.label) + '</button>').join('') + '</div>' : '') +
     '<div class="match">' + match + '</div>' +
     '<label class="switch"><input type="checkbox" data-a="toggle-incl"' + (pick.includeDone ? ' checked' : '') + '><span>Auch gelernte Karten noch einmal abfragen</span></label>' +
-    '</main><footer class="foot"><button class="btn primary" data-a="start-quiz"' + (n ? '' : ' disabled') + '>' +
-    (n || !lists.length ? 'Start' : 'Alles gelernt') + '</button></footer></div>';
+    '<p class="note" style="margin-top:12px">Jede Karte wird pro Abfrage einmal gefragt. Eine Liste ist 10 Minuten nach ihrer letzten Abfrage wieder frei.</p>' +
+    '</main><footer class="foot"><button class="btn primary" data-a="start-quiz"' + (n ? '' : ' disabled') + '>' + label + '</button></footer></div>';
 }
 
 function actionsHtml(s) {
@@ -436,11 +516,12 @@ function actionsHtml(s) {
 function viewQuiz() {
   const s = session, c = s.cards[s.queue[0]];
   const w = (t) => '<p class="word' + (t.length > 36 ? ' long' : '') + '">' + esc(t) + '</p>';
-  const pct = s.total ? Math.round(s.done.size / s.total * 100) : 0;
+  const asked = s.total - s.queue.length;
+  const pct = s.total ? Math.round(asked / s.total * 100) : 0;
   return '<div class="screen"><header class="bar"><button class="icon-btn txt" data-a="quiz-exit">Beenden</button>' +
-    '<div class="bar-title">' + nn(s.queue.length, 'Karte', 'Karten') + ' offen</div>' +
+    '<div class="bar-title">' + (asked + 1) + ' von ' + s.total + '</div>' +
     '<button class="icon-btn" data-a="quiz-undo" aria-label="Letzte Antwort zurücknehmen"' + (s.undo ? '' : ' disabled') + '>' + I.undo + '</button></header>' +
-    '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="' + s.total + '" aria-valuenow="' + s.done.size + '"><i style="width:' + pct + '%"></i></div>' +
+    '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="' + s.total + '" aria-valuenow="' + asked + '"><i style="width:' + pct + '%"></i></div>' +
     '<main class="stage"><div class="flip' + (s.revealed ? ' on' : '') + '" data-a="quiz-flip" role="button" tabindex="0" aria-label="Karte umdrehen"><div class="flip-in">' +
     '<div class="face front"><div class="face-head"><span>Deutsch / Frage</span>' + dots(c) + '</div>' +
     '<div class="face-body">' + w(c.de) + '<span class="hint">Tippen zum Umdrehen</span></div></div>' +
@@ -453,12 +534,20 @@ function viewResult() {
   const s = session;
   const right = s.answers - s.wrong;
   const q = s.answers ? Math.round(right / s.answers * 100) : 0;
+  const fully = s.lists.filter(x => x.list.cards.length && x.list.cards.every(isDone)).length;
+  const lines = [];
+  if (s.learned.size) lines.push(nn(s.learned.size, 'Karte', 'Karten') + ' neu gelernt.');
+  if (fully) lines.push(s.lists.length === 1 ? 'Die ganze Liste ist gelernt.' : nn(fully, 'Liste ist', 'Listen sind') + ' komplett gelernt.');
+  if (s.wrong) lines.push('Nicht gewusste Karten kommen bald wieder dran.');
+  lines.push(s.lists.length === 1 ? 'Diese Liste ist in 10 Minuten wieder frei.' : 'Die Listen sind in 10 Minuten wieder frei.');
   return '<div class="screen"><header class="bar"><span></span><span></span><span></span></header><main class="body center">' +
-    '<div class="hero"><h1 class="display">Geschafft</h1><p class="sub">' + nn(s.total, 'Karte', 'Karten') + ' dreimal in Folge gewusst.</p></div>' +
+    '<div class="hero"><h1 class="display">Geschafft</h1><p class="sub">' + nn(s.total, 'Karte', 'Karten') + ' abgefragt.</p></div>' +
     '<div class="stats"><div class="stat"><b>' + s.answers + '</b><span>Antworten</span></div>' +
     '<div class="stat"><b>' + s.wrong + '</b><span>nicht gewusst</span></div>' +
     '<div class="stat"><b>' + q + '%</b><span>richtig</span></div></div>' +
-    '<button class="btn primary" data-a="quiz-done">Fertig</button></main></div>';
+    '<div style="margin-bottom:22px">' + lines.map(t => '<p class="note">' + esc(t) + '</p>').join('') + '</div>' +
+    '<button class="btn primary" data-a="quiz-done">Fertig</button>' +
+    '<div style="margin-top:6px"><button class="link" data-a="quiz-undo">Letzte Antwort zurücknehmen</button></div></main></div>';
 }
 
 function viewSettings() {
@@ -483,6 +572,7 @@ function viewSettings() {
 
 // ---------- Rendern ----------
 let lastKey = '';
+let lastSig = '';
 function render() {
   if (route.name !== 'profiles' && route.name !== 'settings' && !P()) route = { name: 'profiles' };
   if (route.name === 'list' && !L()) route = { name: 'home' };
@@ -492,8 +582,18 @@ function render() {
   const views = { profiles: viewProfiles, home: viewHome, list: viewList, pick: viewPick, quiz: viewQuiz, result: viewResult, settings: viewSettings };
   $('#app').innerHTML = views[route.name]();
   lastKey = key;
+  lastSig = lockSig();
   const b = $('.body'); if (b && sc) b.scrollTop = sc;
 }
+// Pausen laufen ab, während die App offen ist: Anzeige auffrischen, aber nie beim Tippen
+function refreshLocks() {
+  if (!['home', 'list', 'pick'].includes(route.name) || $('.sheet-wrap')) return;
+  const a = document.activeElement;
+  if (a && a.matches && a.matches('input,textarea')) return;
+  if (lockSig() !== lastSig) render();
+}
+setInterval(refreshLocks, 15000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLocks(); });
 const go = (r) => { route = r; render(); };
 
 // ---------- Sheets ----------
@@ -540,7 +640,8 @@ function sheetList(id) {
   openSheet('<h2 class="sheet-title">' + (l ? 'Titel und Tags' : 'Neue Liste') + '</h2>' +
     '<form data-form="list" data-id="' + esc(id || '') + '" autocomplete="off">' +
     '<label class="field"><span>Titel</span><input name="title" value="' + esc(l ? l.title : '') + '" maxlength="80" enterkeyhint="next"></label>' +
-    '<label class="field"><span>Tags (mit Komma trennen, optional)</span><input name="tags" value="' + esc(l ? l.tags.join(', ') : '') + '" maxlength="200" autocapitalize="none" autocorrect="off" enterkeyhint="done"></label>' +
+    '<label class="field"><span>Tags, mit Leerzeichen getrennt (optional)</span><input name="tags" value="' + esc(l ? l.tags.join(' ') : '') + '" maxlength="200" placeholder="z. B. englisch unit-3" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done"></label>' +
+    '<p class="err" id="tagerr" role="alert" hidden></p>' +
     (known.length ? '<div class="chips small" style="margin:-4px 0 14px">' + known.map(t => '<button type="button" class="chip" data-a="add-tag-text" data-v="' + esc(t.label) + '" aria-pressed="false">' + esc(t.label) + '</button>').join('') + '</div>' : '') +
     '<div class="sheet-actions"><button type="button" class="btn quiet" data-a="sheet-close">Abbrechen</button>' +
     '<button class="btn primary" type="submit">' + (l ? 'Speichern' : 'Anlegen') + '</button></div></form>',
@@ -627,7 +728,7 @@ const actions = {
   'edit-list'() { sheetList(route.id); },
   'add-tag-text'(el) {
     const inp = $('.sheet input[name=tags]'); if (!inp) return;
-    inp.value = parseTags(inp.value + ',' + el.dataset.v).join(', ');
+    inp.value = [...new Set((inp.value + ' ' + el.dataset.v).toLowerCase().split(/\s+/).filter(Boolean))].join(' ');
   },
   'del-list'() {
     const l = L();
@@ -639,7 +740,7 @@ const actions = {
   'reset-progress'() {
     const l = L();
     confirmSheet('Fortschritt zurücksetzen?', 'Alle Karten in dieser Liste gelten wieder als neu.', 'Zurücksetzen', () => {
-      l.cards.forEach(c => { c.streak = 0; }); save(); closeSheet(); render();
+      l.cards.forEach(c => { c.streak = 0; c.due = 0; }); save(); closeSheet(); render();
     });
   },
   'edit-card'(el) { sheetCard(el.dataset.id); },
@@ -656,8 +757,8 @@ const actions = {
   'toggle-incl'(el) { pick.includeDone = el.checked; render(); },
   'start-quiz'() { startQuiz(pickLists(), pick.includeDone, { name: 'home' }); },
   'quiz-list'() {
-    const l = L(); const s = countCards([l]);
-    startQuiz([l], s.open === 0, { name: 'list', id: l.id });
+    const l = L();
+    startQuiz([l], countCards([l]).open === 0, { name: 'list', id: l.id });
   },
   'quiz-flip'() {
     const s = session; if (!s || s.revealed || route.name !== 'quiz') return;
@@ -667,8 +768,17 @@ const actions = {
   },
   'quiz-yes'() { reply(true); },
   'quiz-no'() { reply(false); },
-  'quiz-undo'() { if (session && undoAnswer(session)) { save(); go({ name: 'quiz' }); } },
-  'quiz-exit'() { const r = session ? session.origin : { name: 'home' }; session = null; go(r); },
+  'quiz-undo'() {
+    if (!session) return;
+    if (route.name === 'result') unfinishSession(session);
+    if (undoAnswer(session)) { save(); go({ name: 'quiz' }); }
+    else if (route.name === 'result') { finishSession(session, Date.now()); save(); }
+  },
+  'quiz-exit'() {
+    const r = session ? session.origin : { name: 'home' };
+    if (session) { abortSession(session); save(); }
+    session = null; go(r);
+  },
   'quiz-done'() { const r = session ? session.origin : { name: 'home' }; session = null; go(r); },
   'export-file'() { exportFile(); },
   'export-text'() { exportText(); },
@@ -681,15 +791,17 @@ const actions = {
 };
 
 function startQuiz(lists, includeDone, origin) {
-  const s = newSession(lists, includeDone);
-  if (!s.queue.length) { toast('Keine Karten zum Abfragen.'); return; }
+  const s = newSession(lists, includeDone, Date.now());
+  if (!s.queue.length) { toast('Gerade sind keine Karten bereit.'); render(); return; }
   s.origin = origin; session = s; save();
   go({ name: 'quiz' });
 }
 function reply(knew) {
   const s = session; if (!s || !s.revealed) return;
-  answer(s, knew); save();
-  go(s.queue.length ? { name: 'quiz' } : { name: 'result' });
+  const last = answer(s, knew);
+  if (last) finishSession(s, Date.now());
+  save();
+  go({ name: last ? 'result' : 'quiz' });
 }
 
 const forms = {
@@ -705,9 +817,15 @@ const forms = {
   },
   list(f) {
     const title = clean(f.title.value, 80); if (!title) { f.title.focus(); return; }
-    const tags = parseTags(f.tags.value), id = f.dataset.id, p = P();
+    const r = parseTags(f.tags.value);
+    if (r.invalid.length) {
+      const er = $('#tagerr');
+      er.textContent = 'Ungültig: „' + r.invalid.join('“, „') + '“. Ein Tag beginnt mit einem Buchstaben und besteht nur aus Kleinbuchstaben, Ziffern, Punkt und Bindestrich. Mehrere Tags trennst du mit Leerzeichen.';
+      er.hidden = false; f.tags.focus(); return;
+    }
+    const tags = r.tags, id = f.dataset.id, p = P();
     if (id) { const l = p.lists.find(x => x.id === id); l.title = title; l.tags = tags; save(); closeSheet(); render(); }
-    else { const l = { id: uid(), title, tags, cards: [] }; p.lists.push(l); save(); closeSheet(); go({ name: 'list', id: l.id }); }
+    else { const l = { id: uid(), title, tags, round: 0, lastEnd: 0, cards: [] }; p.lists.push(l); save(); closeSheet(); go({ name: 'list', id: l.id }); }
   },
   card(f) {
     const de = clean(f.de.value, 200), fl = clean(f.fl.value, 200);
@@ -718,7 +836,7 @@ const forms = {
   'add-card'(f) {
     const de = clean(f.de.value, 200), fl = clean(f.fl.value, 200);
     if (!de || !fl) { (de ? f.fl : f.de).focus(); return; }
-    L().cards.push({ id: uid(), de, fl, streak: 0 });
+    L().cards.push({ id: uid(), de, fl, streak: 0, due: 0 });
     save(); render();
     const inp = $('input[name=de]'); if (inp) inp.focus();
   },
@@ -734,6 +852,14 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('change', e => {
   if (e.target.matches('input[type=checkbox][data-a]')) actions[e.target.dataset.a](e.target);
+});
+document.addEventListener('input', e => {
+  const i = e.target;
+  if (i.matches && i.matches('input[name=tags]')) {
+    const a = i.selectionStart, b = i.selectionEnd, low = i.value.toLowerCase();
+    if (low !== i.value) { i.value = low; try { i.setSelectionRange(a, b); } catch (_) {} }
+    const er = $('#tagerr'); if (er) er.hidden = true;
+  }
 });
 document.addEventListener('submit', e => {
   const fn = forms[e.target.dataset.form];
