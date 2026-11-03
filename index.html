@@ -123,6 +123,8 @@ h2{font:600 1.1875rem/1.2 var(--serif)}
 .switch button::after{content:"";position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:var(--muted);transition:transform .2s}
 .switch button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent)}
 .switch button[aria-pressed=true]::after{transform:translateX(18px);background:var(--accent)}
+.chip.flag{font-size:1.25rem;padding:0 11px}
+.chips.small .chip.flag{font-size:1.15rem;padding:0 10px}
 .flags{margin-right:6px;font-style:normal;white-space:nowrap}
 .dots i{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--muted);display:block}
 .dots i.on{background:var(--ok);border-color:var(--ok)}
@@ -354,7 +356,7 @@ function sanitizeProfile(p) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '1.4';
+const VERSION = '1.5';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -407,6 +409,10 @@ const dots = c => '<span class="dots" role="img" aria-label="' + c.streak + ' vo
 const FLAGS = { en:'🇬🇧', fr:'🇫🇷', es:'🇪🇸', it:'🇮🇹', de:'🇩🇪', nl:'🇳🇱', pt:'🇵🇹', ru:'🇷🇺', pl:'🇵🇱', tr:'🇹🇷', el:'🇬🇷', sv:'🇸🇪', da:'🇩🇰', no:'🇳🇴', fi:'🇫🇮', cs:'🇨🇿', sk:'🇸🇰', hu:'🇭🇺', ro:'🇷🇴', bg:'🇧🇬', hr:'🇭🇷', sr:'🇷🇸', sl:'🇸🇮', uk:'🇺🇦', ja:'🇯🇵', zh:'🇨🇳', ko:'🇰🇷', ar:'🇸🇦', he:'🇮🇱', hi:'🇮🇳', th:'🇹🇭', vi:'🇻🇳', id:'🇮🇩', ga:'🇮🇪', is:'🇮🇸', et:'🇪🇪', lv:'🇱🇻', lt:'🇱🇹', la:'🏛️' };
 const flagsOf = l => { const f = []; l.tags.forEach(t => { if (FLAGS[t] && !f.includes(FLAGS[t])) f.push(FLAGS[t]); }); return f.length ? '<i class="flags" aria-hidden="true">' + f.join('') + '</i>' : ''; };
 let showAnswers = false;
+// Tags für die Filter: Sprach-Tags (mit Flagge) zuerst, danach die übrigen, jeweils alphabetisch
+const tagList = p => { const a = tagsOfProfile(p).map(t => Object.assign({ flag: FLAGS[t.key] || '' }, t)); return a.filter(t => t.flag).concat(a.filter(t => !t.flag)); };
+const chipInner = t => t.flag ? '<span aria-hidden="true">' + t.flag + '</span>' : esc(t.label);
+const chipAttr = t => t.flag ? ' aria-label="' + esc(t.label) + '" title="' + esc(t.label) + '"' : '';
 const roundsBadge = (c, l) => {
   if (isDone(c)) return '<span class="rounds done" title="gelernt" aria-label="gelernt">✓</span>';
   const n = Math.max(1, c.due - effRound(l) + 1);
@@ -460,7 +466,7 @@ function viewHome() {
   else if (ready) sub = nn(ready, 'Karte', 'Karten') + ' bereit';
   else if (waiting.length) sub = 'Pause, wieder möglich in ' + lockText(Math.min(...waiting.map(l => lockLeft(l, now, p.pause))));
   else sub = 'Alles gelernt';
-  const tags = tagsOfProfile(p);
+  const tags = tagList(p);
   homeFilter = homeFilter.filter(k => tags.some(t => t.key === k));
   const shown = listsWithTags(p, homeFilter);
   const rows = shown.map(l => {
@@ -471,13 +477,13 @@ function viewHome() {
       '<span class="row-title">' + flagsOf(l) + esc(l.title) + '</span>' +
       (l.tags.length ? '<span class="tags">' + l.tags.map(t => '<span class="tag">' + esc(t) + '</span>').join('') + '</span>' : '') +
       '<span class="row-meta" style="display:block">' + nn(s.total, 'Karte', 'Karten') + (s.total ? ', ' + s.done + ' gelernt' : '') +
-      (left ? ', Pause noch ' + lockText(left) : '') + '</span>' +
+      (s.open ? ', ' + nn(pendingCount(l), 'Karte', 'Karten') + (left ? ' in ' + lockText(left) : ' bereit') : '') + '</span>' +
       '</span><span class="chev">' + I.chev + '</span></span>' +
       (s.total ? '<span class="meter" style="display:block"><i style="width:' + pct + '%"></i></span>' : '') +
       '</button></li>';
   }).join('');
   const chips = tags.length ? '<div class="chips small" style="margin:0 0 12px">' + tags.map(t =>
-    '<button class="chip" data-a="toggle-hfilter" data-v="' + esc(t.key) + '" aria-pressed="' + homeFilter.includes(t.key) + '">' + esc(t.label) + '</button>').join('') + '</div>' : '';
+    '<button class="chip' + (t.flag ? ' flag' : '') + '" data-a="toggle-hfilter" data-v="' + esc(t.key) + '"' + chipAttr(t) + ' aria-pressed="' + homeFilter.includes(t.key) + '">' + chipInner(t) + '</button>').join('') + '</div>' : '';
   const bar = homeFilter.length ? '<div class="filterbar"><span class="note">' + shown.length + ' von ' + nn(p.lists.length, 'Liste', 'Listen') +
     '</span><button class="link" data-a="clear-hfilter">Filter aufheben</button></div>' : '';
   const none = homeFilter.length ? 'Keine Liste hat alle gewählten Tags.' : 'Noch keine Liste. Lege deine erste Vokabelliste an, zum Beispiel „Unit 3“.';
@@ -498,7 +504,7 @@ function viewList() {
   const left = lockLeft(l, now, p.pause);
   const allDone = s.total > 0 && s.open === 0;
   let note = '';
-  if (s.total) note = left ? 'Pause: wieder möglich in ' + lockText(left) : (allDone ? 'Alle Karten sind gelernt.' : nn(pendingCount(l), 'Karte', 'Karten') + ' bereit');
+  if (s.total) note = allDone ? 'Alle Karten sind gelernt.' : nn(pendingCount(l), 'Karte', 'Karten') + (left ? ' in ' + lockText(left) : ' bereit');
   const cards = l.cards.map(c =>
     '<li><button class="row lv' + Math.min(GOAL, c.streak) + '" data-a="edit-card" data-id="' + esc(c.id) + '"><span class="cardrow"><span class="row-text">' +
     '<span class="row-title" style="display:block">' + esc(c.de) + '</span>' +
@@ -531,7 +537,7 @@ function viewList() {
 function pickLists() { return listsWithTags(P(), pick.tags); }
 function viewPick() {
   const p = P(), now = Date.now();
-  const tags = tagsOfProfile(p);
+  const tags = tagList(p);
   const lists = pickLists();
   const free = lists.filter(l => lockLeft(l, now, p.pause) === 0);
   const n = free.reduce((k, l) => k + (pick.includeDone ? l.cards.length : pendingCount(l)), 0);
@@ -541,7 +547,7 @@ function viewPick() {
   else head = nn(free.length, 'Liste', 'Listen') + ', ' + nn(n, 'Karte', 'Karten') + ' bereit';
   const items = lists.map(l => {
     const left = lockLeft(l, now, p.pause);
-    return '<li' + (left ? ' class="dim"' : '') + '>' + esc(l.title) + (left ? ' (Pause, noch ' + lockText(left) + ')' : '') + '</li>';
+    return '<li' + (left ? ' class="dim"' : '') + '>' + esc(l.title) + (left && pendingCount(l) ? ' (' + nn(pendingCount(l), 'Karte', 'Karten') + ' in ' + lockText(left) + ')' : '') + '</li>';
   }).join('');
   const match = '<strong>' + head + '</strong>' + (lists.length ? '<ul>' + items + '</ul>' : '<ul><li>Keine Liste hat alle gewählten Tags.</li></ul>');
   let label = 'Start';
@@ -551,7 +557,7 @@ function viewPick() {
     '<main class="body"><p class="lead">' + (tags.length ?
       'Wähle Tags, um mehrere Listen zu mischen. Abgefragt werden nur Listen, die alle gewählten Tags haben. Ohne Auswahl kommen alle Listen dran.' :
       'Noch keine Tags vergeben. Tags kannst du bei jeder Liste hinzufügen. Bis dahin werden alle Listen abgefragt.') + '</p>' +
-    (tags.length ? '<div class="chips">' + tags.map(t => '<button class="chip" data-a="toggle-tag" data-v="' + esc(t.key) + '" aria-pressed="' + (pick.tags.includes(t.key)) + '">' + esc(t.label) + '</button>').join('') + '</div>' : '') +
+    (tags.length ? '<div class="chips">' + tags.map(t => '<button class="chip' + (t.flag ? ' flag' : '') + '" data-a="toggle-tag" data-v="' + esc(t.key) + '"' + chipAttr(t) + ' aria-pressed="' + (pick.tags.includes(t.key)) + '">' + chipInner(t) + '</button>').join('') + '</div>' : '') +
     '<div class="match">' + match + '</div>' +
     '<label class="switch"><input type="checkbox" data-a="toggle-incl"' + (pick.includeDone ? ' checked' : '') + '><span>Auch gelernte Karten noch einmal abfragen</span></label>' +
     '<p class="note" style="margin-top:12px">Jede Karte wird pro Abfrage einmal gefragt. Eine Liste ist ' + pauseText(p.pause) + ' nach ihrer letzten Abfrage wieder frei.</p>' +
@@ -686,7 +692,7 @@ function sheetProfile(id) {
 }
 function sheetList(id) {
   const l = id && P().lists.find(x => x.id === id);
-  const known = tagsOfProfile(P());
+  const known = tagList(P());
   openSheet('<h2 class="sheet-title">' + (l ? 'Titel und Tags' : 'Neue Liste') + '</h2>' +
     '<form data-form="list" data-id="' + esc(id || '') + '" autocomplete="off">' +
     '<label class="field"><span>Titel</span><input name="title" value="' + esc(l ? l.title : '') + '" maxlength="80" enterkeyhint="next"></label>' +
