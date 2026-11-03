@@ -2,8 +2,8 @@
 // - Die App-Seite wird immer zuerst vom Server geholt (am Browser-Cache vorbei);
 //   nur ohne Internet (oder bei sehr langsamer Verbindung) kommt die gespeicherte Kopie.
 // - Icons und Manifest kommen aus dem Cache und werden im Hintergrund aufgefrischt.
-const CACHE = 'vokabelkarten-v5';
-const ASSETS = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
+const CACHE = 'vokabelkarten-v6';
+const ASSETS = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png'];
 const SLOW_MS = 3000;
 
 self.addEventListener('install', e => {
