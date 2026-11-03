@@ -369,7 +369,7 @@ function sanitizeProfile(p) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '1.7';
+const VERSION = '1.8';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -421,7 +421,15 @@ const L = () => { const p = P(); return p && route.id ? p.lists.find(l => l.id =
 const dots = c => '<span class="dots" role="img" aria-label="' + c.streak + ' von ' + GOAL + ' in Folge gewusst">' +
   [0, 1, 2].map(i => '<i class="' + (i < c.streak ? 'on' : '') + '"></i>').join('') + '</span>';
 const FLAGS = Object.fromEntries(Object.entries(LANGS).map(([k, v]) => [k, v[0]]));
-const flagsOf = l => { const f = []; l.tags.forEach(t => { if (FLAGS[t] && !f.includes(FLAGS[t])) f.push(FLAGS[t]); }); return f.length ? '<i class="flags" aria-hidden="true">' + f.join('') + '</i>' : ''; };
+// Ein Tag, das genau aus einem Emoji besteht (auch Flaggen, Familien, Hautfarben), wird zum Icon der Liste (das erste davon)
+const ONE_EMOJI = /^(?:[\u{1F1E6}-\u{1F1FF}]{2}|\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier})?(?:\u200D\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier})?)*)$/u;
+const iconTag = l => l.tags.find(t => ONE_EMOJI.test(t)) || null;
+const flagsOf = l => {
+  const f = [], e = iconTag(l);
+  if (e) f.push(e);
+  l.tags.forEach(t => { if (FLAGS[t] && !f.includes(FLAGS[t])) f.push(FLAGS[t]); });
+  return f.length ? '<i class="flags" aria-hidden="true">' + f.join('') + '</i>' : '';
+};
 let showAnswers = false;
 // Tags für die Filter: Sprach-Tags (mit Flagge) zuerst, danach die übrigen, jeweils alphabetisch
 const tagList = p => { const a = tagsOfProfile(p).map(t => Object.assign({ flag: FLAGS[t.key] || '' }, t)); return a.filter(t => t.flag).concat(a.filter(t => !t.flag)); };
@@ -489,7 +497,7 @@ function viewHome() {
     const pct = s.total ? Math.round(s.done / s.total * 100) : 0;
     return '<li><button class="row" data-a="open-list" data-id="' + esc(l.id) + '"><span class="row-main"><span class="row-text">' +
       '<span class="row-title">' + flagsOf(l) + esc(l.title) + '</span>' +
-      (l.tags.length ? '<span class="tags">' + l.tags.map(t => '<span class="tag">' + esc(t) + '</span>').join('') + '</span>' : '') +
+      (l.tags.some(t => t !== iconTag(l)) ? '<span class="tags">' + l.tags.filter(t => t !== iconTag(l)).map(t => '<span class="tag">' + esc(t) + '</span>').join('') + '</span>' : '') +
       '<span class="row-meta" style="display:block">' + nn(s.total, 'Karte', 'Karten') + (s.total ? ', ' + s.done + ' gelernt' : '') +
       (s.open ? ', ' + nn(pendingCount(l), 'Karte', 'Karten') + (left ? ' in ' + lockText(left) : ' bereit') : '') + '</span>' +
       '</span><span class="chev">' + I.chev + '</span></span>' +
