@@ -35,6 +35,7 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:17px/1.4 var(--sans);-webkit-text-size-adjust:100%;touch-action:manipulation}
+html,body{overflow:hidden}
 body{overscroll-behavior:none;-webkit-user-select:none;user-select:none}
 input,textarea{-webkit-user-select:text;user-select:text}
 button{font:inherit;color:inherit;cursor:pointer}
@@ -192,7 +193,8 @@ h2{font:700 1.1875rem/1.2 var(--display)}
 
 .progress{flex:none;height:4px;margin:0 20px;background:var(--line);border-radius:2px;overflow:hidden}
 .progress i{display:block;height:100%;background:var(--orange);transition:width .3s}
-.stage{flex:1;min-height:0;display:flex;padding:14px 20px 12px}
+.stage{flex:1;min-height:0;display:flex;padding:14px 20px 12px;overflow:hidden;touch-action:none}
+.actions,.progress{touch-action:none}
 .flip{position:relative;flex:1;perspective:1400px;cursor:pointer}
 .flip-in{position:absolute;inset:0;transition:transform .55s cubic-bezier(.2,.75,.25,1);transform-style:preserve-3d;-webkit-transform-style:preserve-3d}
 .flip.on .flip-in{transform:rotateY(180deg)}
@@ -200,7 +202,7 @@ h2{font:700 1.1875rem/1.2 var(--display)}
 .face.back{transform:rotateY(180deg)}
 .face-head{flex:none;height:62px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 20px 10px;color:var(--muted);font-size:.92rem;border-bottom:2px solid var(--rule)}
 .face-body{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:18px 24px;text-align:center;background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 35px,var(--ruled) 35px,var(--ruled) 36px);position:relative}
-.word{font:600 clamp(1.75rem,8.5vw,2.6rem)/1.2 var(--display);overflow-wrap:anywhere;max-height:100%;overflow-y:auto;background:var(--surface);padding:2px 10px;border-radius:6px}
+.word{touch-action:pan-y;font:600 clamp(1.75rem,8.5vw,2.6rem)/1.2 var(--display);overflow-wrap:anywhere;max-height:100%;overflow-y:auto;background:var(--surface);padding:2px 10px;border-radius:6px}
 .word.long{font-size:clamp(1.3rem,6vw,1.8rem)}
 .hint{position:absolute;left:50%;transform:translateX(-50%);bottom:12px;white-space:nowrap;background:var(--surface);padding:2px 12px;border-radius:6px;color:var(--muted);font-size:.88rem}
 .actions{flex:none;display:flex;gap:12px;padding:6px 20px calc(16px + var(--sab))}
@@ -486,7 +488,7 @@ function parseListImport(text) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '2.9';
+const VERSION = '2.11';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -604,6 +606,7 @@ const flagsOf = l => {
 let showAnswers = false;
 // Tags für die Filter: Sprach-Tags (mit Flagge) zuerst, danach die übrigen, jeweils alphabetisch
 const tagList = p => { const a = tagsOfProfile(p).map(t => Object.assign({ flag: FLAGS[t.key] || '' }, t)); return a.filter(t => t.flag).concat(a.filter(t => !t.flag)); };
+const tagChip = t => FLAGS[t] ? '<span class="tag" role="img" aria-label="' + esc(t) + '">' + FLAGS[t] + '</span>' : '<span class="tag">' + esc(t) + '</span>';
 const chipInner = t => t.flag ? '<span aria-hidden="true">' + t.flag + '</span>' : esc(t.label);
 const chipAttr = t => t.flag ? ' aria-label="' + esc(t.label) + '" title="' + esc(t.label) + '"' : '';
 const roundsBadge = (c, l) => {
@@ -668,7 +671,7 @@ function viewHome() {
     const pct = s.total ? Math.round(s.done / s.total * 100) : 0;
     return '<li><button class="row" data-a="open-list" data-id="' + esc(l.id) + '"><span class="row-main"><span class="row-text">' +
       '<span class="row-title">' + flagsOf(l) + esc(l.title) + '</span>' +
-      (l.tags.some(t => t !== iconTag(l)) ? '<span class="tags">' + l.tags.filter(t => t !== iconTag(l)).map(t => '<span class="tag">' + esc(t) + '</span>').join('') + '</span>' : '') +
+      (l.tags.some(t => t !== iconTag(l)) ? '<span class="tags">' + l.tags.filter(t => t !== iconTag(l)).map(t => tagChip(t)).join('') + '</span>' : '') +
       '<span class="row-meta" style="display:block">' + nn(s.total, 'Karte', 'Karten') + (s.total ? ', ' + s.done + ' gelernt' : '') +
       (s.open ? ', ' + nn(pendingCount(l), 'Karte', 'Karten') + (left ? ' in ' + lockText(left) : ' bereit') : '') + '</span>' +
       '</span><span class="chev">' + I.chev + '</span></span>' +
@@ -738,7 +741,7 @@ function viewList() {
     '<h1 class="bar-title">' + flagsOf(l) + esc(l.title) + '</h1>' +
     '<button class="icon-btn" data-a="edit-list" aria-label="Liste bearbeiten">' + I.pencil + '</button></header>' +
     '<main class="body">' +
-    (l.tags.length ? '<div class="tags" style="margin:0 0 6px">' + l.tags.map(t => '<span class="tag">' + esc(t) + '</span>').join('') + '</div>' : '') +
+    (l.tags.length ? '<div class="tags" style="margin:0 0 6px">' + l.tags.map(t => tagChip(t)).join('') + '</div>' : '') +
     '<div style="margin-bottom:14px"><span class="note">' +
     (s.total ? s.done + ' von ' + s.total + ' gelernt' : 'Noch keine Karten') + '</span></div>' +
     '<button class="btn primary" data-a="quiz-list"' + (!s.total || left ? ' disabled' : '') + '>' +
