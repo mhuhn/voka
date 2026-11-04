@@ -101,6 +101,16 @@ h2{font:700 1.1875rem/1.2 var(--display)}
 .row-title{font:700 1.1875rem/1.25 var(--display);overflow-wrap:anywhere}
 .row-meta{color:var(--muted);font-size:.9rem;margin-top:3px}
 .row .chev{color:var(--muted);flex:none}
+.btn svg{width:20px;height:20px;flex:none}
+.btn.small svg{width:18px;height:18px}
+.link svg{width:16px;height:16px;vertical-align:-3px;margin-right:5px}
+.bubble.emo{font-size:1.5rem;background:var(--surface);border:1px solid var(--line)}
+.emojis{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-bottom:4px}
+.emojis button{aspect-ratio:1;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-size:1.25rem;line-height:1;padding:0}
+.emojis button[aria-pressed=true]{border-color:var(--accent);background:var(--accent-soft)}
+/* kleiner oranger Akzent auf jedem Screen */
+.bar-title::after{content:"";display:block;width:20px;height:3px;border-radius:2px;background:var(--orange);margin:3px auto 0}
+.display:not(.brand)::after{content:"";display:block;width:40px;height:5px;border-radius:3px;background:var(--orange);margin-top:10px}
 .bubble{flex:none;width:44px;height:44px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font:600 1.25rem var(--display)}
 .meter{height:4px;background:var(--line);border-radius:2px;margin-top:10px;overflow:hidden}
 .meter i{display:block;height:100%;background:var(--orange);border-radius:2px}
@@ -400,11 +410,15 @@ function restoreList(p, id) {
   p.lists.push(l);
   return l;
 }
+// Erstes Emoji (auch Flaggen, Familien, Hautfarben) aus einem Text, sonst ''
+const EMOJI_SEQ = /(?:[\u{1F1E6}-\u{1F1FF}]{2}|\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier})?(?:\u200D\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier})?)*)/u;
+function firstEmoji(str) { const m = String(str || '').match(EMOJI_SEQ); return m ? m[0] : ''; }
 function sanitizeProfile(p) {
   p = p || {};
   return {
     id: clean(p.id, 40) || uid(),
     name: clean(p.name, 40) || 'Profil',
+    emoji: firstEmoji(clean(p.emoji, 40)),
     pause: PAUSES.includes(Number(p.pause)) ? Number(p.pause) : DEFAULT_PAUSE,
     lists: (Array.isArray(p.lists) ? p.lists : []).map(sanitizeList),
     trash: (Array.isArray(p.trash) ? p.trash : []).map(sanitizeTrashList)
@@ -455,7 +469,7 @@ function parseListImport(text) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '2.4';
+const VERSION = '2.5';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -486,6 +500,29 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const nn = (k, one, many) => k + ' ' + (k === 1 ? one : many);
 const svg = d => '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+const IC = {
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  del: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/><path d="M10 11l4 5M14 11l-4 5"/>',
+  bin: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>',
+  share: '<path d="M12 15V4M8 8l4-4 4 4"/><path d="M8 11H6a1 1 0 00-1 1v7a1 1 0 001 1h12a1 1 0 001-1v-7a1 1 0 00-1-1h-2"/>',
+  imp: '<path d="M12 4v11M8 11l4 4 4-4M5 19h14"/>'
+};
+// Setzt ein Icon vor Buttons und Links mit passender Beschriftung (Text bleibt unverändert)
+function decorate(root) {
+  (root || document).querySelectorAll('.btn, .link').forEach(b => {
+    if (b.dataset.ic) return;
+    const t = b.textContent.replace(/\u00a0/g, ' ').trim();
+    let k = '';
+    if (/^(Karte hinzufügen|Profil anlegen|Anlegen|Neue Liste)$/.test(t)) k = 'plus';
+    else if (/(löschen|leeren)$/i.test(t)) k = 'del';
+    else if (/teilen$/i.test(t)) k = 'share';
+    else if (/^Papierkorb( \(\d+\))?$/.test(t)) k = 'bin';
+    else if (/^Importieren$/.test(t)) k = 'imp';
+    if (!k) return;
+    b.dataset.ic = k;
+    b.insertAdjacentHTML('afterbegin', svg(IC[k]));
+  });
+}
 const I = {
   back: svg('<path d="M15 5l-7 7 7 7"/>'),
   chev: svg('<path d="M9 5l7 7-7 7"/>'),
@@ -550,7 +587,7 @@ function viewProfiles() {
   const rows = db.profiles.map(p => {
     const s = countCards(p.lists);
     return '<li><button class="row" data-a="pick-profile" data-id="' + esc(p.id) + '"><span class="row-main">' +
-      '<span class="bubble">' + esc((p.name[0] || '?').toUpperCase()) + '</span>' +
+      '<span class="bubble' + (p.emoji ? ' emo' : '') + '">' + esc(p.emoji || (p.name[0] || '?').toUpperCase()) + '</span>' +
       '<span class="row-text"><span class="row-title">' + esc(p.name) + '</span>' +
       '<span class="row-meta" style="display:block">' + nn(p.lists.length, 'Liste', 'Listen') + ', ' + nn(s.total, 'Karte', 'Karten') + '</span></span>' +
       '<span class="chev">' + I.chev + '</span></span></button></li>';
@@ -766,6 +803,7 @@ function render() {
   const sc = $('.body') && key === lastKey ? $('.body').scrollTop : 0;
   const views = { profiles: viewProfiles, home: viewHome, list: viewList, pick: viewPick, trash: viewTrash, quiz: viewQuiz, result: viewResult, settings: viewSettings };
   $('#app').innerHTML = views[route.name]();
+  decorate($('#app'));
   lastKey = key;
   lastSig = lockSig();
   const b = $('.body'); if (b && sc) b.scrollTop = sc;
@@ -798,6 +836,7 @@ function openSheet(html, onMount) {
   w.className = 'sheet-wrap';
   w.innerHTML = '<div class="sheet-bg" data-a="sheet-close"></div><div class="sheet" role="dialog" aria-modal="true">' + html + '</div>';
   document.body.appendChild(w);
+  decorate(w);
   fitSheet();
   requestAnimationFrame(() => w.classList.add('in'));
   if (onMount) onMount(w);
@@ -810,12 +849,19 @@ function confirmSheet(title, text, okLabel, fn) {
     '<div class="sheet-actions"><button class="btn quiet" data-a="sheet-close">Abbrechen</button>' +
     '<button class="btn primary" data-a="confirm-ok">' + esc(okLabel) + '</button></div>');
 }
+const EMOJI_PICKS = ['🦊','🐼','🐯','🦁','🐸','🦄','🐙','🦋','🚀','⭐','🌈','🔥','⚽','🎨','🎵','📚','🧮','🧪','🌍','🎒','🇬🇧','🇫🇷','🇪🇸','🇮🇹'];
+function emojiField(cur) {
+  return '<div class="field"><span>Symbol (Emoji, optional)</span>' +
+    '<input name="emoji" value="' + esc(cur || '') + '" maxlength="12" placeholder="Eigenes Emoji eintippen" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" style="margin-bottom:8px"></div>' +
+    '<div class="emojis" id="emojis">' + EMOJI_PICKS.map(e => '<button type="button" data-a="pick-emoji" data-v="' + e + '" aria-pressed="' + (e === cur) + '" aria-label="Symbol ' + e + '">' + e + '</button>').join('') + '</div>';
+}
 function sheetProfile(id) {
   const p = id && db.profiles.find(x => x.id === id);
   openSheet('<h2 class="sheet-title">' + (p ? 'Profil umbenennen' : 'Neues Profil') + '</h2>' +
     '<form data-form="profile" data-id="' + esc(id || '') + '" autocomplete="off"><label class="field"><span>Name</span>' +
-    '<input name="name" value="' + esc(p ? p.name : '') + '" maxlength="40" autocapitalize="words" enterkeyhint="done"></label>' +
-    '<div class="sheet-actions"><button type="button" class="btn quiet" data-a="sheet-close">Abbrechen</button>' +
+    '<input name="name" value="' + esc(p ? p.name : '') + '" maxlength="40" autocapitalize="words" enterkeyhint="next"></label>' +
+    emojiField(p ? p.emoji : '') +
+    '<div class="sheet-actions" style="margin-top:14px"><button type="button" class="btn quiet" data-a="sheet-close">Abbrechen</button>' +
     '<button class="btn primary" type="submit">' + (p ? 'Speichern' : 'Anlegen') + '</button></div></form>',
     w => $('input', w).focus());
 }
@@ -826,7 +872,7 @@ function sheetList(id) {
   openSheet('<h2 class="sheet-title">' + (l ? 'Liste bearbeiten' : 'Neue Liste') + '</h2>' +
     '<form data-form="list" data-id="' + esc(id || '') + '" autocomplete="off">' +
     '<label class="field"><span>Titel</span><input name="title" value="' + esc(l ? l.title : '') + '" maxlength="80" enterkeyhint="next"></label>' +
-    '<label class="field"><span>Tags, mit Leerzeichen getrennt (optional)</span><input name="tags" value="' + esc(l ? l.tags.join(' ') : '') + '" maxlength="200" placeholder="z. B. englisch unit-3" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done"></label>' +
+    '<label class="field"><span>Tags, mit Leerzeichen getrennt (optional)</span><input name="tags" value="' + esc(l ? l.tags.join(' ') : '') + '" maxlength="200" placeholder="z. B. en unit-3" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done"></label>' +
     '<p class="err" id="tagerr" role="alert" hidden></p>' +
     (known.length ? '<div class="chips small" style="margin:-4px 0 14px">' + known.map(t => '<button type="button" class="chip" data-a="add-tag-text" data-v="' + esc(t.label) + '" aria-pressed="false">' + esc(t.label) + '</button>').join('') + '</div>' : '') +
     '<label class="field"><span>Beschriftung der Frage-Seite</span><input name="labelq" value="' + esc(l ? l.labelQ : '') + '" placeholder="' + esc(dl.q) + '" maxlength="30" enterkeyhint="next"></label>' +
@@ -839,8 +885,9 @@ function sheetPause() {
   const p = P();
   openSheet('<h2 class="sheet-title">Profil bearbeiten</h2>' +
     '<form data-form="profile" data-id="' + esc(p.id) + '" autocomplete="off"><label class="field"><span>Name</span>' +
-    '<input name="name" value="' + esc(p.name) + '" maxlength="40" autocapitalize="words" enterkeyhint="done"></label>' +
-    '<p class="sheet-label">Pause zwischen Abfragen</p>' +
+    '<input name="name" value="' + esc(p.name) + '" maxlength="40" autocapitalize="words" enterkeyhint="next"></label>' +
+    emojiField(p.emoji) +
+    '<p class="sheet-label" style="margin-top:14px">Pause zwischen Abfragen</p>' +
     '<p class="note" style="margin:0 0 8px">So lange ist eine Liste nach einer Abfrage gesperrt, bevor sie wieder abgefragt werden kann. Gilt für alle Listen von ' + esc(p.name) + '. Wird sofort übernommen.</p>' +
     '<div class="chips" id="pausechips">' + PAUSES.map(m =>
       '<button type="button" class="chip" data-a="set-pause" data-v="' + m + '" aria-pressed="' + (m === p.pause) + '">' + pauseShort(m) + '</button>').join('') + '</div>' +
@@ -977,6 +1024,11 @@ const actions = {
   'to-profiles'() { go({ name: 'profiles' }); },
   'pick-profile'(el) { db.lastProfile = el.dataset.id; homeFilter = []; save(); go({ name: 'home' }); },
   'edit-profile'() { sheetPause(); },
+  'pick-emoji'(el) {
+    const f = el.closest('form'), inp = f.emoji, v = el.dataset.v;
+    inp.value = inp.value === v ? '' : v;
+    document.querySelectorAll('#emojis button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === inp.value)));
+  },
   'set-pause'(el) {
     const p = P(); p.pause = Number(el.dataset.v); save();
     document.querySelectorAll('#pausechips .chip').forEach(c => c.setAttribute('aria-pressed', String(Number(c.dataset.v) === p.pause)));
@@ -1124,10 +1176,10 @@ function reply(knew) {
 const forms = {
   profile(f) {
     const name = clean(f.name.value, 40); if (!name) { f.name.focus(); return; }
-    const id = f.dataset.id;
-    if (id) { db.profiles.find(p => p.id === id).name = name; }
+    const id = f.dataset.id, emoji = f.emoji ? firstEmoji(f.emoji.value) : null;
+    if (id) { const q = db.profiles.find(p => p.id === id); q.name = name; if (emoji !== null) q.emoji = emoji; }
     else {
-      const p = { id: uid(), name, pause: DEFAULT_PAUSE, lists: [], trash: [] }; db.profiles.push(p);
+      const p = { id: uid(), name, emoji: emoji || '', pause: DEFAULT_PAUSE, lists: [], trash: [] }; db.profiles.push(p);
       if (route.name === 'profiles') { db.lastProfile = p.id; homeFilter = []; route = { name: 'home' }; }
     }
     save(); closeSheet(); render();
@@ -1193,7 +1245,10 @@ document.addEventListener('change', e => {
 });
 document.addEventListener('input', e => {
   const i = e.target;
-  if (i.matches && i.matches('input[name=tags]')) {
+  if (i.matches && i.matches('input[name=emoji]')) {
+    const v = firstEmoji(i.value); if (v !== i.value) i.value = v;
+    document.querySelectorAll('#emojis button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === i.value)));
+  } else if (i.matches && i.matches('input[name=tags]')) {
     const a = i.selectionStart, b = i.selectionEnd, low = i.value.toLowerCase();
     if (low !== i.value) { i.value = low; try { i.setSelectionRange(a, b); } catch (_) {} }
     const er = $('#tagerr'); if (er) er.hidden = true;
