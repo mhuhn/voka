@@ -69,6 +69,10 @@ ul{padding:0;list-style:none}
 .note{color:var(--muted);font-size:.92rem}
 h2{font:700 1.1875rem/1.2 var(--display)}
 .sec-head{display:flex;align-items:baseline;justify-content:space-between;margin:26px 0 12px}
+.switches{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px 16px}
+.sec-head.cards{flex-wrap:wrap;gap:4px 0}
+.sec-head.cards h2{white-space:nowrap}
+.sec-head.cards .switches{flex-basis:100%;justify-content:flex-start}
 .sec-head:first-child{margin-top:6px}
 .trow{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:10px}
 .trow .row-title{display:block}
@@ -163,8 +167,8 @@ h2{font:700 1.1875rem/1.2 var(--display)}
 .row.lv1{background:#f1f6ee;background:color-mix(in srgb,var(--ok) 9%,var(--surface))}
 .row.lv2{background:#e4efdf;background:color-mix(in srgb,var(--ok) 18%,var(--surface))}
 .row.lv3{background:#d5e7cf;background:color-mix(in srgb,var(--ok) 30%,var(--surface))}
-.switch{display:flex;align-items:center;gap:8px;font-size:.93rem;color:var(--muted)}
-.switch button{width:46px;height:28px;border-radius:14px;border:1px solid var(--line);background:var(--surface);position:relative;padding:0}
+.switch{display:flex;align-items:center;gap:6px;font-size:.9rem;color:var(--muted)}
+.switch button{flex:none;width:46px;height:28px;border-radius:14px;border:1px solid var(--line);background:var(--surface);position:relative;padding:0}
 .switch button::after{content:"";position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:var(--muted);transition:transform .2s}
 .switch button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent)}
 .switch button[aria-pressed=true]::after{transform:translateX(18px);background:var(--accent)}
@@ -488,7 +492,7 @@ function parseListImport(text) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '2.13';
+const VERSION = '2.14';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -720,11 +724,12 @@ function advFields(c, l, open) {
   return '<details class="adv"' + (open ? ' open' : '') + '><summary>Erweitert: Treffer und Runde</summary>' +
     '<div class="advgrid"><label class="field"><span>Treffer (0 bis 3)</span><input name="streak" type="number" inputmode="numeric" min="0" max="3" step="1" value="' + c.streak + '"></label>' +
     '<label class="field"><span>Runde</span><input name="due" type="number" inputmode="numeric" min="0" step="1" value="' + c.due + '"></label></div>' +
+    '<label class="switch markrow"><input type="checkbox" name="mark"' + (c.mark ? ' checked' : '') + '><span>Karte markiert (Stern)</span></label>' +
     '<p class="note">Treffer: wie oft die Karte in Folge gewusst wurde, 3 gilt als gelernt. Runde: Runde, in der die Karte wieder abgefragt wird. Die Liste ist gerade in Runde ' + effRound(l) + '.</p></details>';
 }
 function readAdv(f) {
   const n = (el, max) => { const v = parseInt(el && el.value, 10); return Number.isFinite(v) ? Math.max(0, Math.min(max, v)) : 0; };
-  return { streak: n(f.streak, GOAL), due: n(f.due, 1e6) };
+  return { streak: n(f.streak, GOAL), due: n(f.due, 1e6), mark: !!(f.mark && f.mark.checked) };
 }
 function viewList() {
   const l = L(), p = P(), now = Date.now();
@@ -758,9 +763,9 @@ function viewList() {
     '<label class="field"><span>' + esc(l.labelA) + '</span><input name="fl" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done"></label>' +
     advFields(advMemory || { streak: 0, due: 0 }, l, !!advMemory) +
     '<button class="btn primary" type="submit">Karte hinzufügen</button></form>' +
-    '<div class="sec-head"><h2>Karten (' + s.total + ')</h2>' + (s.total ? '<span class="switch">' + esc(l.labelA) + '<button type="button" role="switch" data-a="toggle-answers" aria-pressed="' + showAnswers + '" aria-label="' + esc(l.labelA) + ' anzeigen"></button></span>' : '') + '</div>' +
+    '<div class="sec-head cards"><h2>Karten (' + s.total + ')</h2>' + (s.total ? '<span class="switches"><span class="switch">' + esc(l.labelA) + '<button type="button" role="switch" data-a="toggle-answers" aria-pressed="' + showAnswers + '" aria-label="' + esc(l.labelA) + ' anzeigen"></button></span>' +
+      (doneN ? '<span class="switch">Gelernt<button type="button" role="switch" data-a="toggle-done" aria-pressed="' + showDone + '" aria-label="Gelernte Karten anzeigen"></button></span>' : '') + '</span>' : '') + '</div>' +
     (s.total ? '<p class="note" style="margin:-2px 0 10px">Die Zahl zeigt, in der wievielten Runde die Karte wieder abgefragt wird.</p>' : '') +
-    (doneN ? '<div style="display:flex;justify-content:flex-end;margin:-4px 0 10px"><span class="switch">Gelernte Karten (' + doneN + ')<button type="button" role="switch" data-a="toggle-done" aria-pressed="' + showDone + '" aria-label="Gelernte Karten anzeigen"></button></span></div>' : '') +
     (cards ? '<ul class="rows">' + cards + '</ul>' : '<div class="empty">' + (s.total ? 'Alle Karten sind gelernt und verborgen.' : 'Hier erscheinen deine Karten.') + '</div>') +
     '<div style="margin-top:30px"><button class="btn danger" data-a="del-list">Liste löschen</button></div>' +
     '</main></div>';
@@ -974,7 +979,7 @@ function sheetCard(id) {
     '<p class="err" id="editerr" role="alert" hidden></p>' +
     '<label class="field"><span>' + esc(L().labelA) + '</span><input name="fl" value="' + esc(c.fl) + '" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false"></label>' +
     '<button type="button" class="btn quiet small" data-a="swap-card" style="margin:-2px 0 12px">⇅ Frage und Antwort tauschen</button>' +
-    advFields(c, L()) +
+    advFields(c, L(), !!c.mark) +
     '<div class="sheet-actions"><button type="button" class="btn danger" data-a="del-card" data-id="' + esc(id) + '">Löschen</button>' +
     '<button class="btn primary" type="submit">Speichern</button></div></form>');
 }
@@ -1288,7 +1293,7 @@ const forms = {
       }
     }
     c.de = de; c.fl = fl;
-    const a = readAdv(f); c.streak = a.streak; c.due = a.due;
+    const a = readAdv(f); c.streak = a.streak; c.due = a.due; c.mark = a.mark;
     save(); closeSheet(); render();
   },
   'add-card'(f) {
@@ -1301,8 +1306,8 @@ const forms = {
       er.hidden = false; f.de.focus(); return;
     }
     const a = readAdv(f);
-    L().cards.push({ id: uid(), de, fl, streak: a.streak, due: a.due });
-    advMemory = (a.streak || a.due) ? a : null;
+    L().cards.push({ id: uid(), de, fl, streak: a.streak, due: a.due, mark: a.mark });
+    advMemory = (a.streak || a.due || a.mark) ? a : null;
     save(); render();
     const inp = $('input[name=de]'); if (inp) inp.focus();
   },
