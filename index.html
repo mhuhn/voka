@@ -17,7 +17,7 @@
 :root{
   --bg:#ffffff; --surface:#f4f7fd; --ink:#0b1f4a; --muted:#5a6a8c; --line:#dce4f1;
   --accent:#0b63f0; --accent-ink:#ffffff; --accent-soft:#e3edff; --orange:#f9a11b;
-  --ok:#2a7a58; --ok-ink:#ffffff; --no-soft:#f6e1df; --no-ink:#a3322a;
+  --ok:#2a7a58; --ok-ink:#ffffff; --no-soft:#f6e1df; --no-ink:#a3322a; --maybe-soft:#fdecc8; --maybe-ink:#7a4b00;
   --rule:#f9a11b; --ruled:#dbe6f4;
   --shadow:0 1px 2px rgba(11,31,74,.08),0 12px 30px rgba(11,31,74,.14);
   --display:ui-rounded,"SF Pro Rounded","Nunito","Arial Rounded MT Bold","Avenir Next",system-ui,sans-serif;
@@ -28,7 +28,7 @@
   :root{
     --bg:#0d1424; --surface:#162038; --ink:#eaf0ff; --muted:#9aa9c9; --line:#26345a;
     --accent:#6aa6ff; --accent-ink:#06142e; --accent-soft:#1c2c50; --orange:#ffb13b;
-    --ok:#52bb8d; --ok-ink:#07251a; --no-soft:#3a2224; --no-ink:#f4a8a1;
+    --ok:#52bb8d; --ok-ink:#07251a; --no-soft:#3a2224; --no-ink:#f4a8a1; --maybe-soft:#3b2f17; --maybe-ink:#ffcf80;
     --rule:#ffb13b; --ruled:#252f48;
     --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 30px rgba(0,0,0,.35);
   }
@@ -102,6 +102,7 @@ h2{font:700 1.1875rem/1.2 var(--display)}
 .btn.quiet{background:transparent;border-color:var(--line)}
 .btn.ok{background:var(--ok);color:var(--ok-ink)}
 .btn.no{background:var(--no-soft);color:var(--no-ink)}
+.btn.maybe{background:var(--maybe-soft);color:var(--maybe-ink)}
 .btn.danger{background:transparent;border-color:var(--line);color:var(--no-ink)}
 .btn.big{min-height:68px;border-radius:18px;flex-direction:column;gap:1px;font-family:var(--display);font-weight:700;font-size:1.4rem}
 .btn.big small{font:400 .86rem var(--sans);opacity:.8}
@@ -209,8 +210,11 @@ h2{font:700 1.1875rem/1.2 var(--display)}
 .word{touch-action:pan-y;font:600 clamp(1.75rem,8.5vw,2.6rem)/1.2 var(--display);overflow-wrap:anywhere;max-height:100%;overflow-y:auto;background:var(--surface);padding:2px 10px;border-radius:6px}
 .word.long{font-size:clamp(1.3rem,6vw,1.8rem)}
 .hint{position:absolute;left:50%;transform:translateX(-50%);bottom:12px;white-space:nowrap;background:var(--surface);padding:2px 12px;border-radius:6px;color:var(--muted);font-size:.88rem}
-.actions{flex:none;display:flex;gap:12px;padding:6px 20px calc(16px + var(--sab))}
+.actions{flex:none;display:flex;gap:8px;padding:6px 20px calc(16px + var(--sab))}
 .actions .btn{min-height:60px;font-size:1.05rem;padding:0 8px;white-space:nowrap;flex:1}
+.actions.three .btn{font-size:.9rem;padding:0 4px;gap:4px;flex:1 1 0}
+.actions.three .btn.no,.actions.three .btn.ok{flex-grow:1.15}
+.actions.three .btn svg{width:16px;height:16px}
 
 .center{text-align:center}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:26px 0}
@@ -321,17 +325,20 @@ function newSession(lists, includeDone, now, pauseMin, onlyMarked) {
     if (n) used.push({ list: l, eff: e });
   });
   shuffle(queue);
-  return { queue, cards, info, lists: used, total: queue.length, answers: 0, wrong: 0, learned: new Set(), revealed: false, undo: null, finished: null };
+  return { queue, cards, info, lists: used, total: queue.length, answers: 0, wrong: 0, unsure: 0, learned: new Set(), revealed: false, undo: null, finished: null };
 }
 // Liefert true, wenn die letzte Karte beantwortet wurde
 function answer(s, knew) {
   if (!s.queue.length) return false;
   const id = s.queue[0], c = s.cards[id], eff = s.info[id].eff;
-  s.undo = { queue: s.queue.slice(), id, streak: c.streak, due: c.due, answers: s.answers, wrong: s.wrong, learned: new Set(s.learned) };
+  s.undo = { queue: s.queue.slice(), id, streak: c.streak, due: c.due, answers: s.answers, wrong: s.wrong, unsure: s.unsure || 0, learned: new Set(s.learned) };
   s.queue.shift();
   s.answers++;
   s.revealed = false;
-  if (knew) {
+  if (knew === 'unsure') {
+    s.unsure = (s.unsure || 0) + 1;
+    c.due = eff + 1;
+  } else if (knew) {
     c.streak++;
     if (c.streak >= GOAL) s.learned.add(id);
     else c.due = eff + GAPS[c.streak];
@@ -346,7 +353,7 @@ function undoAnswer(s) {
   if (!s.undo) return false;
   const u = s.undo, c = s.cards[u.id];
   s.queue = u.queue; c.streak = u.streak; c.due = u.due;
-  s.answers = u.answers; s.wrong = u.wrong; s.learned = u.learned;
+  s.answers = u.answers; s.wrong = u.wrong; s.unsure = u.unsure; s.learned = u.learned;
   s.undo = null; s.revealed = false;
   return true;
 }
@@ -492,7 +499,7 @@ function parseListImport(text) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '2.14';
+const VERSION = '2.15';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -541,11 +548,12 @@ const IC = {
   paste: '<rect x="6" y="5" width="12" height="16" rx="2"/><path d="M9 5V4h6v1M9 11h6M9 15h6"/>',
   swap: '<path d="M7 4v14M4 15l3 3 3-3M17 20V6M14 9l3-3 3 3"/>',
   pencil: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+  unsure: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.7a2.5 2.5 0 114 2c-1 .7-1.6 1.2-1.6 2.3M12 17.2v.01"/>',
   next: '<path d="M5 12h14M13 6l6 6-6 6"/>'
 };
 // Icon je Aktion (data-a); sonst nach Beschriftung
 const IC_ACT = { 'to-pick': 'play', 'quiz-list': 'play', 'start-quiz': 'play', 'reset-progress': 'reset', 'restore-list': 'restore',
-  'quiz-yes': 'check', 'quiz-no': 'x', 'quiz-flip': 'eye', 'quiz-done': 'check', 'quiz-exit': 'x', 'export-file': 'save', 'export-text': 'copy',
+  'quiz-yes': 'check', 'quiz-no': 'x', 'quiz-maybe': 'unsure', 'quiz-flip': 'eye', 'quiz-done': 'check', 'quiz-exit': 'x', 'export-file': 'save', 'export-text': 'copy',
   'import-file': 'imp', 'import-text': 'paste', 'clear-hfilter': 'x', 'rename-profile': 'pencil', 'quiz-undo': 'restore',
   'swap-card': 'swap', 'share-list': 'share', 'share-lists': 'share', 'do-share': 'share', 'do-share-sel': 'share' };
 // Setzt ein Icon vor Buttons und Links mit passender Beschriftung (Text bleibt unverändert)
@@ -806,7 +814,7 @@ function viewPick() {
 
 function actionsHtml(s) {
   return s.revealed
-    ? '<button class="btn no" data-a="quiz-no">Nicht gewusst</button><button class="btn ok" data-a="quiz-yes">Gewusst</button>'
+    ? '<button class="btn no" data-a="quiz-no">Nicht gewusst</button><button class="btn maybe" data-a="quiz-maybe">Unsicher</button><button class="btn ok" data-a="quiz-yes">Gewusst</button>'
     : '<button class="btn primary" data-a="quiz-flip">Antwort zeigen</button>';
 }
 function viewQuiz() {
@@ -824,18 +832,19 @@ function viewQuiz() {
     '<div class="face-body">' + w(c.de) + '<span class="hint">Tippen zum Umdrehen</span></div></div>' +
     '<div class="face back"><div class="face-head"><span>' + esc(lst.labelA) + '</span><span class="hd">' + markBtn(c) + dots(c) + '</span></div>' +
     '<div class="face-body">' + w(c.fl) + '</div></div>' +
-    '</div></div></main><footer class="actions" id="actions">' + actionsHtml(s) + '</footer></div>';
+    '</div></div></main><footer class="actions' + (s.revealed ? ' three' : '') + '" id="actions">' + actionsHtml(s) + '</footer></div>';
 }
 
 function viewResult() {
   const s = session, p = P();
-  const right = s.answers - s.wrong;
+  const right = s.answers - s.wrong - (s.unsure || 0);
   const q = s.answers ? Math.round(right / s.answers * 100) : 0;
   const fully = s.lists.filter(x => x.list.cards.length && x.list.cards.every(isDone)).length;
   const lines = [];
   if (s.learned.size) lines.push(nn(s.learned.size, 'Karte', 'Karten') + ' neu gelernt.');
   if (fully) lines.push(s.lists.length === 1 ? 'Die ganze Liste ist gelernt.' : nn(fully, 'Liste ist', 'Listen sind') + ' komplett gelernt.');
   if (s.wrong) lines.push('Nicht gewusste Karten kommen bald wieder dran.');
+  if (s.unsure) lines.push('Unsichere Karten kommen in der nächsten Runde wieder dran.');
   lines.push((s.lists.length === 1 ? 'Diese Liste ist in ' : 'Die Listen sind in ') + pauseText(p.pause) + ' wieder frei.');
   return '<div class="screen"><header class="bar"><span></span><span></span><span></span></header><main class="body center">' +
     '<div class="hero"><h1 class="display">Geschafft</h1><p class="sub">' + nn(s.total, 'Karte', 'Karten') + ' abgefragt.</p></div>' +
@@ -1210,7 +1219,7 @@ const actions = {
     const s = session; if (!s || s.revealed || route.name !== 'quiz') return;
     s.revealed = true;
     $('.flip').classList.add('on');
-    $('#actions').innerHTML = actionsHtml(s); decorate($('#actions'));
+    $('#actions').classList.add('three'); $('#actions').innerHTML = actionsHtml(s); decorate($('#actions'));
   },
   'quiz-mark'() {
     const s = session; if (!s || route.name !== 'quiz') return;
@@ -1219,6 +1228,7 @@ const actions = {
   },
   'quiz-yes'() { reply(true); },
   'quiz-no'() { reply(false); },
+  'quiz-maybe'() { reply('unsure'); },
   'quiz-undo'() {
     if (!session) return;
     if (route.name === 'result') unfinishSession(session);
