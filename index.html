@@ -44,6 +44,8 @@ button:disabled{opacity:.45;cursor:default}
 h1,h2,p,ul{margin:0}
 ul{padding:0;list-style:none}
 
+#syncind{position:fixed;left:6px;bottom:calc(6px + env(safe-area-inset-bottom,0px));z-index:50;width:28px;height:28px;border-radius:50%;background:var(--maybe-soft);color:var(--maybe-ink);display:flex;align-items:center;justify-content:center;pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+#syncind[hidden]{display:none}
 #app{position:fixed;inset:0;display:flex;justify-content:center}
 .screen{width:100%;max-width:520px;height:100%;display:flex;flex-direction:column;padding-top:calc(52px + var(--sat))}
 
@@ -234,6 +236,7 @@ h2{font:700 1.1875rem/1.2 var(--display)}
 </head>
 <body>
 <div id="app"></div>
+<div id="syncind" hidden role="img" aria-label="Offline: Änderungen werden nur auf diesem Gerät gespeichert" title="Offline"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M7.5 7.8A6 6 0 006 12a4 4 0 00.5 8H17M10.5 5.3A6 6 0 0118 11.5a3.6 3.6 0 012.4 5.2"/></svg></div>
 <input type="file" id="file" accept="application/json,.json" hidden>
 <noscript>Diese App braucht JavaScript.</noscript>
 <script>
@@ -402,6 +405,7 @@ function sanitizeList(l) {
     labelQ: clean(l.labelQ, 30) || dl.q,
     labelA: clean(l.labelA, 30) || dl.a,
     round: Math.max(0, parseInt(l.round, 10) || 0),
+    mod: Math.max(0, Number(l.mod) || 0),
     lastEnd: Math.min(Date.now(), Math.max(0, Number(l.lastEnd) || 0)),
     cards: (Array.isArray(l.cards) ? l.cards : []).map(c => {
       c = c || {};
@@ -443,15 +447,22 @@ function restoreList(p, id) {
 // Erstes Emoji (auch Flaggen, Familien, Hautfarben) aus einem Text, sonst ''
 const EMOJI_SEQ = /(?:[\u{1F1E6}-\u{1F1FF}]{2}|\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier})?(?:\u200D\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier})?)*)/u;
 function firstEmoji(str) { const m = String(str || '').match(EMOJI_SEQ); return m ? m[0] : ''; }
+// Drive-Brücke: nur Adressen von Google Apps Script (lokal zum Testen auch localhost)
+function cleanSyncUrl(u) {
+  u = String(u || '').trim();
+  return /^https:\/\/script\.google(usercontent)?\.com\/[^\s]+$/.test(u) || /^http:\/\/(localhost|127\.0\.0\.1):\d+\/[^\s]*$/.test(u) ? u : '';
+}
 function sanitizeProfile(p) {
   p = p || {};
+  const url = cleanSyncUrl(p.sync && p.sync.url);
   return {
     id: clean(p.id, 40) || uid(),
     name: clean(p.name, 40) || 'Profil',
     emoji: firstEmoji(clean(p.emoji, 40)),
     pause: PAUSES.includes(Number(p.pause)) ? Number(p.pause) : DEFAULT_PAUSE,
     lists: (Array.isArray(p.lists) ? p.lists : []).map(sanitizeList),
-    trash: (Array.isArray(p.trash) ? p.trash : []).map(sanitizeTrashList)
+    trash: (Array.isArray(p.trash) ? p.trash : []).map(sanitizeTrashList),
+    sync: url ? { url, folder: clean(p.sync.folder, 60) || clean(p.name, 40) || 'Profil' } : null
   };
 }
 // ---- Listen teilen und importieren ----
@@ -499,7 +510,7 @@ function parseListImport(text) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '2.15';
+const VERSION = '2.16';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -518,6 +529,7 @@ function loadDb() {
 }
 let warned = false;
 function save() {
+  stampLists();
   try { localStorage.setItem(KEY, JSON.stringify(db)); }
   catch (e) {
     if (!warned) { warned = true; toast('Speichern ist auf diesem Gerät gerade nicht möglich.'); }
@@ -891,6 +903,8 @@ function render() {
   lastKey = key;
   lastSig = lockSig();
   const b = $('.body'); if (b && sc) b.scrollTop = sc;
+  updateSyncIndicator();
+  if (route.name !== 'quiz') syncSoon();
 }
 // Pausen laufen ab, während die App offen ist: Anzeige auffrischen, aber nie beim Tippen
 function refreshLocks() {
@@ -902,6 +916,120 @@ function refreshLocks() {
 setInterval(refreshLocks, 15000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLocks(); });
 const go = (r) => { if (r.name === 'list' && route.name !== 'list') showAnswers = showDone = false; route = r; render(); };
+// ---------- Google-Drive-Abgleich ----------
+// Jede Liste liegt als eine JSON-Datei im Drive-Ordner des Profils (über die Apps-Script-Brücke).
+// Jede Liste trägt einen Änderungszeitpunkt (mod); die neuere Fassung gewinnt.
+const sync = { sigs: new Map(), dirty: new Map(), del: new Map(), status: new Map(), busy: new Set(), timer: null };
+const syncCfg = p => (p && p.sync && p.sync.url ? p.sync : null);
+const listSig = l => JSON.stringify([l.title, l.tags, l.labelQ, l.labelA, l.round, l.lastEnd, l.cards]);
+const setOf = (m, k) => { if (!m.has(k)) m.set(k, new Set()); return m.get(k); };
+function rebuildSigs() {
+  sync.sigs.clear();
+  db.profiles.forEach(p => p.lists.forEach(l => sync.sigs.set(l.id, { pid: p.id, sig: listSig(l) })));
+}
+// Wird bei jedem Speichern aufgerufen: erkennt geänderte Listen, setzt ihren Zeitstempel und merkt sie zum Hochladen vor
+function stampLists() {
+  const now = Date.now(), seen = new Set();
+  db.profiles.forEach(p => p.lists.forEach(l => {
+    seen.add(l.id);
+    const sig = listSig(l), old = sync.sigs.get(l.id);
+    if (!old || old.sig !== sig) {
+      l.mod = now;
+      sync.sigs.set(l.id, { pid: p.id, sig });
+      if (syncCfg(p)) setOf(sync.dirty, p.id).add(l.id);
+    }
+  }));
+  sync.sigs.forEach((v, id) => {
+    if (seen.has(id)) return;
+    sync.sigs.delete(id);
+    const p = db.profiles.find(x => x.id === v.pid);
+    if (p && syncCfg(p) && (p.trash || []).some(t => t.id === id)) { setOf(sync.del, p.id).add(id); (sync.dirty.get(p.id) || new Set()).delete(id); }
+  });
+}
+async function driveCall(p, action, data) {
+  const c = p.sync, ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 15000);
+  try {
+    let res;
+    if (action === 'read' || action === 'ping') {
+      res = await fetch(c.url + (c.url.includes('?') ? '&' : '?') + 'action=' + action + '&folder=' + encodeURIComponent(c.folder), { signal: ctl.signal, cache: 'no-store', redirect: 'follow' });
+    } else {
+      res = await fetch(c.url, { method: 'POST', signal: ctl.signal, redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(Object.assign({ action, folder: c.folder }, data)) });
+    }
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const j = await res.json();
+    if (!j || j.ok !== true) throw new Error((j && j.error) || 'Antwort ungültig');
+    return j;
+  } finally { clearTimeout(t); }
+}
+function setSyncStatus(p, ok, err) {
+  sync.status.set(p.id, ok ? 'ok' : 'offline');
+  sync.error = ok ? '' : (err && err.message) || 'keine Verbindung';
+  updateSyncIndicator();
+}
+function updateSyncIndicator() {
+  const p = P(), el = $('#syncind'); if (!el) return;
+  const off = !!syncCfg(p) && (sync.status.get(p.id) === 'offline' || !navigator.onLine);
+  el.hidden = !off;
+}
+function syncObj(l) {
+  return { app: 'vokabelkarten', version: 1, type: 'sync-list', mod: l.mod, list: { id: l.id, title: l.title, tags: l.tags, labelQ: l.labelQ, labelA: l.labelA, round: l.round, lastEnd: l.lastEnd,
+    cards: l.cards.map(c => ({ id: c.id, de: c.de, fl: c.fl, streak: c.streak, due: c.due, mark: !!c.mark })) } };
+}
+async function pushProfile(p) {
+  if (!syncCfg(p) || sync.busy.has(p.id)) return;
+  const dels = [...(sync.del.get(p.id) || [])], ids = [...(sync.dirty.get(p.id) || [])];
+  if (!dels.length && !ids.length) return;
+  sync.busy.add(p.id);
+  try {
+    for (const id of dels) { await driveCall(p, 'delete', { listId: id }); sync.del.get(p.id).delete(id); }
+    for (const id of ids) {
+      const l = p.lists.find(x => x.id === id);
+      if (!l) { sync.dirty.get(p.id).delete(id); continue; }
+      const mod = l.mod;
+      await driveCall(p, 'save', { listId: id, title: l.title, text: JSON.stringify(syncObj(l)) });
+      if (l.mod === mod) sync.dirty.get(p.id).delete(id);
+    }
+    setSyncStatus(p, true);
+  } catch (e) { setSyncStatus(p, false, e); }
+  finally { sync.busy.delete(p.id); }
+}
+// Liest den Drive-Ordner: neuere Listen übernehmen, fehlende oder neuere lokale Listen zum Hochladen vormerken
+async function pullProfile(p) {
+  if (!syncCfg(p) || session) return;
+  let j;
+  try { j = await driveCall(p, 'read'); } catch (e) { setSyncStatus(p, false, e); return; }
+  let changed = false;
+  const seen = new Set();
+  (j.files || []).forEach(f => {
+    let o; try { o = JSON.parse(f.text); } catch (e) { return; }
+    if (!o || o.app !== 'vokabelkarten' || !o.list) return;
+    const x = sanitizeList(o.list), rmod = Math.max(0, Number(o.mod) || 0);
+    if ((p.trash || []).some(t => t.id === x.id)) { setOf(sync.del, p.id).add(x.id); return; }
+    seen.add(x.id);
+    const loc = p.lists.find(l => l.id === x.id);
+    if (!loc) { x.mod = rmod; p.lists.push(x); sync.sigs.set(x.id, { pid: p.id, sig: listSig(x) }); changed = true; }
+    else if (rmod > (loc.mod || 0)) {
+      Object.assign(loc, x, { mod: rmod }); sync.sigs.set(loc.id, { pid: p.id, sig: listSig(loc) }); changed = true;
+    } else if (rmod < (loc.mod || 0)) setOf(sync.dirty, p.id).add(loc.id);
+  });
+  p.lists.forEach(l => { if (!seen.has(l.id)) { if (!l.mod) l.mod = Date.now(); setOf(sync.dirty, p.id).add(l.id); } });
+  setSyncStatus(p, true);
+  if (changed) { save(); if (!document.querySelector('.sheet-wrap') && !(document.activeElement && document.activeElement.matches && document.activeElement.matches('input,textarea'))) render(); }
+  await pushProfile(p);
+}
+function syncSoon() {
+  clearTimeout(sync.timer);
+  sync.timer = setTimeout(() => { if (route.name !== 'quiz') db.profiles.forEach(pushProfile); }, 700);
+}
+async function syncNow(p) { await pullProfile(p); await pushProfile(p); }
+window.addEventListener('online', () => { updateSyncIndicator(); const p = P(); if (syncCfg(p)) syncNow(p); });
+window.addEventListener('offline', updateSyncIndicator);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) db.profiles.forEach(pushProfile);
+  else if (['profiles', 'home'].includes(route.name) && !$('.sheet-wrap')) { const p = P(); if (syncCfg(p)) pullProfile(p); }
+});
+
 
 // ---------- Sheets ----------
 function fitSheet() {
@@ -975,6 +1103,13 @@ function sheetPause() {
     '<p class="note" style="margin:0 0 8px">So lange ist eine Liste nach einer Abfrage gesperrt, bevor sie wieder abgefragt werden kann. Gilt für alle Listen von ' + esc(p.name) + '. Wird sofort übernommen.</p>' +
     '<div class="chips" id="pausechips">' + PAUSES.map(m =>
       '<button type="button" class="chip" data-a="set-pause" data-v="' + m + '" aria-pressed="' + (m === p.pause) + '">' + pauseShort(m) + '</button>').join('') + '</div>' +
+    '<p class="sheet-label" style="margin-top:14px">Google Drive</p>' +
+    '<p class="note" style="margin:0 0 8px">Optional: Adresse der Voka-Brücke (Web-App-URL). Jede Liste wird dann als JSON-Datei im Ordner unten gespeichert. Leer lassen, wenn du kein Drive nutzt.</p>' +
+    '<label class="field"><span>Web-App-URL</span><input name="syncurl" type="url" inputmode="url" value="' + esc(p.sync ? p.sync.url : '') + '" placeholder="https://script.google.com/macros/s/…/exec" autocapitalize="none" autocorrect="off" spellcheck="false"></label>' +
+    '<label class="field"><span>Ordnername</span><input name="syncfolder" value="' + esc(p.sync ? p.sync.folder : '') + '" maxlength="60" placeholder="' + esc(p.name) + '" autocapitalize="none" autocorrect="off" spellcheck="false"></label>' +
+    '<p class="err" id="syncerr" role="alert" hidden></p>' +
+    '<button type="button" class="btn quiet small" data-a="sync-now">Jetzt abgleichen</button>' +
+    '<p class="note" id="syncstat" style="margin:6px 0 0">' + (syncCfg(p) ? (sync.status.get(p.id) === 'ok' ? 'Verbunden.' : sync.status.get(p.id) === 'offline' ? 'Keine Verbindung: Änderungen bleiben auf diesem Gerät.' : '') : '') + '</p>' +
     '<div class="sheet-actions" style="margin-top:18px"><button type="button" class="btn quiet" data-a="sheet-close">Schließen</button>' +
     '<button class="btn primary" type="submit">Speichern</button></div>' +
     '<button type="button" class="btn danger" style="margin-top:12px" data-a="delete-profile" data-id="' + esc(p.id) + '">Profil löschen</button></form>');
@@ -1106,7 +1241,7 @@ const actions = {
   'sheet-close'() { closeSheet(); },
   'confirm-ok'() { const f = pendingConfirm; pendingConfirm = null; if (f) f(); },
   'to-profiles'() { go({ name: 'profiles' }); },
-  'pick-profile'(el) { db.lastProfile = el.dataset.id; homeFilter = []; save(); go({ name: 'home' }); },
+  'pick-profile'(el) { db.lastProfile = el.dataset.id; homeFilter = []; save(); go({ name: 'home' }); const p = P(); if (syncCfg(p)) syncNow(p); },
   'edit-profile'() { sheetPause(); },
   'pick-emoji'(el) {
     const f = el.closest('form'), inp = f.emoji, v = el.dataset.v;
@@ -1117,6 +1252,19 @@ const actions = {
     const p = P(); p.pause = Number(el.dataset.v); save();
     document.querySelectorAll('#pausechips .chip').forEach(c => c.setAttribute('aria-pressed', String(Number(c.dataset.v) === p.pause)));
     render();
+  },
+  async 'sync-now'() {
+    const f = $('.sheet form[data-form=profile]'), q = P(); if (!f || !q) return;
+    const er = $('#syncerr'); if (er) er.hidden = true;
+    if (!applySync(q, f)) return;
+    const st = $('#syncstat');
+    if (!q.sync) { save(); if (st) st.textContent = 'Drive ist ausgeschaltet.'; return; }
+    save();
+    if (st) st.textContent = 'Gleiche ab …';
+    await pullProfile(q); await pushProfile(q);
+    const ok = sync.status.get(q.id) === 'ok';
+    const s2 = $('#syncstat');
+    if (s2) s2.textContent = ok ? 'Verbunden. Alles abgeglichen.' : 'Keine Verbindung (' + sync.error + '). Änderungen bleiben auf diesem Gerät.';
   },
   'toggle-hfilter'(el) {
     const k = el.dataset.v, i = homeFilter.indexOf(k);
@@ -1265,16 +1413,34 @@ function reply(knew) {
   go({ name: last ? 'result' : 'quiz' });
 }
 
+// Liest die Drive-Felder des Profil-Dialogs; false bei ungültiger Adresse (mit Meldung)
+function applySync(q, f) {
+  const raw = f.syncurl.value.trim();
+  if (!raw) { q.sync = null; sync.status.delete(q.id); return true; }
+  const url = cleanSyncUrl(raw);
+  if (!url) {
+    const er = $('#syncerr'); er.textContent = 'Das ist keine Adresse einer Google-Apps-Script-Web-App (sie beginnt mit https://script.google.com/ und endet meist auf /exec).'; er.hidden = false; f.syncurl.focus(); return false;
+  }
+  const folder = clean(f.syncfolder.value, 60) || q.name;
+  const changed = !q.sync || q.sync.url !== url || q.sync.folder !== folder;
+  q.sync = { url, folder };
+  if (changed) sync.status.delete(q.id);
+  return true;
+}
 const forms = {
   profile(f) {
     const name = clean(f.name.value, 40); if (!name) { f.name.focus(); return; }
     const id = f.dataset.id, emoji = f.emoji ? firstEmoji(f.emoji.value) : null;
-    if (id) { const q = db.profiles.find(p => p.id === id); q.name = name; if (emoji !== null) q.emoji = emoji; }
+    if (id) {
+      const q = db.profiles.find(p => p.id === id); q.name = name; if (emoji !== null) q.emoji = emoji;
+      if (f.syncurl && !applySync(q, f)) return;
+    }
     else {
       const p = { id: uid(), name, emoji: emoji || '', pause: DEFAULT_PAUSE, lists: [], trash: [] }; db.profiles.push(p);
       if (route.name === 'profiles') { db.lastProfile = p.id; homeFilter = []; route = { name: 'home' }; }
     }
     save(); closeSheet(); render();
+    if (id && syncCfg(P())) syncNow(P());
   },
   list(f) {
     const title = clean(f.title.value, 80); if (!title) { f.title.focus(); return; }
@@ -1374,7 +1540,9 @@ $('#file').addEventListener('change', e => {
   r.readAsText(f);
 });
 
+rebuildSigs();
 render();
+{ const p0 = P(); if (syncCfg(p0)) syncNow(p0); }
 // ---------- Updates ----------
 // Neu laden, sobald nichts Wichtiges offen ist (nie mitten in der Abfrage, bei offenem Dialog oder beim Tippen)
 let reloading = false;
