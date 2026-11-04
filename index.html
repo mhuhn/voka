@@ -72,6 +72,13 @@ h2{font:700 1.1875rem/1.2 var(--display)}
 .trow{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:10px}
 .trow .row-title{display:block}
 .trash-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.adv{margin:0 0 14px}
+.adv summary{cursor:pointer;color:var(--muted);font-size:.92rem;padding:6px 0;list-style:none}
+.adv summary::-webkit-details-marker{display:none}
+.adv summary::before{content:"▸ "}
+.adv[open] summary::before{content:"▾ "}
+.advgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.adv .note{margin-top:2px}
 .sheet-label{font-weight:600;margin:6px 0 4px}
 .selrows{display:grid;gap:8px;margin:2px 0 12px;max-height:38vh;overflow-y:auto}
 .selrow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:11px 14px;min-height:52px}
@@ -469,7 +476,7 @@ function parseListImport(text) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '2.5';
+const VERSION = '2.6';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -662,6 +669,17 @@ function viewTrash() {
     '</main></div>';
 }
 
+// Selten gebraucht: Lernstand einer Karte von Hand setzen (eingeklappt, damit die schnelle Eingabe frei bleibt)
+function advFields(c, l) {
+  return '<details class="adv"><summary>Erweitert: Streak und Due</summary>' +
+    '<div class="advgrid"><label class="field"><span>Streak (0 bis 3)</span><input name="streak" type="number" inputmode="numeric" min="0" max="3" step="1" value="' + c.streak + '"></label>' +
+    '<label class="field"><span>Due (Runde)</span><input name="due" type="number" inputmode="numeric" min="0" step="1" value="' + c.due + '"></label></div>' +
+    '<p class="note">Streak: wie oft die Karte in Folge gewusst wurde, 3 gilt als gelernt. Due: Runde, in der die Karte wieder abgefragt wird. Die Liste ist gerade in Runde ' + effRound(l) + '.</p></details>';
+}
+function readAdv(f) {
+  const n = (el, max) => { const v = parseInt(el && el.value, 10); return Number.isFinite(v) ? Math.max(0, Math.min(max, v)) : 0; };
+  return { streak: n(f.streak, GOAL), due: n(f.due, 1e6) };
+}
 function viewList() {
   const l = L(), p = P(), now = Date.now();
   const s = countCards([l]);
@@ -687,10 +705,11 @@ function viewList() {
     '<div class="listtools"><button class="btn quiet small" data-a="share-list"' + (s.total ? '' : ' disabled') + '>Teilen</button>' +
     '<button class="btn quiet small" data-a="reset-progress"' + (l.round || l.lastEnd || l.cards.some(c => c.streak || c.due) ? '' : ' disabled') + '>Zurücksetzen</button></div>' +
     '<div class="sec-head"><h2>Neue Karte</h2></div>' +
-    '<form class="addcard" data-form="add-card" autocomplete="off">' +
+    '<form class="addcard" data-form="add-card" autocomplete="off" novalidate>' +
     '<label class="field"><span>' + esc(l.labelQ) + '</span><input name="de" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next"></label>' +
     '<p class="err" id="adderr" role="alert" hidden></p>' +
     '<label class="field"><span>' + esc(l.labelA) + '</span><input name="fl" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done"></label>' +
+    advFields({ streak: 0, due: 0 }, l) +
     '<button class="btn primary" type="submit">Karte hinzufügen</button></form>' +
     '<div class="sec-head"><h2>Karten (' + s.total + ')</h2>' + (s.total ? '<span class="switch">' + esc(l.labelA) + '<button type="button" role="switch" data-a="toggle-answers" aria-pressed="' + showAnswers + '" aria-label="' + esc(l.labelA) + ' anzeigen"></button></span>' : '') + '</div>' +
     (s.total ? '<p class="note" style="margin:-2px 0 10px">Die Zahl zeigt, in der wievielten Runde die Karte wieder abgefragt wird.</p>' : '') +
@@ -859,7 +878,7 @@ function sheetProfile(id) {
   const p = id && db.profiles.find(x => x.id === id);
   openSheet('<h2 class="sheet-title">' + (p ? 'Profil umbenennen' : 'Neues Profil') + '</h2>' +
     '<form data-form="profile" data-id="' + esc(id || '') + '" autocomplete="off"><label class="field"><span>Name</span>' +
-    '<input name="name" value="' + esc(p ? p.name : '') + '" maxlength="40" autocapitalize="words" enterkeyhint="next"></label>' +
+    '<input name="name" value="' + esc(p ? p.name : '') + '" maxlength="40" placeholder="z. B. Mia" autocapitalize="words" enterkeyhint="next"></label>' +
     emojiField(p ? p.emoji : '') +
     '<div class="sheet-actions" style="margin-top:14px"><button type="button" class="btn quiet" data-a="sheet-close">Abbrechen</button>' +
     '<button class="btn primary" type="submit">' + (p ? 'Speichern' : 'Anlegen') + '</button></div></form>',
@@ -899,11 +918,12 @@ function sheetCard(id) {
   const c = L().cards.find(x => x.id === id);
   if (!c) return;
   openSheet('<h2 class="sheet-title">Karte bearbeiten</h2>' +
-    '<form data-form="card" data-id="' + esc(id) + '" autocomplete="off">' +
+    '<form data-form="card" data-id="' + esc(id) + '" autocomplete="off" novalidate>' +
     '<label class="field"><span>' + esc(L().labelQ) + '</span><input name="de" value="' + esc(c.de) + '" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false"></label>' +
     '<p class="err" id="editerr" role="alert" hidden></p>' +
     '<label class="field"><span>' + esc(L().labelA) + '</span><input name="fl" value="' + esc(c.fl) + '" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false"></label>' +
-    '<button type="button" class="btn quiet small" data-a="swap-card" style="margin:-2px 0 14px">⇅ Frage und Antwort tauschen</button>' +
+    '<button type="button" class="btn quiet small" data-a="swap-card" style="margin:-2px 0 12px">⇅ Frage und Antwort tauschen</button>' +
+    advFields(c, L()) +
     '<div class="sheet-actions"><button type="button" class="btn danger" data-a="del-card" data-id="' + esc(id) + '">Löschen</button>' +
     '<button class="btn primary" type="submit">Speichern</button></div></form>');
 }
@@ -1211,6 +1231,7 @@ const forms = {
       }
     }
     c.de = de; c.fl = fl;
+    const a = readAdv(f); c.streak = a.streak; c.due = a.due;
     save(); closeSheet(); render();
   },
   'add-card'(f) {
@@ -1222,7 +1243,8 @@ const forms = {
       er.textContent = '„' + dup.de + '“ gibt es in dieser Liste schon (' + dup.fl + '). Jeder Begriff darf nur einmal vorkommen.';
       er.hidden = false; f.de.focus(); return;
     }
-    L().cards.push({ id: uid(), de, fl, streak: 0, due: 0 });
+    const a = readAdv(f);
+    L().cards.push({ id: uid(), de, fl, streak: a.streak, due: a.due });
     save(); render();
     const inp = $('input[name=de]'); if (inp) inp.focus();
   },
