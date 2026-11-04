@@ -150,6 +150,12 @@ h2{font:700 1.1875rem/1.2 var(--display)}
 .cardrow .row-title{font-weight:500;font-size:1.06rem}
 .cardrow .row-meta{margin-top:1px;font-size:.95rem}
 .dots{display:inline-flex;gap:5px;flex:none}
+.hd{display:inline-flex;align-items:center;gap:12px}
+.markbtn{background:none;border:0;padding:6px;margin:-6px;color:var(--muted);display:inline-flex;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.markbtn svg{width:26px;height:26px}
+.markbtn[aria-pressed=true]{color:var(--orange)}
+.markbtn[aria-pressed=true] svg{fill:var(--orange)}
+.rowstar{width:14px;height:14px;vertical-align:-2px;margin-left:5px;color:var(--orange);fill:var(--orange)}
 .cardrow .side{display:flex;flex-direction:column;align-items:flex-end;gap:7px;flex:none}
 .rounds{min-width:26px;text-align:center;font:600 .78rem/1 var(--sans,system-ui);color:var(--muted);border:1px solid var(--line);border-radius:9px;padding:3px 6px;background:var(--surface)}
 .rounds.done{color:var(--ok);border-color:var(--ok)}
@@ -292,19 +298,19 @@ function effRound(l) {
   if (!open.length) return l.round;
   return Math.max(l.round, Math.min(...open.map(c => c.due)));
 }
-function pendingCount(l) {
+function pendingCount(l, onlyMarked) {
   const e = effRound(l);
-  return openCardsOf(l).filter(c => c.due <= e).length;
+  return openCardsOf(l).filter(c => c.due <= e && (!onlyMarked || c.mark)).length;
 }
-function newSession(lists, includeDone, now, pauseMin) {
+function newSession(lists, includeDone, now, pauseMin, onlyMarked) {
   const info = {}, queue = [], used = [], cards = {};
   lists.forEach(l => {
     if (lockLeft(l, now, pauseMin) > 0) return;
-    if (includeDone) l.cards.forEach(c => { if (isDone(c)) { c.streak = 0; c.due = 0; } });
+    if (includeDone) l.cards.forEach(c => { if (isDone(c) && (!onlyMarked || c.mark)) { c.streak = 0; c.due = 0; } });
     const e = effRound(l);
     let n = 0;
     l.cards.forEach(c => {
-      if (!isDone(c) && c.due <= e) { info[c.id] = { list: l, eff: e }; cards[c.id] = c; queue.push(c.id); n++; }
+      if (!isDone(c) && c.due <= e && (!onlyMarked || c.mark)) { info[c.id] = { list: l, eff: e }; cards[c.id] = c; queue.push(c.id); n++; }
     });
     if (n) used.push({ list: l, eff: e });
   });
@@ -390,7 +396,8 @@ function sanitizeList(l) {
         id: clean(c.id, 40) || uid(),
         de: clean(c.de, 200), fl: clean(c.fl, 200),
         streak: Math.max(0, Math.min(GOAL, parseInt(c.streak, 10) || 0)),
-        due: Math.max(0, parseInt(c.due, 10) || 0)
+        due: Math.max(0, parseInt(c.due, 10) || 0),
+        mark: !!c.mark
       };
     }).filter(c => c.de || c.fl)
   };
@@ -444,7 +451,7 @@ function uniqueTitle(lists, title) {
 function exportListObj(l, withProgress) {
   const list = { title: l.title, tags: l.tags.slice(), labelQ: l.labelQ, labelA: l.labelA };
   if (withProgress) list.round = l.round;
-  list.cards = l.cards.map(c => withProgress ? { de: c.de, fl: c.fl, streak: c.streak, due: c.due } : { de: c.de, fl: c.fl });
+  list.cards = l.cards.map(c => withProgress ? Object.assign({ de: c.de, fl: c.fl, streak: c.streak, due: c.due }, c.mark ? { mark: true } : {}) : { de: c.de, fl: c.fl });
   return { app: 'vokabelkarten', version: 1, type: 'list', exported: new Date().toISOString(), withProgress: !!withProgress, list };
 }
 // Mehrere Listen in einem Text (ohne Profil). Eine einzelne Liste behält das Einzel-Format.
@@ -479,7 +486,7 @@ function parseListImport(text) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '2.8';
+const VERSION = '2.9';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -510,6 +517,7 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const nn = (k, one, many) => k + ' ' + (k === 1 ? one : many);
 const svg = d => '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+const STAR = '<path d="M12 3.5l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6-4.5-4.2 6.1-.8z"/>';
 const IC = {
   plus: '<path d="M12 5v14M5 12h14"/>',
   del: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/><path d="M10 11l4 5M14 11l-4 5"/>',
@@ -580,6 +588,7 @@ function toast(msg) {
 
 const P = () => db.profiles.find(p => p.id === db.lastProfile);
 const L = () => { const p = P(); return p && route.id ? p.lists.find(l => l.id === route.id) : null; };
+const markBtn = c => '<button type="button" class="markbtn" data-a="quiz-mark" aria-pressed="' + !!c.mark + '" aria-label="Karte markieren">' + svg(STAR) + '</button>';
 const dots = c => '<span class="dots" role="img" aria-label="' + c.streak + ' von ' + GOAL + ' in Folge gewusst">' +
   [0, 1, 2].map(i => '<i class="' + (i < c.streak ? 'on' : '') + '"></i>').join('') + '</span>';
 const FLAGS = Object.fromEntries(Object.entries(LANGS).map(([k, v]) => [k, v[0]]));
@@ -618,7 +627,7 @@ function backupNote() {
 // ---------- Ansichten ----------
 let route = { name: 'profiles' };
 let session = null;
-let pick = { tags: [], includeDone: false };
+let pick = { tags: [], includeDone: false, onlyMarked: false };
 let homeFilter = [];   // Tag-Filter der Listenübersicht (nur im Speicher, gilt für das aktuelle Profil)
 if (P()) route = { name: 'home' };
 
@@ -702,8 +711,9 @@ function viewTrash() {
 }
 
 // Selten gebraucht: Lernstand einer Karte von Hand setzen (eingeklappt, damit die schnelle Eingabe frei bleibt)
-function advFields(c, l) {
-  return '<details class="adv"><summary>Erweitert: Treffer und Runde</summary>' +
+let advMemory = null;
+function advFields(c, l, open) {
+  return '<details class="adv"' + (open ? ' open' : '') + '><summary>Erweitert: Treffer und Runde</summary>' +
     '<div class="advgrid"><label class="field"><span>Treffer (0 bis 3)</span><input name="streak" type="number" inputmode="numeric" min="0" max="3" step="1" value="' + c.streak + '"></label>' +
     '<label class="field"><span>Runde</span><input name="due" type="number" inputmode="numeric" min="0" step="1" value="' + c.due + '"></label></div>' +
     '<p class="note">Treffer: wie oft die Karte in Folge gewusst wurde, 3 gilt als gelernt. Runde: Runde, in der die Karte wieder abgefragt wird. Die Liste ist gerade in Runde ' + effRound(l) + '.</p></details>';
@@ -721,7 +731,7 @@ function viewList() {
   if (s.total) note = allDone ? 'Alle Karten sind gelernt.' : nn(pendingCount(l), 'Karte', 'Karten') + (left ? ' in ' + lockText(left) : ' bereit');
   const cards = l.cards.map(c =>
     '<li><button class="row lv' + Math.min(GOAL, c.streak) + '" data-a="edit-card" data-id="' + esc(c.id) + '"><span class="cardrow"><span class="row-text">' +
-    '<span class="row-title" style="display:block">' + esc(c.de) + '</span>' +
+    '<span class="row-title" style="display:block">' + esc(c.de) + (c.mark ? svg(STAR).replace('<svg ', '<svg class="rowstar" ') : '') + '</span>' +
     (showAnswers ? '<span class="row-meta" style="display:block">' + esc(c.fl) + '</span>' : '') + '</span>' +
     '<span class="side">' + roundsBadge(c, l) + dots(c) + '</span></span></button></li>').join('');
   return '<div class="screen"><header class="bar"><button class="icon-btn" data-a="to-home" aria-label="Zurück zu den Listen">' + I.back + '</button>' +
@@ -741,7 +751,7 @@ function viewList() {
     '<label class="field"><span>' + esc(l.labelQ) + '</span><input name="de" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next"></label>' +
     '<p class="err" id="adderr" role="alert" hidden></p>' +
     '<label class="field"><span>' + esc(l.labelA) + '</span><input name="fl" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done"></label>' +
-    advFields({ streak: 0, due: 0 }, l) +
+    advFields(advMemory || { streak: 0, due: 0 }, l, !!advMemory) +
     '<button class="btn primary" type="submit">Karte hinzufügen</button></form>' +
     '<div class="sec-head"><h2>Karten (' + s.total + ')</h2>' + (s.total ? '<span class="switch">' + esc(l.labelA) + '<button type="button" role="switch" data-a="toggle-answers" aria-pressed="' + showAnswers + '" aria-label="' + esc(l.labelA) + ' anzeigen"></button></span>' : '') + '</div>' +
     (s.total ? '<p class="note" style="margin:-2px 0 10px">Die Zahl zeigt, in der wievielten Runde die Karte wieder abgefragt wird.</p>' : '') +
@@ -756,7 +766,9 @@ function viewPick() {
   const tags = tagList(p);
   const lists = pickLists();
   const free = lists.filter(l => lockLeft(l, now, p.pause) === 0);
-  const n = free.reduce((k, l) => k + (pick.includeDone ? l.cards.length : pendingCount(l)), 0);
+  const om = pick.onlyMarked;
+  const n = free.reduce((k, l) => k + (pick.includeDone ? l.cards.filter(c => !om || c.mark).length : pendingCount(l, om)), 0);
+  const marked = lists.reduce((k, l) => k + l.cards.filter(c => c.mark).length, 0);
   let head;
   if (!lists.length) head = 'Keine passende Liste';
   else if (!free.length) head = 'Alle passenden Listen machen Pause';
@@ -767,7 +779,7 @@ function viewPick() {
   }).join('');
   const match = '<strong>' + head + '</strong>' + (lists.length ? '<ul>' + items + '</ul>' : '<ul><li>Keine Liste hat alle gewählten Tags.</li></ul>');
   let label = 'Start';
-  if (!n && lists.length) label = free.length ? 'Alles gelernt' : 'Pause';
+  if (!n && lists.length) label = free.length ? (om ? 'Keine markierten Karten bereit' : 'Alles gelernt') : 'Pause';
   return '<div class="screen"><header class="bar"><button class="icon-btn" data-a="to-home" aria-label="Zurück">' + I.back + '</button>' +
     '<h1 class="bar-title">Abfragen</h1><span></span></header>' +
     '<main class="body"><p class="lead">' + (tags.length ?
@@ -776,6 +788,7 @@ function viewPick() {
     (tags.length ? '<div class="chips">' + tags.map(t => '<button class="chip' + (t.flag ? ' flag' : '') + '" data-a="toggle-tag" data-v="' + esc(t.key) + '"' + chipAttr(t) + ' aria-pressed="' + (pick.tags.includes(t.key)) + '">' + chipInner(t) + '</button>').join('') + '</div>' : '') +
     '<div class="match">' + match + '</div>' +
     '<label class="switch"><input type="checkbox" data-a="toggle-incl"' + (pick.includeDone ? ' checked' : '') + '><span>Auch gelernte Karten noch einmal abfragen</span></label>' +
+    '<label class="switch"><input type="checkbox" data-a="toggle-marked"' + (om ? ' checked' : '') + '><span>Nur markierte Karten (' + marked + ')</span></label>' +
     '<p class="note" style="margin-top:12px">Jede Karte wird pro Abfrage einmal gefragt. Eine Liste ist ' + pauseText(p.pause) + ' nach ihrer letzten Abfrage wieder frei.</p>' +
     '</main><footer class="foot"><button class="btn primary" data-a="start-quiz"' + (n ? '' : ' disabled') + '>' + label + '</button></footer></div>';
 }
@@ -796,9 +809,9 @@ function viewQuiz() {
     '<button class="icon-btn" data-a="quiz-undo" aria-label="Letzte Antwort zurücknehmen"' + (s.undo ? '' : ' disabled') + '>' + I.undo + '</button></header>' +
     '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="' + s.total + '" aria-valuenow="' + asked + '"><i style="width:' + pct + '%"></i></div>' +
     '<main class="stage"><div class="flip' + (s.revealed ? ' on' : '') + '" data-a="quiz-flip" role="button" tabindex="0" aria-label="Karte umdrehen"><div class="flip-in">' +
-    '<div class="face front"><div class="face-head"><span>' + esc(lst.labelQ) + '</span>' + dots(c) + '</div>' +
+    '<div class="face front"><div class="face-head"><span>' + esc(lst.labelQ) + '</span><span class="hd">' + markBtn(c) + dots(c) + '</span></div>' +
     '<div class="face-body">' + w(c.de) + '<span class="hint">Tippen zum Umdrehen</span></div></div>' +
-    '<div class="face back"><div class="face-head"><span>' + esc(lst.labelA) + '</span>' + dots(c) + '</div>' +
+    '<div class="face back"><div class="face-head"><span>' + esc(lst.labelA) + '</span><span class="hd">' + markBtn(c) + dots(c) + '</span></div>' +
     '<div class="face-body">' + w(c.fl) + '</div></div>' +
     '</div></div></main><footer class="actions" id="actions">' + actionsHtml(s) + '</footer></div>';
 }
@@ -981,9 +994,8 @@ async function exportFile() {
 }
 async function shareLists(lists, withProgress) {
   const json = JSON.stringify(exportListsObj(lists, withProgress));
-  const title = lists.length === 1 ? lists[0].title : nn(lists.length, 'Liste', 'Listen');
   if (navigator.share) {
-    try { await navigator.share({ title, text: json }); return; }
+    try { await navigator.share({ text: json }); return; }
     catch (e) { if (e && e.name === 'AbortError') return; }
   }
   try { await navigator.clipboard.writeText(json); toast('Kopiert. Füge den Text z. B. in eine Nachricht ein.'); return; } catch (e) {}
@@ -1106,7 +1118,7 @@ const actions = {
   },
   'to-home'() { go({ name: 'home' }); },
   'new-list'() { sheetList(); },
-  'open-list'(el) { showAnswers = false; go({ name: 'list', id: el.dataset.id }); },
+  'open-list'(el) { showAnswers = false; advMemory = null; go({ name: 'list', id: el.dataset.id }); },
   'toggle-answers'() { showAnswers = !showAnswers; render(); },
   'edit-list'() { sheetList(route.id); },
   'add-tag-text'(el) {
@@ -1169,14 +1181,15 @@ const actions = {
     const l = L(); l.cards = l.cards.filter(c => c.id !== el.dataset.id);
     save(); closeSheet(); render();
   },
-  'to-pick'() { pick = { tags: [], includeDone: false }; go({ name: 'pick' }); },
+  'to-pick'() { pick = { tags: [], includeDone: false, onlyMarked: false }; go({ name: 'pick' }); },
   'toggle-tag'(el) {
     const k = el.dataset.v, i = pick.tags.indexOf(k);
     if (i >= 0) pick.tags.splice(i, 1); else pick.tags.push(k);
     render();
   },
   'toggle-incl'(el) { pick.includeDone = el.checked; render(); },
-  'start-quiz'() { startQuiz(pickLists(), pick.includeDone, { name: 'home' }); },
+  'toggle-marked'(el) { pick.onlyMarked = el.checked; render(); },
+  'start-quiz'() { startQuiz(pickLists(), pick.includeDone, { name: 'home' }, pick.onlyMarked); },
   'quiz-list'() {
     const l = L();
     startQuiz([l], countCards([l]).open === 0, { name: 'list', id: l.id });
@@ -1186,6 +1199,11 @@ const actions = {
     s.revealed = true;
     $('.flip').classList.add('on');
     $('#actions').innerHTML = actionsHtml(s); decorate($('#actions'));
+  },
+  'quiz-mark'() {
+    const s = session; if (!s || route.name !== 'quiz') return;
+    const c = s.cards[s.queue[0]]; c.mark = !c.mark; save();
+    document.querySelectorAll('.markbtn').forEach(b => b.setAttribute('aria-pressed', String(!!c.mark)));
   },
   'quiz-yes'() { reply(true); },
   'quiz-no'() { reply(false); },
@@ -1211,8 +1229,8 @@ const actions = {
   }
 };
 
-function startQuiz(lists, includeDone, origin) {
-  const s = newSession(lists, includeDone, Date.now(), P().pause);
+function startQuiz(lists, includeDone, origin, onlyMarked) {
+  const s = newSession(lists, includeDone, Date.now(), P().pause, onlyMarked);
   if (!s.queue.length) { toast('Gerade sind keine Karten bereit.'); render(); return; }
   s.origin = origin; session = s; save();
   go({ name: 'quiz' });
@@ -1277,6 +1295,7 @@ const forms = {
     }
     const a = readAdv(f);
     L().cards.push({ id: uid(), de, fl, streak: a.streak, due: a.due });
+    advMemory = (a.streak || a.due) ? a : null;
     save(); render();
     const inp = $('input[name=de]'); if (inp) inp.focus();
   },
