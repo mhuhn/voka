@@ -488,7 +488,7 @@ function parseListImport(text) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '2.12';
+const VERSION = '2.13';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -603,7 +603,7 @@ const flagsOf = l => {
   l.tags.forEach(t => { if (FLAGS[t] && !f.includes(FLAGS[t])) f.push(FLAGS[t]); });
   return f.length ? '<i class="flags" aria-hidden="true">' + f.join('') + '</i>' : '';
 };
-let showAnswers = false;
+let showAnswers = false, showDone = false;
 // Tags für die Filter: Sprach-Tags (mit Flagge) zuerst, danach die übrigen, jeweils alphabetisch
 const tagList = p => { const a = tagsOfProfile(p).map(t => Object.assign({ flag: FLAGS[t.key] || '' }, t)); return a.filter(t => t.flag).concat(a.filter(t => !t.flag)); };
 const shownTags = l => l.tags.filter(t => t !== iconTag(l) && !FLAGS[t]);
@@ -733,7 +733,8 @@ function viewList() {
   const allDone = s.total > 0 && s.open === 0;
   let note = '';
   if (s.total) note = allDone ? 'Alle Karten sind gelernt.' : nn(pendingCount(l), 'Karte', 'Karten') + (left ? ' in ' + lockText(left) : ' bereit');
-  const cards = l.cards.map(c =>
+  const doneN = l.cards.filter(isDone).length;
+  const cards = l.cards.filter(c => showDone || !isDone(c)).map(c =>
     '<li><button class="row lv' + Math.min(GOAL, c.streak) + '" data-a="edit-card" data-id="' + esc(c.id) + '"><span class="cardrow"><span class="row-text">' +
     '<span class="row-title" style="display:block">' + esc(c.de) + (c.mark ? svg(STAR).replace('<svg ', '<svg class="rowstar" ') : '') + '</span>' +
     (showAnswers ? '<span class="row-meta" style="display:block">' + esc(c.fl) + '</span>' : '') + '</span>' +
@@ -759,7 +760,8 @@ function viewList() {
     '<button class="btn primary" type="submit">Karte hinzufügen</button></form>' +
     '<div class="sec-head"><h2>Karten (' + s.total + ')</h2>' + (s.total ? '<span class="switch">' + esc(l.labelA) + '<button type="button" role="switch" data-a="toggle-answers" aria-pressed="' + showAnswers + '" aria-label="' + esc(l.labelA) + ' anzeigen"></button></span>' : '') + '</div>' +
     (s.total ? '<p class="note" style="margin:-2px 0 10px">Die Zahl zeigt, in der wievielten Runde die Karte wieder abgefragt wird.</p>' : '') +
-    (cards ? '<ul class="rows">' + cards + '</ul>' : '<div class="empty">Hier erscheinen deine Karten.</div>') +
+    (doneN ? '<div style="display:flex;justify-content:flex-end;margin:-4px 0 10px"><span class="switch">Gelernte Karten (' + doneN + ')<button type="button" role="switch" data-a="toggle-done" aria-pressed="' + showDone + '" aria-label="Gelernte Karten anzeigen"></button></span></div>' : '') +
+    (cards ? '<ul class="rows">' + cards + '</ul>' : '<div class="empty">' + (s.total ? 'Alle Karten sind gelernt und verborgen.' : 'Hier erscheinen deine Karten.') + '</div>') +
     '<div style="margin-top:30px"><button class="btn danger" data-a="del-list">Liste löschen</button></div>' +
     '</main></div>';
 }
@@ -885,7 +887,7 @@ function refreshLocks() {
 }
 setInterval(refreshLocks, 15000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLocks(); });
-const go = (r) => { if (r.name === 'list' && route.name !== 'list') showAnswers = false; route = r; render(); };
+const go = (r) => { if (r.name === 'list' && route.name !== 'list') showAnswers = showDone = false; route = r; render(); };
 
 // ---------- Sheets ----------
 function fitSheet() {
@@ -1122,8 +1124,9 @@ const actions = {
   },
   'to-home'() { go({ name: 'home' }); },
   'new-list'() { sheetList(); },
-  'open-list'(el) { showAnswers = false; advMemory = null; go({ name: 'list', id: el.dataset.id }); },
+  'open-list'(el) { showAnswers = showDone = false; advMemory = null; go({ name: 'list', id: el.dataset.id }); },
   'toggle-answers'() { showAnswers = !showAnswers; render(); },
+  'toggle-done'() { showDone = !showDone; render(); },
   'edit-list'() { sheetList(route.id); },
   'add-tag-text'(el) {
     const inp = $('.sheet input[name=tags]'); if (!inp) return;
