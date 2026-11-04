@@ -109,6 +109,9 @@ h2{font:700 1.1875rem/1.2 var(--display)}
 .row-meta{color:var(--muted);font-size:.9rem;margin-top:3px}
 .row .chev{color:var(--muted);flex:none}
 .btn svg{width:20px;height:20px;flex:none}
+.bigt{display:inline-flex;align-items:center;gap:8px}
+.bigt svg{width:22px;height:22px;flex:none}
+.icon-btn.txt svg{width:18px;height:18px;margin-right:5px}
 .btn.small svg{width:18px;height:18px}
 .link svg{width:16px;height:16px;vertical-align:-3px;margin-right:5px}
 .bubble.emo{font-size:1.5rem;background:var(--surface);border:1px solid var(--line)}
@@ -476,7 +479,7 @@ function parseListImport(text) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '2.6';
+const VERSION = '2.8';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -512,22 +515,51 @@ const IC = {
   del: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/><path d="M10 11l4 5M14 11l-4 5"/>',
   bin: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>',
   share: '<path d="M12 15V4M8 8l4-4 4 4"/><path d="M8 11H6a1 1 0 00-1 1v7a1 1 0 001 1h12a1 1 0 001-1v-7a1 1 0 00-1-1h-2"/>',
-  imp: '<path d="M12 4v11M8 11l4 4 4-4M5 19h14"/>'
+  imp: '<path d="M12 4v11M8 11l4 4 4-4M5 19h14"/>',
+  play: '<path d="M8 5.5v13l11-6.5z"/>',
+  reset: '<path d="M4 12a8 8 0 108-8H8"/><path d="M11 1l-3 3 3 3"/>',
+  restore: '<path d="M9 14L4 9l5-5"/><path d="M4 9h9a6 6 0 010 12h-3"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  eye: '<path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.8"/>',
+  save: '<path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/>',
+  copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/>',
+  paste: '<rect x="6" y="5" width="12" height="16" rx="2"/><path d="M9 5V4h6v1M9 11h6M9 15h6"/>',
+  swap: '<path d="M7 4v14M4 15l3 3 3-3M17 20V6M14 9l3-3 3 3"/>',
+  pencil: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+  next: '<path d="M5 12h14M13 6l6 6-6 6"/>'
 };
+// Icon je Aktion (data-a); sonst nach Beschriftung
+const IC_ACT = { 'to-pick': 'play', 'quiz-list': 'play', 'start-quiz': 'play', 'reset-progress': 'reset', 'restore-list': 'restore',
+  'quiz-yes': 'check', 'quiz-no': 'x', 'quiz-flip': 'eye', 'quiz-done': 'check', 'quiz-exit': 'x', 'export-file': 'save', 'export-text': 'copy',
+  'import-file': 'imp', 'import-text': 'paste', 'clear-hfilter': 'x', 'rename-profile': 'pencil', 'quiz-undo': 'restore',
+  'swap-card': 'swap', 'share-list': 'share', 'share-lists': 'share', 'do-share': 'share', 'do-share-sel': 'share' };
 // Setzt ein Icon vor Buttons und Links mit passender Beschriftung (Text bleibt unverändert)
 function decorate(root) {
-  (root || document).querySelectorAll('.btn, .link').forEach(b => {
+  (root || document).querySelectorAll('.btn, .link, .icon-btn.txt').forEach(b => {
     if (b.dataset.ic) return;
-    const t = b.textContent.replace(/\u00a0/g, ' ').trim();
-    let k = '';
-    if (/^(Karte hinzufügen|Profil anlegen|Anlegen|Neue Liste)$/.test(t)) k = 'plus';
-    else if (/(löschen|leeren)$/i.test(t)) k = 'del';
-    else if (/teilen$/i.test(t)) k = 'share';
-    else if (/^Papierkorb( \(\d+\))?$/.test(t)) k = 'bin';
-    else if (/^Importieren$/.test(t)) k = 'imp';
+    const t = b.textContent.replace(/\u00a0/g, ' ').replace('⇅', '').trim();
+    let k = IC_ACT[b.dataset.a] || '';
+    if (!k) {
+      if (/^(Karte hinzufügen|Profil anlegen|Anlegen|Neue Liste)$/.test(t)) k = 'plus';
+      else if (/(löschen|leeren)$/i.test(t)) k = 'del';
+      else if (/teilen$/i.test(t)) k = 'share';
+      else if (/^Papierkorb( \(\d+\))?$/.test(t)) k = 'bin';
+      else if (/^Importieren$/.test(t)) k = 'imp';
+      else if (/^(Speichern|Fertig)$/.test(t)) k = 'check';
+      else if (/^(Abbrechen|Schließen)$/.test(t)) k = 'x';
+      else if (/^Laden$/.test(t)) k = 'imp';
+      else if (/^Zurücksetzen$/.test(t)) k = 'reset';
+      else if (/^Weiter$/.test(t)) k = 'next';
+    }
     if (!k) return;
     b.dataset.ic = k;
-    b.insertAdjacentHTML('afterbegin', svg(IC[k]));
+    if (b.dataset.a === 'swap-card') b.firstChild.textContent = b.firstChild.textContent.replace('⇅', '').trim();
+    const icon = svg(IC[k]);
+    if (b.classList.contains('big')) {
+      const wrap = document.createElement('span'); wrap.className = 'bigt';
+      const first = b.firstChild; b.insertBefore(wrap, first); wrap.insertAdjacentHTML('afterbegin', icon); wrap.appendChild(first);
+    } else b.insertAdjacentHTML('afterbegin', icon);
   });
 }
 const I = {
@@ -640,7 +672,7 @@ function viewHome() {
     '</span><button class="link" data-a="clear-hfilter">Filter aufheben</button></div>' : '';
   const none = homeFilter.length ? 'Keine Liste hat alle gewählten Tags.' : 'Noch keine Liste. Lege deine erste Vokabelliste an, zum Beispiel „Unit 3“.';
   return '<div class="screen"><header class="bar"><button class="icon-btn" data-a="to-profiles" aria-label="Profil wechseln">' + I.back + '</button>' +
-    '<h1 class="bar-title">' + esc(p.name) + '</h1>' +
+    '<h1 class="bar-title">' + (p.emoji ? '<i class="flags" aria-hidden="true">' + esc(p.emoji) + '</i>' : '') + esc(p.name) + '</h1>' +
     '<button class="icon-btn" data-a="edit-profile" aria-label="Profil bearbeiten">' + I.pencil + '</button></header>' +
     '<main class="body"><button class="btn primary big" data-a="to-pick"' + (all.total ? '' : ' disabled') + '>Abfragen' +
     '<small>' + sub + '</small></button>' +
@@ -671,10 +703,10 @@ function viewTrash() {
 
 // Selten gebraucht: Lernstand einer Karte von Hand setzen (eingeklappt, damit die schnelle Eingabe frei bleibt)
 function advFields(c, l) {
-  return '<details class="adv"><summary>Erweitert: Streak und Due</summary>' +
-    '<div class="advgrid"><label class="field"><span>Streak (0 bis 3)</span><input name="streak" type="number" inputmode="numeric" min="0" max="3" step="1" value="' + c.streak + '"></label>' +
-    '<label class="field"><span>Due (Runde)</span><input name="due" type="number" inputmode="numeric" min="0" step="1" value="' + c.due + '"></label></div>' +
-    '<p class="note">Streak: wie oft die Karte in Folge gewusst wurde, 3 gilt als gelernt. Due: Runde, in der die Karte wieder abgefragt wird. Die Liste ist gerade in Runde ' + effRound(l) + '.</p></details>';
+  return '<details class="adv"><summary>Erweitert: Treffer und Runde</summary>' +
+    '<div class="advgrid"><label class="field"><span>Treffer (0 bis 3)</span><input name="streak" type="number" inputmode="numeric" min="0" max="3" step="1" value="' + c.streak + '"></label>' +
+    '<label class="field"><span>Runde</span><input name="due" type="number" inputmode="numeric" min="0" step="1" value="' + c.due + '"></label></div>' +
+    '<p class="note">Treffer: wie oft die Karte in Folge gewusst wurde, 3 gilt als gelernt. Runde: Runde, in der die Karte wieder abgefragt wird. Die Liste ist gerade in Runde ' + effRound(l) + '.</p></details>';
 }
 function readAdv(f) {
   const n = (el, max) => { const v = parseInt(el && el.value, 10); return Number.isFinite(v) ? Math.max(0, Math.min(max, v)) : 0; };
@@ -1153,7 +1185,7 @@ const actions = {
     const s = session; if (!s || s.revealed || route.name !== 'quiz') return;
     s.revealed = true;
     $('.flip').classList.add('on');
-    $('#actions').innerHTML = actionsHtml(s);
+    $('#actions').innerHTML = actionsHtml(s); decorate($('#actions'));
   },
   'quiz-yes'() { reply(true); },
   'quiz-no'() { reply(false); },
