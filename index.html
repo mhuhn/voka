@@ -488,7 +488,7 @@ function parseListImport(text) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '2.11';
+const VERSION = '2.12';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -606,6 +606,7 @@ const flagsOf = l => {
 let showAnswers = false;
 // Tags für die Filter: Sprach-Tags (mit Flagge) zuerst, danach die übrigen, jeweils alphabetisch
 const tagList = p => { const a = tagsOfProfile(p).map(t => Object.assign({ flag: FLAGS[t.key] || '' }, t)); return a.filter(t => t.flag).concat(a.filter(t => !t.flag)); };
+const shownTags = l => l.tags.filter(t => t !== iconTag(l) && !FLAGS[t]);
 const tagChip = t => FLAGS[t] ? '<span class="tag" role="img" aria-label="' + esc(t) + '">' + FLAGS[t] + '</span>' : '<span class="tag">' + esc(t) + '</span>';
 const chipInner = t => t.flag ? '<span aria-hidden="true">' + t.flag + '</span>' : esc(t.label);
 const chipAttr = t => t.flag ? ' aria-label="' + esc(t.label) + '" title="' + esc(t.label) + '"' : '';
@@ -671,7 +672,7 @@ function viewHome() {
     const pct = s.total ? Math.round(s.done / s.total * 100) : 0;
     return '<li><button class="row" data-a="open-list" data-id="' + esc(l.id) + '"><span class="row-main"><span class="row-text">' +
       '<span class="row-title">' + flagsOf(l) + esc(l.title) + '</span>' +
-      (l.tags.some(t => t !== iconTag(l)) ? '<span class="tags">' + l.tags.filter(t => t !== iconTag(l)).map(t => tagChip(t)).join('') + '</span>' : '') +
+      (shownTags(l).length ? '<span class="tags">' + shownTags(l).map(t => tagChip(t)).join('') + '</span>' : '') +
       '<span class="row-meta" style="display:block">' + nn(s.total, 'Karte', 'Karten') + (s.total ? ', ' + s.done + ' gelernt' : '') +
       (s.open ? ', ' + nn(pendingCount(l), 'Karte', 'Karten') + (left ? ' in ' + lockText(left) : ' bereit') : '') + '</span>' +
       '</span><span class="chev">' + I.chev + '</span></span>' +
@@ -741,7 +742,7 @@ function viewList() {
     '<h1 class="bar-title">' + flagsOf(l) + esc(l.title) + '</h1>' +
     '<button class="icon-btn" data-a="edit-list" aria-label="Liste bearbeiten">' + I.pencil + '</button></header>' +
     '<main class="body">' +
-    (l.tags.length ? '<div class="tags" style="margin:0 0 6px">' + l.tags.map(t => tagChip(t)).join('') + '</div>' : '') +
+    (shownTags(l).length ? '<div class="tags" style="margin:0 0 6px">' + shownTags(l).map(t => tagChip(t)).join('') + '</div>' : '') +
     '<div style="margin-bottom:14px"><span class="note">' +
     (s.total ? s.done + ' von ' + s.total + ' gelernt' : 'Noch keine Karten') + '</span></div>' +
     '<button class="btn primary" data-a="quiz-list"' + (!s.total || left ? ' disabled' : '') + '>' +
