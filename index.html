@@ -158,6 +158,7 @@ h2{font:700 1.1875rem/1.2 var(--display)}
 .cardrow .row-title{font-weight:500;font-size:1.06rem}
 .cardrow .row-meta{margin-top:1px;font-size:.95rem}
 .dots{display:inline-flex;gap:5px;flex:none}
+.verline{margin:26px 0 4px;text-align:center;font-size:.72rem;color:var(--muted);opacity:.8}
 .bar-title.nav{display:flex;align-items:center;justify-content:center;position:relative}
 .bar-title.nav::after{position:absolute;left:50%;transform:translateX(-50%);bottom:2px;margin:0}
 .bar-title.nav .icon-btn{min-width:34px;padding:0;flex:none}
@@ -460,7 +461,7 @@ const EMOJI_SEQ = /(?:[\u{1F1E6}-\u{1F1FF}]{2}|\p{Extended_Pictographic}(?:\uFE0
 function firstEmoji(str) { const m = String(str || '').match(EMOJI_SEQ); return m ? m[0] : ''; }
 // Drive-Brücke: nur Adressen von Google Apps Script (lokal zum Testen auch localhost)
 function cleanSyncUrl(u) {
-  u = String(u || '').trim();
+  u = String(u || '').replace(/\s+/g, '');   // Leerzeichen und Zeilenumbrüche aus der Zwischenablage entfernen
   return /^https:\/\/script\.google(usercontent)?\.com\/[^\s]+$/.test(u) || /^http:\/\/(localhost|127\.0\.0\.1):\d+\/[^\s]*$/.test(u) ? u : '';
 }
 function sanitizeProfile(p) {
@@ -521,7 +522,8 @@ function parseListImport(text) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '2.20';
+const VERSION = '2.21';
+const BUILD_TIME = '2026-11-08T15:45:00Z';   // Zeitpunkt des Commits dieser Version (wird beim Commit gesetzt)
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -655,6 +657,16 @@ function lockSig() {
   const now = Date.now();
   return db.profiles.map(p => p.pause + ':' + p.lists.map(l => Math.ceil(lockLeft(l, now, p.pause) / 60000)).join(',')).join(';');
 }
+// Kleine Zeile mit Version und Datum der letzten Code-Änderung (heute: wie lange das her ist)
+function versionLine() {
+  const t = new Date(BUILD_TIME), now = new Date();
+  let when;
+  if (t.toDateString() === now.toDateString()) {
+    const m = Math.max(0, Math.floor((now - t) / 60000));
+    when = m < 1 ? 'gerade eben' : m < 60 ? 'vor ' + m + ' min.' : 'vor ' + Math.floor(m / 60) + ' Std.';
+  } else when = t.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return '<p class="verline">Version ' + VERSION + ' · ' + when + '</p>';
+}
 function backupNote() {
   const total = db.profiles.reduce((n, p) => n + countCards(p.lists).total, 0);
   if (!total) return '';
@@ -685,7 +697,7 @@ function viewProfiles() {
     (db.profiles.length ? '' : '<p class="sub">Lege ein Profil an, um loszulegen.</p>') + '</div>' +
     (rows ? '<ul class="rows">' + rows + '</ul>' : '') +
     '<div style="margin-top:14px"><button class="btn ' + (db.profiles.length ? 'quiet' : 'primary') + '" data-a="add-profile">Profil anlegen</button></div>' +
-    backupNote() + '</main></div>';
+    backupNote() + versionLine() + '</main></div>';
 }
 
 function viewHome() {
@@ -730,7 +742,7 @@ function viewHome() {
     '<div class="listtools" style="margin-top:22px"><button class="btn quiet" data-a="share-lists"' + (p.lists.length ? '' : ' disabled') + '>Teilen</button>' +
     '<button class="btn quiet" data-a="import-list">Importieren</button>' +
     '<button class="btn quiet" style="grid-column:1/-1" data-a="to-trash">Papierkorb' + ((p.trash || []).length ? ' (' + p.trash.length + ')' : '') + '</button></div>' +
-    backupNote() + '</main></div>';
+    backupNote() + versionLine() + '</main></div>';
 }
 
 function viewTrash() {
@@ -1461,8 +1473,10 @@ function reply(knew) {
 }
 
 // Liest die Drive-Felder des Profil-Dialogs; false bei ungültiger Adresse (mit Meldung)
+let syncChanged = false;
 function applySync(q, f) {
-  const raw = f.syncurl.value.trim();
+  const raw = f.syncurl.value.replace(/\s+/g, '');
+  f.syncurl.value = raw;
   if (!raw) { q.sync = null; sync.status.delete(q.id); return true; }
   const url = cleanSyncUrl(raw);
   if (!url) {
@@ -1471,7 +1485,7 @@ function applySync(q, f) {
   const folder = clean(f.syncfolder.value, 60) || q.name;
   const changed = !q.sync || q.sync.url !== url || q.sync.folder !== folder;
   q.sync = { url, folder };
-  if (changed) sync.status.delete(q.id);
+  if (changed) { sync.status.delete(q.id); syncChanged = true; }
   return true;
 }
 const forms = {
@@ -1480,7 +1494,16 @@ const forms = {
     const id = f.dataset.id, emoji = f.emoji ? firstEmoji(f.emoji.value) : null;
     if (id) {
       const q = db.profiles.find(p => p.id === id); q.name = name; if (emoji !== null) q.emoji = emoji;
+      syncChanged = false;
       if (f.syncurl && !applySync(q, f)) return;
+      if (syncChanged && syncCfg(q)) {
+        // Drive-Adresse geändert: erst von Drive laden, dann das Profil wieder anzeigen
+        save();
+        f.querySelectorAll('button').forEach(b => { b.disabled = true; });
+        const st = $('#syncstat'); if (st) st.textContent = 'Lade von Google Drive …';
+        pullProfile(q).then(() => pushProfile(q)).finally(() => { closeSheet(); render(); });
+        return;
+      }
     }
     else {
       const p = { id: uid(), name, emoji: emoji || '', pause: DEFAULT_PAUSE, lists: [], trash: [] }; db.profiles.push(p);
@@ -1572,6 +1595,8 @@ document.addEventListener('input', e => {
   if (i.matches && i.matches('input[name=emoji]')) {
     const v = firstEmoji(i.value); if (v !== i.value) i.value = v;
     document.querySelectorAll('#emojis button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === i.value)));
+  } else if (i.matches && i.matches('input[name=syncurl]')) {
+    const v = i.value.replace(/\s+/g, ''); if (v !== i.value) i.value = v;
   } else if (i.matches && i.matches('input[name=tags]')) {
     const a = i.selectionStart, b = i.selectionEnd, low = i.value.toLowerCase();
     if (low !== i.value) { i.value = low; try { i.setSelectionRange(a, b); } catch (_) {} }
