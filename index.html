@@ -158,6 +158,7 @@ h2{font:700 1.1875rem/1.2 var(--display)}
 .cardrow .row-title{font-weight:500;font-size:1.06rem}
 .cardrow .row-meta{margin-top:1px;font-size:.95rem}
 .dots{display:inline-flex;gap:5px;flex:none}
+.face-head .flags{font-size:1.3rem;margin-right:6px;vertical-align:-2px}
 .hd{display:inline-flex;align-items:center;gap:12px}
 .markbtn{background:none;border:0;padding:6px;margin:-6px;color:var(--muted);display:inline-flex;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .markbtn svg{width:26px;height:26px}
@@ -512,7 +513,7 @@ function parseListImport(text) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '2.18';
+const VERSION = '2.19';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -835,6 +836,7 @@ function viewQuiz() {
   const s = session, c = s.cards[s.queue[0]];
   const w = (t) => '<p class="word' + (t.length > 36 ? ' long' : '') + '">' + esc(t) + '</p>';
   const lst = s.info[s.queue[0]].list;
+  const mix = s.lists.length > 1 ? flagsOf(lst) : '';   // bei mehreren Listen: Sprach-/Emoji-Icon der Liste
   const asked = s.total - s.queue.length;
   const pct = s.total ? Math.round(asked / s.total * 100) : 0;
   return '<div class="screen"><header class="bar"><button class="icon-btn txt" data-a="quiz-exit">Beenden</button>' +
@@ -842,9 +844,9 @@ function viewQuiz() {
     '<button class="icon-btn" data-a="quiz-undo" aria-label="Letzte Antwort zurücknehmen"' + (s.undo ? '' : ' disabled') + '>' + I.undo + '</button></header>' +
     '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="' + s.total + '" aria-valuenow="' + asked + '"><i style="width:' + pct + '%"></i></div>' +
     '<main class="stage"><div class="flip' + (s.revealed ? ' on' : '') + '" data-a="quiz-flip" role="button" tabindex="0" aria-label="Karte umdrehen"><div class="flip-in">' +
-    '<div class="face front"><div class="face-head"><span>' + esc(lst.labelQ) + '</span><span class="hd">' + markBtn(c) + dots(c) + '</span></div>' +
+    '<div class="face front"><div class="face-head"><span>' + mix + esc(lst.labelQ) + '</span><span class="hd">' + markBtn(c) + dots(c) + '</span></div>' +
     '<div class="face-body">' + w(c.de) + '<span class="hint">Tippen zum Umdrehen</span></div></div>' +
-    '<div class="face back"><div class="face-head"><span>' + esc(lst.labelA) + '</span><span class="hd"><button type="button" class="markbtn editbtn" data-a="quiz-edit" aria-label="Karte korrigieren">' + svg(IC.pencil) + '</button>' + markBtn(c) + dots(c) + '</span></div>' +
+    '<div class="face back"><div class="face-head"><span>' + mix + esc(lst.labelA) + '</span><span class="hd"><button type="button" class="markbtn editbtn" data-a="quiz-edit" aria-label="Karte korrigieren">' + svg(IC.pencil) + '</button>' + markBtn(c) + dots(c) + '</span></div>' +
     '<div class="face-body">' + w(c.fl) + '</div></div>' +
     '</div></div></main><footer class="actions' + (s.revealed ? ' three' : '') + '" id="actions">' + actionsHtml(s) + '</footer></div>';
 }
