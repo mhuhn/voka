@@ -279,12 +279,14 @@ function tagsOfProfile(p) {
   p.lists.forEach(l => l.tags.forEach(t => set.add(lc(t))));
   return [...set].map(t => ({ key: t, label: t })).sort((a, b) => a.label.localeCompare(b.label, 'de'));
 }
-// Listen, in denen ALLE gewählten Tags vorkommen (ohne Auswahl: alle Listen)
+// Listen passend zur Tag-Auswahl (ohne Auswahl: alle Listen):
+// gewählte Sprach-Tags sind ODER-verknüpft (mindestens eines), alle anderen Tags UND-verknüpft
 function listsWithTags(p, selectedKeys) {
   const sel = selectedKeys.map(lc);
+  const langs = sel.filter(t => LANGS[t]), others = sel.filter(t => !LANGS[t]);
   return p.lists.filter(l => {
     const have = new Set(l.tags.map(lc));
-    return sel.every(t => have.has(t));
+    return (!langs.length || langs.some(t => have.has(t))) && others.every(t => have.has(t));
   });
 }
 function isDone(c) { return c.streak >= GOAL; }
@@ -510,7 +512,7 @@ function parseListImport(text) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '2.16';
+const VERSION = '2.17';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -707,7 +709,7 @@ function viewHome() {
     '<button class="chip' + (t.flag ? ' flag' : '') + '" data-a="toggle-hfilter" data-v="' + esc(t.key) + '"' + chipAttr(t) + ' aria-pressed="' + homeFilter.includes(t.key) + '">' + chipInner(t) + '</button>').join('') + '</div>' : '';
   const bar = homeFilter.length ? '<div class="filterbar"><span class="note">' + shown.length + ' von ' + nn(p.lists.length, 'Liste', 'Listen') +
     '</span><button class="link" data-a="clear-hfilter">Filter aufheben</button></div>' : '';
-  const none = homeFilter.length ? 'Keine Liste hat alle gewählten Tags.' : 'Noch keine Liste. Lege deine erste Vokabelliste an, zum Beispiel „Unit 3“.';
+  const none = homeFilter.length ? 'Keine Liste passt zu den gewählten Tags.' : 'Noch keine Liste. Lege deine erste Vokabelliste an, zum Beispiel „Unit 3“.';
   return '<div class="screen"><header class="bar"><button class="icon-btn" data-a="to-profiles" aria-label="Profil wechseln">' + I.back + '</button>' +
     '<h1 class="bar-title">' + (p.emoji ? '<i class="flags" aria-hidden="true">' + esc(p.emoji) + '</i>' : '') + esc(p.name) + '</h1>' +
     '<button class="icon-btn" data-a="edit-profile" aria-label="Profil bearbeiten">' + I.pencil + '</button></header>' +
@@ -808,13 +810,13 @@ function viewPick() {
     const left = lockLeft(l, now, p.pause);
     return '<li' + (left ? ' class="dim"' : '') + '>' + esc(l.title) + (left && pendingCount(l) ? ' (' + nn(pendingCount(l), 'Karte', 'Karten') + ' in ' + lockText(left) + ')' : '') + '</li>';
   }).join('');
-  const match = '<strong>' + head + '</strong>' + (lists.length ? '<ul>' + items + '</ul>' : '<ul><li>Keine Liste hat alle gewählten Tags.</li></ul>');
+  const match = '<strong>' + head + '</strong>' + (lists.length ? '<ul>' + items + '</ul>' : '<ul><li>Keine Liste passt zu den gewählten Tags.</li></ul>');
   let label = 'Start';
   if (!n && lists.length) label = free.length ? (om ? 'Keine markierten Karten bereit' : 'Alles gelernt') : 'Pause';
   return '<div class="screen"><header class="bar"><button class="icon-btn" data-a="to-home" aria-label="Zurück">' + I.back + '</button>' +
     '<h1 class="bar-title">Abfragen</h1><span></span></header>' +
     '<main class="body"><p class="lead">' + (tags.length ?
-      'Wähle Tags, um mehrere Listen zu mischen. Abgefragt werden nur Listen, die alle gewählten Tags haben. Ohne Auswahl kommen alle Listen dran.' :
+      'Wähle Tags, um mehrere Listen zu mischen. Abgefragt werden Listen, die alle gewählten Tags haben; bei mehreren Sprachen genügt eine davon. Ohne Auswahl kommen alle Listen dran.' :
       'Noch keine Tags vergeben. Tags kannst du bei jeder Liste hinzufügen. Bis dahin werden alle Listen abgefragt.') + '</p>' +
     (tags.length ? '<div class="chips">' + tags.map(t => '<button class="chip' + (t.flag ? ' flag' : '') + '" data-a="toggle-tag" data-v="' + esc(t.key) + '"' + chipAttr(t) + ' aria-pressed="' + (pick.tags.includes(t.key)) + '">' + chipInner(t) + '</button>').join('') + '</div>' : '') +
     '<div class="match">' + match + '</div>' +
