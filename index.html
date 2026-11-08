@@ -498,7 +498,7 @@ function sanitizeStreak(x) {
   const n = Math.max(0, Math.min(99999, parseInt(x.n, 10) || 0));
   const day = dayNum(x.day) === null ? '' : x.day;
   const nt = x.note && Number(x.note.lost) > 0 ? { lost: Math.floor(Number(x.note.lost)), days: Math.max(1, Math.floor(Number(x.note.days) || 1)) } : null;
-  return { n, day, note: nt };
+  return { n, day, note: nt, mod: Math.max(0, Number(x.mod) || 0) };
 }
 // Liegt der letzte Streak-Tag vor gestern, sinkt der Streak um 2 je ausgelassenem Tag (heute und gestern zählen nicht als ausgelassen)
 function decayStreak(p, now) {
@@ -517,7 +517,7 @@ function awardStreak(p, now, readyLeft) {
   const s = p.streak; if (!s || readyLeft > 0) return null;
   const today = dayKey(now);
   if (s.day === today) return null;
-  const prev = { n: s.n, day: s.day, note: s.note };
+  const prev = { n: s.n, day: s.day, note: s.note, mod: s.mod || 0 };
   s.n++; s.day = today; s.note = null;
   return prev;
 }
@@ -571,8 +571,8 @@ function parseListImport(text) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '2.22';
-const BUILD_TIME = '2026-11-08T16:03:00Z';   // Zeitpunkt des Commits dieser Version (wird beim Commit gesetzt)
+const VERSION = '2.23';
+const BUILD_TIME = '2026-11-08T16:07:00Z';   // Zeitpunkt des Commits dieser Version (wird beim Commit gesetzt)
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -989,7 +989,7 @@ function viewSettings() {
 let lastKey = '';
 let lastSig = '';
 function render() {
-  if (db.profiles.some(p => decayStreak(p, Date.now()))) save();
+  { let dec = false; db.profiles.forEach(p => { if (decayStreak(p, Date.now())) { dec = true; if (p.streak) sync.ssig.set(p.id, streakSig(p)); } }); if (dec) save(); }
   if (route.name !== 'profiles' && route.name !== 'settings' && !P()) route = { name: 'profiles' };
   if (route.name === 'list' && !L()) route = { name: 'home' };
   if (route.name === 'quiz' && (!session || !session.queue.length)) route = session ? { name: 'result' } : { name: 'home' };
@@ -1017,17 +1017,25 @@ const go = (r) => { if (r.name === 'list' && route.name !== 'list') showAnswers 
 // ---------- Google-Drive-Abgleich ----------
 // Jede Liste liegt als eine JSON-Datei im Drive-Ordner des Profils (über die Apps-Script-Brücke).
 // Jede Liste trägt einen Änderungszeitpunkt (mod); die neuere Fassung gewinnt.
-const sync = { sigs: new Map(), dirty: new Map(), del: new Map(), status: new Map(), busy: new Set(), timer: null };
+const sync = { sigs: new Map(), dirty: new Map(), del: new Map(), status: new Map(), busy: new Set(), timer: null, ssig: new Map(), meta: new Set() };
+const META_ID = '_profile';   // Datei mit den Profil-Daten (Streak) neben den Listen
+const streakSig = p => JSON.stringify([p.streak.n, p.streak.day]);
 const syncCfg = p => (p && p.sync && p.sync.url ? p.sync : null);
 const listSig = l => JSON.stringify([l.title, l.tags, l.labelQ, l.labelA, l.round, l.lastEnd, l.cards]);
 const setOf = (m, k) => { if (!m.has(k)) m.set(k, new Set()); return m.get(k); };
 function rebuildSigs() {
   sync.sigs.clear();
-  db.profiles.forEach(p => p.lists.forEach(l => sync.sigs.set(l.id, { pid: p.id, sig: listSig(l) })));
+  db.profiles.forEach(p => { p.lists.forEach(l => sync.sigs.set(l.id, { pid: p.id, sig: listSig(l) })); if (p.streak) sync.ssig.set(p.id, streakSig(p)); });
 }
 // Wird bei jedem Speichern aufgerufen: erkennt geänderte Listen, setzt ihren Zeitstempel und merkt sie zum Hochladen vor
 function stampLists() {
   const now = Date.now(), seen = new Set();
+  db.profiles.forEach(p => {
+    if (!p.streak) return;
+    const sg = streakSig(p), old = sync.ssig.get(p.id);
+    if (old !== undefined && old !== sg) { p.streak.mod = now; if (syncCfg(p)) sync.meta.add(p.id); }
+    sync.ssig.set(p.id, sg);
+  });
   db.profiles.forEach(p => p.lists.forEach(l => {
     seen.add(l.id);
     const sig = listSig(l), old = sync.sigs.get(l.id);
@@ -1076,8 +1084,8 @@ function syncObj(l) {
 }
 async function pushProfile(p) {
   if (!syncCfg(p) || sync.busy.has(p.id)) return;
-  const dels = [...(sync.del.get(p.id) || [])], ids = [...(sync.dirty.get(p.id) || [])];
-  if (!dels.length && !ids.length) return;
+  const dels = [...(sync.del.get(p.id) || [])], ids = [...(sync.dirty.get(p.id) || [])], meta = sync.meta.has(p.id);
+  if (!dels.length && !ids.length && !meta) return;
   sync.busy.add(p.id);
   try {
     for (const id of dels) { await driveCall(p, 'delete', { listId: id }); sync.del.get(p.id).delete(id); }
@@ -1088,6 +1096,11 @@ async function pushProfile(p) {
       await driveCall(p, 'save', { listId: id, title: l.title, text: JSON.stringify(syncObj(l)) });
       if (l.mod === mod) sync.dirty.get(p.id).delete(id);
     }
+    if (meta) {
+      const mod = p.streak.mod;
+      await driveCall(p, 'save', { listId: META_ID, title: 'Profil', text: JSON.stringify({ app: 'vokabelkarten', version: 1, type: 'sync-profile', mod, streak: { n: p.streak.n, day: p.streak.day } }) });
+      if (p.streak.mod === mod) sync.meta.delete(p.id);
+    }
     setSyncStatus(p, true);
   } catch (e) { setSyncStatus(p, false, e); }
   finally { sync.busy.delete(p.id); }
@@ -1097,10 +1110,19 @@ async function pullProfile(p) {
   if (!syncCfg(p) || session) return;
   let j;
   try { j = await driveCall(p, 'read'); } catch (e) { setSyncStatus(p, false, e); return; }
-  let changed = false;
+  let changed = false, metaSeen = false;
   const seen = new Set();
   (j.files || []).forEach(f => {
     let o; try { o = JSON.parse(f.text); } catch (e) { return; }
+    if (o && o.app === 'vokabelkarten' && o.type === 'sync-profile' && o.streak) {
+      metaSeen = true;
+      const rs = sanitizeStreak(o.streak), rmod = Math.max(0, Number(o.mod) || 0), ls = p.streak || (p.streak = sanitizeStreak());
+      if (rmod > (ls.mod || 0)) {
+        // Drive ist neuer: Streak übernehmen (Hinweistext bleibt lokal)
+        ls.n = rs.n; ls.day = rs.day; ls.mod = rmod; sync.ssig.set(p.id, streakSig(p)); changed = true;
+      } else if (rmod < (ls.mod || 0)) sync.meta.add(p.id);
+      return;
+    }
     if (!o || o.app !== 'vokabelkarten' || !o.list) return;
     const x = sanitizeList(o.list), rmod = Math.max(0, Number(o.mod) || 0);
     if ((p.trash || []).some(t => t.id === x.id)) { setOf(sync.del, p.id).add(x.id); return; }
@@ -1112,6 +1134,7 @@ async function pullProfile(p) {
     } else if (rmod < (loc.mod || 0)) setOf(sync.dirty, p.id).add(loc.id);
   });
   p.lists.forEach(l => { if (!seen.has(l.id)) { if (!l.mod) l.mod = Date.now(); setOf(sync.dirty, p.id).add(l.id); } });
+  if (!metaSeen && p.streak && (p.streak.n > 0 || p.streak.day)) { if (!p.streak.mod) p.streak.mod = Date.now(); sync.meta.add(p.id); changed = true; }
   setSyncStatus(p, true);
   if (changed) { save(); if (!document.querySelector('.sheet-wrap') && !(document.activeElement && document.activeElement.matches && document.activeElement.matches('input,textarea'))) render(); }
   await pushProfile(p);
