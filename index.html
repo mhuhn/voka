@@ -158,6 +158,16 @@ h2{font:700 1.1875rem/1.2 var(--display)}
 .cardrow .row-title{font-weight:500;font-size:1.06rem}
 .cardrow .row-meta{margin-top:1px;font-size:.95rem}
 .dots{display:inline-flex;gap:5px;flex:none}
+.streakcard{display:flex;align-items:center;gap:12px;background:var(--surface);border-radius:18px;padding:10px 14px;margin:0 0 14px}
+.medals{display:flex;align-items:center;gap:1px;flex:none}
+.medal{width:34px;height:44px;flex:none}
+.mcount{font:800 1rem var(--display);color:var(--ink);margin-left:2px}
+.snum{min-width:0}
+.snum b{display:block;font:800 2.5rem/1 var(--display);color:var(--ink)}
+.snum span{font-size:.82rem;color:var(--muted)}
+.qbtn{margin-left:auto;flex:none;width:32px;height:32px;border-radius:50%;border:1.5px solid var(--muted);background:none;color:var(--muted);font:700 1rem var(--display);padding:0}
+.streaknote{display:flex;gap:10px;align-items:center;background:var(--maybe-soft);color:var(--maybe-ink);border-radius:14px;padding:10px 12px;margin:-6px 0 14px;font-size:.88rem}
+.streaknote button{flex:none;border:0;border-radius:10px;background:none;color:inherit;font-weight:700;padding:6px 8px}
 .verline{margin:26px 0 4px;text-align:center;font-size:.72rem;color:var(--muted);opacity:.8}
 .bar-title.nav{display:flex;align-items:center;justify-content:center;position:relative}
 .bar-title.nav::after{position:absolute;left:50%;transform:translateX(-50%);bottom:2px;margin:0}
@@ -474,8 +484,47 @@ function sanitizeProfile(p) {
     pause: PAUSES.includes(Number(p.pause)) ? Number(p.pause) : DEFAULT_PAUSE,
     lists: (Array.isArray(p.lists) ? p.lists : []).map(sanitizeList),
     trash: (Array.isArray(p.trash) ? p.trash : []).map(sanitizeTrashList),
-    sync: url ? { url, folder: clean(p.sync.folder, 60) || clean(p.name, 40) || 'Profil' } : null
+    sync: url ? { url, folder: clean(p.sync.folder, 60) || clean(p.name, 40) || 'Profil' } : null,
+    streak: sanitizeStreak(p.streak)
   };
+}
+// ---- Streak: Tage in Folge, an denen alle bereiten Karten eines Profils abgefragt wurden ----
+const STREAK_PENALTY = 2;   // Abzug je ausgelassenem Tag
+const pad2 = n => (n < 10 ? '0' : '') + n;
+const dayKey = t => { const d = new Date(t); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
+const dayNum = k => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(k || ''); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) / 864e5 : null; };
+function sanitizeStreak(x) {
+  x = x || {};
+  const n = Math.max(0, Math.min(99999, parseInt(x.n, 10) || 0));
+  const day = dayNum(x.day) === null ? '' : x.day;
+  const nt = x.note && Number(x.note.lost) > 0 ? { lost: Math.floor(Number(x.note.lost)), days: Math.max(1, Math.floor(Number(x.note.days) || 1)) } : null;
+  return { n, day, note: nt };
+}
+// Liegt der letzte Streak-Tag vor gestern, sinkt der Streak um 2 je ausgelassenem Tag (heute und gestern zählen nicht als ausgelassen)
+function decayStreak(p, now) {
+  const s = p.streak; if (!s || !s.day) return false;
+  const today = dayNum(dayKey(now)), gap = today - dayNum(s.day);
+  if (gap <= 1) return false;
+  const omitted = gap - 1, lost = Math.min(s.n, omitted * STREAK_PENALTY);
+  s.n -= lost;
+  s.day = dayKey(now - 864e5);   // diese Tage sind abgerechnet
+  if (lost > 0) s.note = { lost: lost + (s.note ? s.note.lost : 0), days: omitted + (s.note ? s.note.days : 0) };
+  return true;
+}
+// Nach einer Abfrage: sind keine bereiten Karten mehr übrig, steigt der Streak (höchstens einmal pro Tag).
+// Liefert den vorherigen Stand zum Zurücknehmen oder null.
+function awardStreak(p, now, readyLeft) {
+  const s = p.streak; if (!s || readyLeft > 0) return null;
+  const today = dayKey(now);
+  if (s.day === today) return null;
+  const prev = { n: s.n, day: s.day, note: s.note };
+  s.n++; s.day = today; s.note = null;
+  return prev;
+}
+// Medaillen: unter 3 Holz, 3 bis 7 Bronze, 8 bis 14 Silber, ab 15 Gold (eine je volle 14)
+function medalsFor(n) {
+  if (n >= 15) return { kind: 'gold', count: Math.floor(n / 14) };
+  return { kind: n >= 8 ? 'silver' : n >= 3 ? 'bronze' : 'wood', count: 1 };
 }
 // ---- Listen teilen und importieren ----
 // Gleicher Name schon vorhanden? Dann " 2", " 3", ... anhängen (Groß-/Kleinschreibung egal)
@@ -522,8 +571,8 @@ function parseListImport(text) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '2.21';
-const BUILD_TIME = '2026-11-08T15:45:00Z';   // Zeitpunkt des Commits dieser Version (wird beim Commit gesetzt)
+const VERSION = '2.22';
+const BUILD_TIME = '2026-11-08T16:03:00Z';   // Zeitpunkt des Commits dieser Version (wird beim Commit gesetzt)
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -700,6 +749,21 @@ function viewProfiles() {
     backupNote() + versionLine() + '</main></div>';
 }
 
+const MEDAL = { wood: ['#b9824b', '#7a4d22', 'Holz'], bronze: ['#dd9246', '#8f5a1d', 'Bronze'], silver: ['#dfe4ea', '#8b95a3', 'Silber'], gold: ['#ffd24f', '#c48a05', 'Gold'] };
+function medalSvg(kind) {
+  const [f, d, name] = MEDAL[kind];
+  return '<svg class="medal" viewBox="0 0 40 52" role="img" aria-label="' + name + 'medaille"><path d="M9 1h9l6 17h-9z" fill="#2f6fe0"/><path d="M31 1h-9l-6 17h9z" fill="#f9a11b"/>' +
+    '<circle cx="20" cy="34" r="16" fill="' + f + '" stroke="' + d + '" stroke-width="2"/><circle cx="20" cy="34" r="11.5" fill="none" stroke="' + d + '" stroke-width="1.2" opacity=".7"/>' +
+    '<g transform="translate(11.5 25.5) scale(.72)" fill="' + d + '" stroke="none"><path d="M12 3.5l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6-4.5-4.2 6.1-.8z"/></g></svg>';
+}
+function streakCard(p) {
+  const st = p.streak || { n: 0 }, m = medalsFor(st.n);
+  const medals = m.count <= 5 ? medalSvg(m.kind).repeat(m.count) : medalSvg(m.kind) + '<b class="mcount">×' + m.count + '</b>';
+  const note = st.note ? '<div class="streaknote" role="status"><span>Dein Streak wurde um ' + st.note.lost + ' gesenkt, weil du ' + nn(st.note.days, 'Tag', 'Tage') +
+    ' ausgelassen hast (je ausgelassenem Tag minus ' + STREAK_PENALTY + ').</span><button type="button" data-a="streak-ok">OK</button></div>' : '';
+  return '<div class="streakcard"><div class="medals">' + medals + '</div><div class="snum"><b>' + st.n + '</b><span>' + (st.n === 1 ? 'Tag' : 'Tage') + ' in Folge</span></div>' +
+    '<button type="button" class="qbtn" data-a="streak-info" aria-label="Wie wird der Streak berechnet?">?</button></div>' + note;
+}
 function viewHome() {
   const p = P(), now = Date.now();
   const all = countCards(p.lists);
@@ -734,7 +798,7 @@ function viewHome() {
   return '<div class="screen"><header class="bar"><button class="icon-btn" data-a="to-profiles" aria-label="Profil wechseln">' + I.back + '</button>' +
     '<h1 class="bar-title">' + (p.emoji ? '<i class="flags" aria-hidden="true">' + esc(p.emoji) + '</i>' : '') + esc(p.name) + '</h1>' +
     '<button class="icon-btn" data-a="edit-profile" aria-label="Profil bearbeiten">' + I.pencil + '</button></header>' +
-    '<main class="body"><button class="btn primary big" data-a="to-pick"' + (all.total ? '' : ' disabled') + '>Abfragen' +
+    '<main class="body">' + streakCard(p) + '<button class="btn primary big" data-a="to-pick"' + (all.total ? '' : ' disabled') + '>Abfragen' +
     '<small>' + sub + '</small></button>' +
     '<div class="sec-head"><h2>Meine Listen</h2><button class="link" data-a="new-list">Neue Liste</button></div>' +
     chips + bar +
@@ -889,6 +953,7 @@ function viewResult() {
   if (fully) lines.push(s.lists.length === 1 ? 'Die ganze Liste ist gelernt.' : nn(fully, 'Liste ist', 'Listen sind') + ' komplett gelernt.');
   if (s.wrong) lines.push('Nicht gewusste Karten kommen bald wieder dran.');
   if (s.unsure) lines.push('Unsichere Karten kommen in der nächsten Runde wieder dran.');
+  if (s.streakPrev) lines.unshift('Streak: ' + p.streak.n + (p.streak.n === 1 ? ' Tag' : ' Tage') + ' in Folge.');
   lines.push((s.lists.length === 1 ? 'Diese Liste ist in ' : 'Die Listen sind in ') + pauseText(p.pause) + ' wieder frei.');
   return '<div class="screen"><header class="bar"><span></span><span></span><span></span></header><main class="body center">' +
     '<div class="hero"><h1 class="display">Geschafft</h1><p class="sub">' + nn(s.total, 'Karte', 'Karten') + ' abgefragt.</p></div>' +
@@ -924,6 +989,7 @@ function viewSettings() {
 let lastKey = '';
 let lastSig = '';
 function render() {
+  if (db.profiles.some(p => decayStreak(p, Date.now()))) save();
   if (route.name !== 'profiles' && route.name !== 'settings' && !P()) route = { name: 'profiles' };
   if (route.name === 'list' && !L()) route = { name: 'home' };
   if (route.name === 'quiz' && (!session || !session.queue.length)) route = session ? { name: 'result' } : { name: 'home' };
@@ -1395,6 +1461,15 @@ const actions = {
     const l = L();
     startQuiz([l], countCards([l]).open === 0, { name: 'list', id: l.id });
   },
+  'streak-ok'() { const p = P(); if (p && p.streak) { p.streak.note = null; save(); render(); } },
+  'streak-info'() {
+    openSheet('<h2 class="sheet-title">So zählt der Streak</h2>' +
+      '<p>Der Streak zählt die Tage in Folge, an denen du alle bereiten Karten dieses Profils abgefragt hast.</p>' +
+      '<p>Sobald du an einem Tag die letzte bereite Karte abgefragt hast, steigt er um 1, aber höchstens einmal pro Tag.</p>' +
+      '<p>Heute und gestern gelten noch nicht als ausgelassen. Liegt dein letzter Streak-Tag weiter zurück, sinkt der Streak für jeden ausgelassenen Tag um ' + STREAK_PENALTY + '. Darauf weist dich die App hin.</p>' +
+      '<p><b>Medaillen:</b> unter 3 Holz, 3 bis 7 Bronze, 8 bis 14 Silber. Ab 15 gibt es Gold, und zwar eine Medaille für jede volle 14: bei 28 bis 41 zwei, bei 42 drei.</p>' +
+      '<div class="sheet-actions"><button type="button" class="btn primary" data-a="sheet-close">Schließen</button></div>');
+  },
   'quiz-prev'() {
     const s = session; if (!s || route.name !== 'quiz') return;
     if (s.view != null) s.view = Math.max(0, s.view - 1); else if (s.hist.length) s.view = s.hist.length - 1; else return;
@@ -1438,9 +1513,12 @@ const actions = {
   'quiz-maybe'() { reply('unsure'); },
   'quiz-undo'() {
     if (!session || (route.name === 'quiz' && session.view != null)) return;
-    if (route.name === 'result') unfinishSession(session);
+    if (route.name === 'result') {
+      unfinishSession(session);
+      if (session.streakPrev) { P().streak = session.streakPrev; session.streakPrev = null; }
+    }
     if (undoAnswer(session)) { save(); go({ name: 'quiz' }); }
-    else if (route.name === 'result') { finishSession(session, Date.now()); save(); }
+    else if (route.name === 'result') { finishSession(session, Date.now()); { const now = Date.now(), pr = P(); session.streakPrev = awardStreak(pr, now, pr.lists.reduce((n, l) => n + readyOf(l, now, pr.pause), 0)); } save(); }
   },
   'quiz-exit'() {
     const r = session ? session.origin : { name: 'home' };
@@ -1467,7 +1545,12 @@ function startQuiz(lists, includeDone, origin, onlyMarked) {
 function reply(knew) {
   const s = session; if (!s || !s.revealed || s.view != null) return;
   const last = answer(s, knew);
-  if (last) finishSession(s, Date.now());
+  if (last) {
+    const now = Date.now(), pr = P();
+    finishSession(s, now);
+    const ready = pr.lists.reduce((n, l) => n + readyOf(l, now, pr.pause), 0);
+    s.streakPrev = awardStreak(pr, now, ready);
+  }
   save();
   go({ name: last ? 'result' : 'quiz' });
 }
@@ -1506,7 +1589,7 @@ const forms = {
       }
     }
     else {
-      const p = { id: uid(), name, emoji: emoji || '', pause: DEFAULT_PAUSE, lists: [], trash: [] }; db.profiles.push(p);
+      const p = { id: uid(), name, emoji: emoji || '', pause: DEFAULT_PAUSE, lists: [], trash: [], streak: sanitizeStreak() }; db.profiles.push(p);
       if (route.name === 'profiles') { db.lastProfile = p.id; homeFilter = []; route = { name: 'home' }; }
     }
     save(); closeSheet(); render();
