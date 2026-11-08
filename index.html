@@ -512,7 +512,7 @@ function parseListImport(text) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '2.17';
+const VERSION = '2.18';
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -844,7 +844,7 @@ function viewQuiz() {
     '<main class="stage"><div class="flip' + (s.revealed ? ' on' : '') + '" data-a="quiz-flip" role="button" tabindex="0" aria-label="Karte umdrehen"><div class="flip-in">' +
     '<div class="face front"><div class="face-head"><span>' + esc(lst.labelQ) + '</span><span class="hd">' + markBtn(c) + dots(c) + '</span></div>' +
     '<div class="face-body">' + w(c.de) + '<span class="hint">Tippen zum Umdrehen</span></div></div>' +
-    '<div class="face back"><div class="face-head"><span>' + esc(lst.labelA) + '</span><span class="hd">' + markBtn(c) + dots(c) + '</span></div>' +
+    '<div class="face back"><div class="face-head"><span>' + esc(lst.labelA) + '</span><span class="hd"><button type="button" class="markbtn editbtn" data-a="quiz-edit" aria-label="Karte korrigieren">' + svg(IC.pencil) + '</button>' + markBtn(c) + dots(c) + '</span></div>' +
     '<div class="face-body">' + w(c.fl) + '</div></div>' +
     '</div></div></main><footer class="actions' + (s.revealed ? ' three' : '') + '" id="actions">' + actionsHtml(s) + '</footer></div>';
 }
@@ -1371,6 +1371,17 @@ const actions = {
     $('.flip').classList.add('on');
     $('#actions').classList.add('three'); $('#actions').innerHTML = actionsHtml(s); decorate($('#actions'));
   },
+  'quiz-edit'() {
+    const s = session; if (!s || route.name !== 'quiz') return;
+    const i = s.queue[0], c = s.cards[i], lst = s.info[i].list;
+    openSheet('<h2 class="sheet-title">Karte korrigieren</h2>' +
+      '<form data-form="quizcard" autocomplete="off" novalidate>' +
+      '<label class="field"><span>' + esc(lst.labelQ) + '</span><input name="de" value="' + esc(c.de) + '" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false"></label>' +
+      '<p class="err" id="editerr" role="alert" hidden></p>' +
+      '<label class="field"><span>' + esc(lst.labelA) + '</span><input name="fl" value="' + esc(c.fl) + '" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false"></label>' +
+      '<div class="sheet-actions"><button type="button" class="btn quiet" data-a="sheet-close">Abbrechen</button>' +
+      '<button class="btn primary" type="submit">Speichern</button></div></form>');
+  },
   'quiz-mark'() {
     const s = session; if (!s || route.name !== 'quiz') return;
     const c = s.cards[s.queue[0]]; c.mark = !c.mark; save();
@@ -1472,6 +1483,22 @@ const forms = {
     }
     c.de = de; c.fl = fl;
     const a = readAdv(f); c.streak = a.streak; c.due = a.due; c.mark = a.mark;
+    save(); closeSheet(); render();
+  },
+  quizcard(f) {
+    const s = session; if (!s) return;
+    const i = s.queue[0], c = s.cards[i], lst = s.info[i].list;
+    const de = clean(f.de.value, 200), fl = clean(f.fl.value, 200);
+    if (!de || !fl) { (de ? f.fl : f.de).focus(); return; }
+    if (termKey(de) !== termKey(c.de)) {
+      const dup = findDup(lst, de, c.id);
+      if (dup) {
+        const er = $('#editerr');
+        er.textContent = '„' + dup.de + '“ gibt es in dieser Liste schon (' + dup.fl + '). Jeder Begriff darf nur einmal vorkommen.';
+        er.hidden = false; f.de.focus(); return;
+      }
+    }
+    c.de = de; c.fl = fl;
     save(); closeSheet(); render();
   },
   'add-card'(f) {
