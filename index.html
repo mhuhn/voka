@@ -334,19 +334,26 @@ function pendingCount(l, onlyMarked) {
   const e = effRound(l);
   return openCardsOf(l).filter(c => c.due <= e && (!onlyMarked || c.mark)).length;
 }
+// Gruppe einer Liste: ihr erstes Sprach-Tag, sonst eine gemeinsame Gruppe ohne Sprache
+function groupOf(groups, l) {
+  const k = l.tags.map(lc).find(t => LANGS[t]) || '';
+  if (!groups.has(k)) groups.set(k, []);
+  return groups.get(k);
+}
 function newSession(lists, includeDone, now, pauseMin, onlyMarked) {
-  const info = {}, queue = [], used = [], cards = {};
+  const info = {}, used = [], cards = {}, groups = new Map();   // Karten nach Sprache gruppiert: erst alle einer Sprache, dann die nächste
   lists.forEach(l => {
     if (lockLeft(l, now, pauseMin) > 0) return;
     if (includeDone) l.cards.forEach(c => { if (isDone(c) && (!onlyMarked || c.mark)) { c.streak = 0; c.due = 0; } });
     const e = effRound(l);
     let n = 0;
     l.cards.forEach(c => {
-      if (!isDone(c) && c.due <= e && (!onlyMarked || c.mark)) { info[c.id] = { list: l, eff: e }; cards[c.id] = c; queue.push(c.id); n++; }
+      if (!isDone(c) && c.due <= e && (!onlyMarked || c.mark)) { info[c.id] = { list: l, eff: e }; cards[c.id] = c; groupOf(groups, l).push(c.id); n++; }
     });
     if (n) used.push({ list: l, eff: e });
   });
-  shuffle(queue);
+  const queue = [];
+  groups.forEach(g => { shuffle(g); queue.push(...g); });
   return { queue, cards, info, lists: used, total: queue.length, answers: 0, wrong: 0, unsure: 0, learned: new Set(), revealed: false, undo: null, finished: null, hist: [], view: null, vrev: false };
 }
 // Liefert true, wenn die letzte Karte beantwortet wurde
@@ -571,8 +578,8 @@ function parseListImport(text) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '2.23';
-const BUILD_TIME = '2026-11-08T16:07:00Z';   // Zeitpunkt des Commits dieser Version (wird beim Commit gesetzt)
+const VERSION = '2.24';
+const BUILD_TIME = '2026-11-09T21:03:00Z';   // Zeitpunkt des Commits dieser Version (wird beim Commit gesetzt)
 let db = loadDb();
 function loadDb() {
   let raw = null;
