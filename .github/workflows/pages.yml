@@ -32,6 +32,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: react
+          fetch-depth: 0
           path: react-source
           persist-credentials: false
 

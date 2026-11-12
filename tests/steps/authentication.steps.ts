@@ -71,3 +71,28 @@ Then("I see the profile for {string}", async function (this: VokaWorld, email: s
 Then("I do not see the sign-in form", async function (this: VokaWorld) {
   await expect(this.page.getByRole("heading", { name: "Sign in" })).not.toBeVisible();
 });
+
+Given("my browser prefers German", async function (this: VokaWorld) {
+  await this.page.addInitScript(() => {
+    Object.defineProperty(navigator, "languages", { configurable: true, get: () => ["de-DE", "en-US"] });
+    Object.defineProperty(navigator, "language", { configurable: true, get: () => "de-DE" });
+  });
+});
+
+When("I open the Voka app in German", async function (this: VokaWorld) {
+  await this.page.goto("http://127.0.0.1:5173/");
+});
+
+Then("I see the German sign-in form", async function (this: VokaWorld) {
+  await expect(this.page.getByRole("heading", { name: "Anmelden" })).toBeVisible();
+  await expect(this.page.getByRole("button", { name: "Registrieren" })).toBeVisible();
+  await expect(this.page.locator("html")).toHaveAttribute("lang", "de");
+});
+
+Then("Google login is hidden", async function (this: VokaWorld) {
+  await expect(this.page.getByRole("button", { name: "Google" })).toHaveCount(0);
+});
+
+Then("I see the version in the bottom-left corner", async function (this: VokaWorld) {
+  await expect(this.page.getByRole("contentinfo", { name: "Letzte Code-Änderung" })).toContainText(/v\d+\.\d+\.\d+ · /);
+});

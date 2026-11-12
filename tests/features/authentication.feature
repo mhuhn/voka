@@ -37,3 +37,10 @@ Feature: Account authentication
     Then I see the profile for "alice@example.test"
     When I switch to "bob@example.test"
     Then I see the profile for "bob@example.test"
+
+  Scenario: German interface and unobtrusive version label
+    Given my browser prefers German
+    When I open the Voka app in German
+    Then I see the German sign-in form
+    And Google login is hidden
+    And I see the version in the bottom-left corner

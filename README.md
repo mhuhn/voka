@@ -102,3 +102,28 @@ remains unchanged. See `docs/AUTH_SETUP.md`.
 
 The default build `npm run build` uses base `/` for native packaging;
 the Pages workflow sets its base separately.
+
+## Language, Google login, and code version
+
+The application displays German when the first preferred browser or WebView
+locale begins with `de` (for example `de-DE`, `de-AT`, `de-CH`).
+Otherwise English is displayed. Capacitor uses the same OS-backed WebView
+language preferences on iOS/iPadOS and Android. The UI listens to the
+`languagechange` event when the runtime provides it, and reads preferences
+again whenever the application starts. Authentication and account screens,
+feedback messages, accessibility text, and system error summaries are
+localized. Unknown Supabase error text is not leaked untranslated on German UI.
+
+Google sign-in remains hidden while
+`VITE_GOOGLE_LOGIN_ENABLED=false`. After enabling Google in Supabase,
+setting up the OAuth client, and verifying sign-in, configure this setting as
+`true` before building the application.
+
+The faint label fixed at bottom-left displays the `package.json` version
+and the Git committer timestamp of the most recent change to application
+code under `src/` or to application build configuration.
+Within 60 minutes it shows relative minutes; for an older change on the
+current calendar day it shows the time, and for earlier days it shows date and
+time, in the viewer's locale/timezone. A minute-based timer keeps the label
+current without rebuilding. CI and Pages fetch Git history to ensure that
+the source timestamp (not the deployment time) is embedded in the build.
