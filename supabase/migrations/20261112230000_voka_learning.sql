@@ -51,11 +51,11 @@ begin
    where c.user_id=v_uid and c.list_id=p_list_id
      and c.success_count < 4 and c.position=0;
 
-  if pg_catalog.coalesce(pg_catalog.array_length(v_ids,1),0)=0 then
+  if coalesce(pg_catalog.array_length(v_ids,1),0)=0 then
     -- No currently due cards: advance the entire list by one position,
     -- but only once per two-hour period.
     update public.voka_cards
-       set position=pg_catalog.greatest(position-1,0)
+       set position=greatest(position-1,0)
      where user_id=v_uid and list_id=p_list_id;
     v_until := now()+interval '2 hours';
     update public.voka_lists set learning_paused_until=v_until
@@ -133,7 +133,7 @@ begin
   update public.voka_cards c
      set success_count=case
           when p_result='unknown' then 0
-          when p_result='known' then pg_catalog.least(c.success_count+1,4)
+          when p_result='known' then least(c.success_count+1,4)
           else c.success_count end,
          position=case
           when p_result in ('unknown','unsure') then 1
@@ -157,7 +157,7 @@ begin
   if v_due=0 then
     -- All cards with position zero have been assessed; close the round.
     update public.voka_cards
-      set position=pg_catalog.greatest(position-1,0)
+      set position=greatest(position-1,0)
       where user_id=v_uid and list_id=v_list;
     v_until:=now()+interval '2 hours';
     update public.voka_lists set learning_paused_until=v_until
