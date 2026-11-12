@@ -104,3 +104,29 @@ export async function gradeLearning(
 export async function finishLearning(queryId: string): Promise<void> {
   await check(client().rpc("voka_finish_learning",{p_query_id:queryId}));
 }
+
+/** Counts all due cards for owned lists matching the subject and all selected tags. */
+export interface MixedLearningPreview {
+  total: number;
+  lists: { list_id:string; subject_id:string; count:number }[];
+}
+export async function previewMixedLearning(subjectIds:string[],tags:string[]):Promise<MixedLearningPreview> {
+  return await check<MixedLearningPreview>(
+    client().rpc("voka_preview_mixed_learning",{p_subject_ids:subjectIds,p_tags:tags})
+  );
+}
+
+/** Atomically begins a single query whose cards are ordered by subject. */
+export async function beginMixedLearning(subjectIds:string[],tags:string[]):Promise<BeginLearningResponse> {
+  return await check<BeginLearningResponse>(client().rpc("voka_begin_mixed_learning",{
+    p_subject_ids:subjectIds,
+    p_tags:tags,
+    p_timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC"
+  }));
+}
+
+export async function gradeMixedLearning(queryId:string,cardId:string,result:LearningResult):Promise<GradeLearningResponse> {
+  return await check<GradeLearningResponse>(client().rpc("voka_grade_mixed_learning",{
+    p_query_id:queryId,p_card_id:cardId,p_result:result
+  }));
+}
