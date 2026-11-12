@@ -142,10 +142,10 @@
 }
 @media(max-width:600px){
  .v-floats{right:11px;gap:6px}
- .v-floats .v-icon-button{height:43px;width:43px}
+ .v-floats .v-icon-button{height:46px;width:46px}
  .v-floats .v-icon-button svg{height:22px;width:22px}
- .v-heading{padding-right:112px}
- .v-card-form-active .v-heading{padding-right:153px}
+ .v-heading{padding-right:119px}
+ .v-card-form-active .v-heading{padding-right:163px}
 }
 /* iPad Air and other touch tablets have more screen area but need larger
    touch targets and type than a mouse/keyboard desktop. */
