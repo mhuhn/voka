@@ -13,3 +13,49 @@ button:disabled { cursor: not-allowed; opacity: .6; }
 #root { min-height: 100vh; min-height: 100dvh; }
 .safe-top { padding-top: max(1.5rem, env(safe-area-inset-top)); }
 .safe-bottom { padding-bottom: max(1.5rem, env(safe-area-inset-bottom)); }
+
+
+/* Public sign-in, registration and recovery screens use the vocabulary app palette. */
+body:has(.v-auth-shell){background:radial-gradient(ellipse at 4% 0%,#dbe9ff 0,transparent 42%),radial-gradient(ellipse at 100% 4%,#e5efff 0,transparent 36%),#f8faff}
+.v-auth-shell{color:#0b1d46;position:relative;z-index:0}
+.v-auth-brand{display:flex;justify-content:center;align-items:center;margin:0 0 29px;padding:7px 0}
+.v-auth-wordmark{font-family:ui-rounded,"SF Pro Rounded","Nunito","Arial Rounded MT Bold",system-ui,sans-serif;font-size:46px;font-weight:900;letter-spacing:-2.8px;line-height:1.15;position:relative;display:inline-block;padding-bottom:12px;color:#081b41}
+.v-auth-wordmark::after{content:"";position:absolute;left:8%;bottom:3px;height:6px;width:77%;background:#ff9e00;border-radius:9px;transform:rotate(-5deg)}
+.v-auth-card{border:1px solid #dbe4f2;background:#fff;border-radius:20px;box-shadow:0 12px 40px #193e7514,0 2px 9px #142e5c0c;overflow:hidden}
+.v-auth-card [data-slot="card-header"]{padding:26px 26px 19px}
+.v-auth-card [data-slot="card-content"]{padding:0 26px 29px}
+.v-auth-card [data-slot="card-title"]{font-weight:800;font-size:23px;letter-spacing:-.5px;color:#0b1d46}
+.v-auth-card [data-slot="card-description"]{color:#60718f;font-size:14px;line-height:1.5}
+.v-auth-card [data-slot="label"]{font-weight:700;font-size:13px;color:#0b1d46}
+.v-auth-card [data-slot="input"]{min-height:45px;border-color:#bfcfe8;border-radius:11px;background:#fff;color:#0b1d46;box-shadow:none}
+.v-auth-card [data-slot="input"]:focus-visible{border-color:#0864f6;box-shadow:0 0 0 3px #0864f622;outline:none}
+.v-auth-card button[data-slot="button"]{border-radius:11px;min-height:45px}
+.v-auth-card button[data-slot="button"].v-auth-primary{background:linear-gradient(180deg,#0b74ff,#0955db);color:#fff;border:0;box-shadow:0 3px 12px #1469ec33}
+.v-auth-card button[data-slot="button"].v-auth-primary:hover{background:linear-gradient(180deg,#1680ff,#0c60ed)}
+.v-auth-card button[data-slot="button"].v-auth-provider{border:1px solid #c9d7ee;background:#fafdff;color:#14346f}
+.v-auth-card button[data-slot="button"].v-auth-provider:hover{background:#e9f2ff}
+.v-auth-card button[data-slot="button"]:focus-visible,.v-auth-card .v-auth-text-link:focus-visible{outline:2px solid #0864f6;outline-offset:3px}
+.v-auth-text-link{font-weight:650;font-size:13px;color:#0864f6;text-decoration:underline;text-decoration-color:#a6cafa;text-underline-offset:3px}
+.v-auth-text-link:hover{color:#064ebc}
+.v-auth-card .relative.my-6>span{background:#fff;color:#7a8aa6}
+.v-auth-shell>[role="alert"],.v-auth-shell>[role="status"]{border-radius:13px}
+@media (max-width:540px){
+ .v-auth-shell{justify-content:center;padding-left:18px;padding-right:18px}
+ .v-auth-brand{margin-bottom:21px}
+ .v-auth-wordmark{font-size:43px}
+ .v-auth-card [data-slot="card-header"]{padding:23px 20px 17px}
+ .v-auth-card [data-slot="card-content"]{padding:0 20px 23px}
+}
+@media(prefers-color-scheme:dark){
+ body:has(.v-auth-shell){background:radial-gradient(ellipse at 10% 0%,#203962 0,transparent 38%),#101a2d}
+ .v-auth-shell{color:#eef4ff}
+ .v-auth-wordmark{color:#eff5ff}
+ .v-auth-card{background:#192742;border-color:#34466c}
+ .v-auth-card [data-slot="card-title"],.v-auth-card [data-slot="label"]{color:#eff5ff}
+ .v-auth-card [data-slot="card-description"]{color:#acbad4}
+ .v-auth-card [data-slot="input"]{background:#14213a;border-color:#34466c;color:#eef4ff}
+ .v-auth-card button[data-slot="button"].v-auth-provider{background:#1d3052;border-color:#4d6490;color:#d7e8ff}
+ .v-auth-card button[data-slot="button"].v-auth-provider:hover{background:#27436f}
+ .v-auth-card .relative.my-6>span{background:#192742;color:#a7b8d6}
+ .v-auth-text-link{color:#8abaff}
+}
