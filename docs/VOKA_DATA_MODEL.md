@@ -53,6 +53,14 @@ The list editor offers the **Learn in both directions** option as a full-width, 
 
 Sign-in, registration, password recovery and password reset now use Voka's navy/blue palette, orange-underlined wordmark, rounded blue actions and matching form fields; existing account management, OAuth conditions and translations remain unchanged.
 
+## Tablet list editing, icons and account colors
+
+On a wide screen (>=900 CSS pixels), editing an existing list keeps the overview of every list for the subject visible on the left and puts the complete editable list form on the right. This does not apply to creating a new list, which still has its own form. An unsaved card draft now has an explicit **Cancel** action that returns to list detail without saving it.
+
+Voka uses the previously generated blue flashcard icon from 3 November 2026: the existing `public/icon-192.png`, `public/icon-512.png`, `public/icon-maskable-512.png` and `public/apple-touch-icon.png` match that artwork. `index.html` now explicitly declares the 180×180 Apple Touch icon, as well as iOS standalone metadata, so adding the PWA to the home screen uses the artwork. The PWA manifest's theme/background colors now match the navy/blue interface. Existing iOS home-screen shortcuts may need to be removed and re-added for iOS to replace a cached icon.
+
+Each signed-in account receives an unused random avatar color selected from a 20-color palette, stored locally under `voka:user-avatar-colors:v1`. It stays stable after reloads and account switching **on that device**. The same color appears on the floating profile icon, on the profile badge, and beside the account in the account switcher. The profile UI no longer uses the earlier green action color. For touch devices at widths of 700 CSS pixels or above, including iPad portrait and landscape, the app increases type sizes and tap targets. On narrow iPhones, floating control hit areas are 43×43 CSS pixels.
+
 ## Operations
 
 Deployments continue using the existing `react` branch workflow, with the public React application at <https://mhuhn.github.io/voka/react/>. Migrations are versioned under `supabase/migrations/`; they have already been applied to the existing `storage` project. App source edits trigger GitHub CI (TypeScript, unit, browser tests) before GitHub Pages deployment.
