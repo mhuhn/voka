@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { ArrowLeft, BarChart3, Bell, BookOpen, ChevronDown, ChevronRight, CircleUserRound, Eye, EyeOff, FlaskConical, Home, ListPlus, Pencil, Plus, Search, Settings, SlidersHorizontal, Star, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, ChevronRight, CircleUserRound, Home, Pencil, Plus, Search, Settings, Star, Trash2 } from "lucide-react";
 import type { Language } from "../lib/i18n";
 import { emptyData, loadVoka, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type Subject, type SubjectGroup, type ListInput } from "./data";
 import "./voka.css";
@@ -51,6 +51,15 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const [data,setData]=useState<VokaData>(emptyData);
  const [loading,setLoading]=useState(true),[error,setError]=useState("");
  const [screen,setScreen]=useState<Screen>("home");
+ const [wide,setWide]=useState(()=>window.matchMedia("(min-width: 900px)").matches);
+ useEffect(()=>{
+  const query=window.matchMedia("(min-width: 900px)");
+  const sync=()=>setWide(query.matches);
+  sync();
+  query.addEventListener("change",sync);
+  return ()=>query.removeEventListener("change",sync);
+ },[]);
+
  const [selectedSubject,setSelectedSubject]=useState<string|null>(null);
  const [selectedList,setSelectedList]=useState<string|null>(null);
  const [selectedCard,setSelectedCard]=useState<string|null>(null);
@@ -104,8 +113,8 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
    {loading?<div className="v-empty">{t("loading")}</div>:<>
    <header className="v-heading">
     {screen!=="home"&&<IconButton onClick={back} label={t("cancel")}><ArrowLeft/></IconButton>}
-    <h1>{screen==="home"?<span className="v-logo">Voka</span>:screen==="subject"?currentSubject?.title:screen==="list"?listTitle:screen==="listForm"?(listEditing?t("editList"):t("createList")):screen==="cardForm"?<><span className="v-card-editor-mobile-title">{selectedCard?t("editCard"):t("addCard")}</span><span className="v-card-editor-tablet-title">{listTitle}</span></>:t("manage")}</h1>
-    {screen==="list"&&currentList&&<IconButton label={t("editList")} onClick={()=>editList(currentList)}><Pencil size={19}/></IconButton>}
+    <h1>{screen==="home"?<span className="v-logo">Voka</span>:wide&&(screen==="subject"||screen==="list"||screen==="cardForm")?<span>{currentSubject?.emoji} {currentSubject?.title}</span>:screen==="subject"?currentSubject?.title:screen==="list"?listTitle:screen==="listForm"?(listEditing?t("editList"):t("createList")):screen==="cardForm"?(selectedCard?t("editCard"):t("addCard")):t("manage")}</h1>
+    {!wide&&screen==="list"&&currentList&&<IconButton label={t("editList")} onClick={()=>editList(currentList)}><Pencil size={19}/></IconButton>}
    </header>
    {screen==="home"&&<div className="v-home">
     {data.lists.length===0&&<section className="v-intro"><div className="v-illustration"><BookOpen size={74}/><span>?</span></div><h2>{t("empty")}</h2><p>{t("emptyInfo")}</p><button className="v-primary" onClick={()=>newList()}><Plus size={18}/>{t("createList")}</button></section>}
@@ -119,12 +128,14 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
     })}</div>
     {data.lists.length>0&&<button className="v-primary v-create-home" onClick={()=>newList()}><Plus size={19}/>{t("createList")}</button>}
    </div>}
-   {screen==="subject"&&<div className="v-page"><div className="v-section-header"><h2>{currentSubject?.emoji} {currentSubject?.title} · {t("lists")}</h2><IconButton label={t("edit")} onClick={()=>currentSubject&&startManage("subject",currentSubject)}><Pencil size={19}/></IconButton></div>
+   {(screen==="subject"||screen==="list"||screen==="cardForm")&&<div className={"v-subject-workspace "+(screen==="subject"?"is-subject":screen==="cardForm"?"is-card":"is-list")}>
+    <section className="v-page v-lists-pane"><div className="v-section-header"><h2>{wide?t("lists"):`${currentSubject?.emoji||""} ${currentSubject?.title||""} · ${t("lists")}`}</h2><IconButton label={t("edit")} onClick={()=>currentSubject&&startManage("subject",currentSubject)}><Pencil size={19}/></IconButton></div>
     <div className="v-list-grid">{data.lists.filter(l=>l.subject_id===selectedSubject).sort((a,b)=>usageDate(data,b.id)-usageDate(data,a.id)||a.title.localeCompare(b.title)).map(l=><button className="v-list-row" key={l.id} onClick={()=>openList(l.id)}><div><strong>{l.title}</strong><small>{data.cards.filter(c=>c.list_id===l.id).length} {t("cards")} · {stamp(usageDate(data,l.id),language)}</small><div className="v-tag-row">{l.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div><ChevronRight size={21}/></button>)}</div>
     {!data.lists.some(l=>l.subject_id===selectedSubject)&&<div className="v-empty">{t("none")}</div>}
     <button className="v-primary" onClick={()=>newList(selectedSubject||"")}><Plus size={18}/>{t("createList")}</button>
-   </div>}
-   {(screen==="list"||screen==="cardForm")&&currentList&&<div className={"v-list-page"+(screen==="cardForm"?" v-list-page-editing":"")}>
+    </section>
+    {(screen==="list"||screen==="cardForm")&&currentList&&<div className={"v-list-page"+(screen==="cardForm"?" v-list-page-editing":"")}>
+     {wide&&<div className="v-pane-list-heading"><h2>{listTitle}</h2><IconButton label={t("editList")} onClick={()=>editList(currentList)}><Pencil size={18}/></IconButton></div>}
     <div className="v-list-main">
      {currentList.tags.length>0&&<div className="v-list-summary"><div className="v-tag-row">{currentList.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div>}
       <div className="v-list-actions"><button className="v-primary" type="button" title={t("learn")} onClick={()=>{}}><span>▶</span> {t("learn")}</button><div className="v-progress"><BarChart3 size={21}/><span>{t("progress")}<b>{data.cards.filter(c=>c.list_id===selectedList).length?Math.round(data.cards.filter(c=>c.list_id===selectedList).reduce((sum,c)=>sum+c.success_count,0)/(data.cards.filter(c=>c.list_id===selectedList).length*3)*100):0} %</b></span></div></div>
@@ -149,12 +160,13 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
       </form>
      </aside>}
    </div>}
+   </div>}
    {screen==="listForm"&&<form className="v-form" onSubmit={saveListForm}>
      <label>{t("title")} *<input required maxLength={200} value={draftList.title} onChange={e=>setDraftList({...draftList,title:e.target.value})}/></label>
      <label>{t("subject")} *<select required value={draftList.subject_id} onChange={e=>changeListSubject(e.target.value)}><option value="" disabled>{t("chooseSubject")}</option>{groups.flatMap(g=>data.subjects.filter(s=>s.group_id===g.id).map(s=><option key={s.id} value={s.id}>{s.emoji} {s.title}</option>))}</select></label>
      <label>{t("tags")}<div className="v-tag-editor"><div className="v-tag-row">{draftList.tags.map(tag=><button className="v-tag" key={tag} type="button" onClick={()=>setDraftList({...draftList,tags:draftList.tags.filter(a=>a!==tag)})}>{tag} ×</button>)}</div><input placeholder={t("addTag")+" (,)"} value={tagText} onChange={e=>setTagText(e.target.value)} /></div></label>
      <div className="v-form-columns"><label>{t("questionLabel")} *<input required value={draftList.question_label} onChange={e=>setDraftList({...draftList,question_label:e.target.value})}/></label><label>{t("answerLabel")} *<input required readOnly={Boolean(languageSubject(data,draftList.subject_id))} value={languageSubject(data,draftList.subject_id)?.title||draftList.answer_label} onChange={e=>setDraftList({...draftList,answer_label:e.target.value})}/></label></div>
-     <Toggle label={t("both")} value={draftList.learn_both_directions} onChange={value=>setDraftList({...draftList,learn_both_directions:value})}/>
+     <button className={"v-direction-button"+(draftList.learn_both_directions?" is-active":"")} type="button" aria-pressed={draftList.learn_both_directions} onClick={()=>setDraftList({...draftList,learn_both_directions:!draftList.learn_both_directions})}><ArrowLeftRight size={21}/><span>{t("both")}</span><span className="v-direction-check" aria-hidden="true">{draftList.learn_both_directions&&<Check size={16}/>}</span></button>
      <p className="v-help">{t("bothInfo")}</p><button disabled={working||!draftList.subject_id} className="v-primary" type="submit">{listEditing?t("saveList"):t("createList")}</button>
      {listEditing&&<button type="button" className="v-danger" onClick={()=>confirmRemove(()=>deleteList(listEditing),"subject")}><Trash2 size={16}/>{t("delete")}</button>}
      {!draftList.subject_id&&<p className="v-help">{t("noSubject")} <button type="button" className="v-text-button" onClick={()=>startManage("subject")}>{t("addSubject")}</button></p>}
