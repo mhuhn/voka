@@ -121,7 +121,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
    {loading?<div className="v-empty">{t("loading")}</div>:<>
    <header className="v-heading">
     {screen!=="home"&&<IconButton onClick={back} label={t("cancel")}><ArrowLeft/></IconButton>}
-    <h1>{screen==="home"?<span className="v-logo">Voka</span>:wide&&(screen==="subject"||screen==="list"||screen==="cardForm")?<span>{currentSubject?.emoji} {currentSubject?.title}</span>:screen==="subject"?currentSubject?.title:screen==="list"?listTitle:screen==="listForm"?(listEditing?t("editList"):t("createList")):screen==="cardForm"?(selectedCard?t("editCard"):t("addCard")):t("manage")}</h1>
+    <h1>{screen==="home"?<span className="v-logo">Voka</span>:wide&&(screen==="subject"||screen==="list"||screen==="cardForm"||(screen==="listForm"&&Boolean(listEditing)))?<span>{currentSubject?.emoji} {currentSubject?.title}</span>:screen==="subject"?currentSubject?.title:screen==="list"?listTitle:screen==="listForm"?(listEditing?t("editList"):t("createList")):screen==="cardForm"?(selectedCard?t("editCard"):t("addCard")):t("manage")}</h1>
     {!wide&&screen==="list"&&currentList&&<IconButton label={t("editList")} onClick={()=>editList(currentList)}><Pencil size={19}/></IconButton>}
    </header>
    {screen==="home"&&<div className="v-home">
