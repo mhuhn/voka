@@ -57,6 +57,7 @@ When("I add another user", async function (this: VokaWorld) {
 
 When("I switch to {string}", async function (this: VokaWorld, email: string) {
   await this.page.getByRole("button", { name: "Switch to " + email }).click();
+  await this.page.locator(".v-floats button").last().click();
 });
 
 When("I reload the app", async function (this: VokaWorld) {
