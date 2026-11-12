@@ -51,6 +51,7 @@ Before(async function (this: VokaWorld, { pickle }) {
   const learningData = pickle.tags.some(tag => tag.name === "@learning");
   const calendarBlocked = pickle.tags.some(tag => tag.name === "@calendar-blocked");
   const calendarReady = pickle.tags.some(tag => tag.name === "@calendar-ready");
+  const progressCase = pickle.tags.some(tag => tag.name === "@progress");
   const touchTablet = pickle.tags.some(tag => tag.name === "@touch");
   this.context = await this.browser.newContext({ locale, ...(touchTablet ? {hasTouch:true,viewport:{width:1180,height:820}} : {}) });
   this.page = await this.context.newPage();
@@ -280,7 +281,13 @@ Before(async function (this: VokaWorld, { pickle }) {
           {id:"30000000-0000-4000-8000-000000000001",user_id:users[0].id,subject_id:"20000000-0000-4000-8000-000000000001",title:"Irregular Verbs",tags:["Verben","Unit 3"],question_label:"Infinitiv",answer_label:"Englisch",learn_both_directions:!learningData,learning_paused_until:learningPausedUntil,last_learning_at:lastLearningAt,learning_timezone:learningTimezone,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
           ...(importedList?[importedList]:[])
         ],
-        voka_cards: learningData ? [...learningCards, ...importedCards] : [
+        voka_cards: progressCase ? [0,1,1,3,4].map((success_count,i)=>({
+          id:"90000000-0000-4000-8000-00000000000"+(i+1),
+          user_id:users[0].id,list_id:"30000000-0000-4000-8000-000000000001",
+          question:"Progress word "+(i+1),answer:"Answer "+(i+1),
+          marked:false,success_count,position:i,
+          created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"
+        })) : learningData ? [...learningCards, ...importedCards] : [
           {id:"40000000-0000-4000-8000-000000000001",user_id:users[0].id,list_id:"30000000-0000-4000-8000-000000000001",question:"go",answer:"went",marked:true,success_count:0,position:3,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
           {id:"40000000-0000-4000-8000-000000000002",user_id:users[0].id,list_id:"30000000-0000-4000-8000-000000000001",question:"be",answer:"was/were",marked:false,success_count:4,position:6,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
           {id:"40000000-0000-4000-8000-000000000003",user_id:users[0].id,list_id:"30000000-0000-4000-8000-000000000001",question:"choose",answer:"chose",marked:false,success_count:1,position:1,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
