@@ -74,7 +74,7 @@ body:has(.v-auth-shell){background:radial-gradient(ellipse at 4% 0%,#dbe9ff 0,tr
 .v-profile-card [data-slot="card-content"]>div.rounded-lg:has(button[aria-label^="Switch to"]):hover{background:#f2f7ff}
 .v-profile-back{color:#1355b3;border-radius:10px}
 .v-profile-back:hover{background:#e7f1ff}
-@media(min-width:900px) and (pointer:coarse){
+@media(min-width:700px) and (pointer:coarse){
  .v-auth-shell{max-width:660px}
  .v-profile-card [data-slot="card-title"]{font-size:25px}
  .v-profile-card [data-slot="card-description"]{font-size:16px}
