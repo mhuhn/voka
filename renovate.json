@@ -1,0 +1,59 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "baseBranchPatterns": [
+    "react"
+  ],
+  "timezone": "Europe/Berlin",
+  "schedule": [
+    "* * * * 1"
+  ],
+  "dependencyDashboard": true,
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "automergeType": "pr",
+  "platformAutomerge": false,
+  "packageRules": [
+    {
+      "description": "Automerge stable npm patch and minor releases only after CI checks succeed",
+      "matchManagers": [
+        "npm"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": true
+    },
+    {
+      "description": "Group native Capacitor packages so related versions are reviewed together",
+      "matchPackageNames": [
+        "@capacitor/**"
+      ],
+      "groupName": "Capacitor",
+      "automerge": false
+    },
+    {
+      "description": "Group React and React types updates for coordinated validation",
+      "matchPackageNames": [
+        "react",
+        "react-dom",
+        "@types/react",
+        "@types/react-dom"
+      ],
+      "groupName": "React ecosystem",
+      "automerge": false
+    },
+    {
+      "description": "Require human review for Supabase authentication and PWA service-worker changes",
+      "matchPackageNames": [
+        "@supabase/supabase-js",
+        "vite-plugin-pwa"
+      ],
+      "automerge": false
+    }
+  ]
+}
