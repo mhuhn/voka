@@ -90,3 +90,9 @@ Feature: Account authentication
     And the profile sign-out button is "Esci"
     And the account section heading is "Account"
     And the add-account button is "Aggiungi un altro utente"
+
+  Scenario: Sign-in and registration match the Voka theme
+    Given I open the Voka app
+    Then the sign-in form uses the Voka visual theme
+    When I open registration
+    Then the registration form keeps that visual theme
