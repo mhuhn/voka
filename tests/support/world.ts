@@ -48,7 +48,8 @@ Before(async function (this: VokaWorld, { pickle }) {
   };
   const locale = pickle.tags.map(tag => locales[tag.name]).find(Boolean) ?? "en-US";
   const sampleData = pickle.tags.some(tag => tag.name === "@voka");
-  this.context = await this.browser.newContext({ locale });
+  const touchTablet = pickle.tags.some(tag => tag.name === "@touch");
+  this.context = await this.browser.newContext({ locale, ...(touchTablet ? {hasTouch:true,viewport:{width:1180,height:820}} : {}) });
   this.page = await this.context.newPage();
 
   await this.page.route("http://127.0.0.1:54321/**", async (route: Route) => {
