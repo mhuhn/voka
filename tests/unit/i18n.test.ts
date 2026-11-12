@@ -5,7 +5,7 @@ import { formatLastChange } from "../../src/lib/buildInfo";
 describe("interface language", () => {
   it("uses the most preferred locale, not a later supported locale", () => {
     expect(preferredLanguage(["de-DE", "en-US"])).toBe("de");
-    expect(preferredLanguage(["fr-FR", "de-DE"])).toBe("en");
+    expect(preferredLanguage(["fr-FR", "de-DE"])).toBe("fr");
     expect(preferredLanguage(["en-US", "de-DE"])).toBe("en");
     expect(preferredLanguage(["de-AT"])).toBe("de");
     expect(preferredLanguage(["fr-CA", "en-US"])).toBe("fr");
