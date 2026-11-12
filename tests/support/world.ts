@@ -51,6 +51,15 @@ Before(async function (this: VokaWorld, { pickle }) {
   const touchTablet = pickle.tags.some(tag => tag.name === "@touch");
   this.context = await this.browser.newContext({ locale, ...(touchTablet ? {hasTouch:true,viewport:{width:1180,height:820}} : {}) });
   this.page = await this.context.newPage();
+  let importedList: Record<string,unknown> | null = null;
+  let importedCards: Record<string,unknown>[] = [];
+  const sharedId="50000000-0000-4000-8000-000000000001";
+  const importedId="60000000-0000-4000-8000-000000000001";
+  const sharedCards=[
+    {question:"walk",answer:"walked",marked:true},
+    {question:"write",answer:"wrote",marked:false}
+  ];
+
 
   await this.page.route("http://127.0.0.1:54321/**", async (route: Route) => {
     const request = route.request();
@@ -124,6 +133,33 @@ Before(async function (this: VokaWorld, { pickle }) {
       await route.fulfill(json(null));
       return;
     }
+    if (path === "/rest/v1/rpc/voka_get_shared_list" && method === "POST") {
+      const body=request.postDataJSON() as {p_list_id:string};
+      await route.fulfill(json(body.p_list_id===sharedId ? {
+        id:sharedId,title:"Shared Verbs",tags:["Verben","Unit 7"],
+        question_label:"Infinitiv",answer_label:"Simple Past",
+        learn_both_directions:true,cards:sharedCards
+      } : null));
+      return;
+    }
+    if (path === "/rest/v1/rpc/voka_import_shared_list" && method === "POST") {
+      const body=request.postDataJSON() as {p_list_id:string;p_subject_id:string;p_title:string;p_tags:string[]};
+      if(body.p_list_id!==sharedId){
+        await route.fulfill(json({message:"Shared list not found"},404));return;
+      }
+      importedList={
+        id:importedId,user_id:users[0].id,subject_id:body.p_subject_id,
+        title:body.p_title,tags:body.p_tags,question_label:"Infinitiv",
+        answer_label:body.p_subject_id==="20000000-0000-4000-8000-000000000001"?"Englisch":"Simple Past",
+        learn_both_directions:true,created_at:"2026-11-12T10:00:00Z",updated_at:"2026-11-12T10:00:00Z"
+      };
+      importedCards=sharedCards.map((card,i)=>({
+        id:"70000000-0000-4000-8000-00000000000"+(i+1),
+        list_id:importedId,user_id:users[0].id,...card,position:0,success_count:0,
+        created_at:"2026-11-12T10:00:00Z",updated_at:"2026-11-12T10:00:00Z"
+      }));
+      await route.fulfill(json(importedId));return;
+    }
     if (path.startsWith("/rest/v1/voka_") && method === "GET") {
       const fixtures: Record<string, unknown[]> = {
         voka_subjectgroups: [
@@ -139,12 +175,14 @@ Before(async function (this: VokaWorld, { pickle }) {
           {id:"20000000-0000-4000-8000-000000000002",user_id:users[0].id,group_id:"10000000-0000-4000-8000-000000000002",title:"Mathe",emoji:"➗"}
         ],
         voka_lists: [
-          {id:"30000000-0000-4000-8000-000000000001",user_id:users[0].id,subject_id:"20000000-0000-4000-8000-000000000001",title:"Irregular Verbs",tags:["Verben","Unit 3"],question_label:"Infinitiv",answer_label:"Englisch",learn_both_directions:true,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"}
+          {id:"30000000-0000-4000-8000-000000000001",user_id:users[0].id,subject_id:"20000000-0000-4000-8000-000000000001",title:"Irregular Verbs",tags:["Verben","Unit 3"],question_label:"Infinitiv",answer_label:"Englisch",learn_both_directions:true,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
+          ...(importedList?[importedList]:[])
         ],
         voka_cards: [
           {id:"40000000-0000-4000-8000-000000000001",user_id:users[0].id,list_id:"30000000-0000-4000-8000-000000000001",question:"go",answer:"went",marked:true,success_count:0,position:3,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
           {id:"40000000-0000-4000-8000-000000000002",user_id:users[0].id,list_id:"30000000-0000-4000-8000-000000000001",question:"be",answer:"was/were",marked:false,success_count:3,position:6,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
-          {id:"40000000-0000-4000-8000-000000000003",user_id:users[0].id,list_id:"30000000-0000-4000-8000-000000000001",question:"choose",answer:"chose",marked:false,success_count:1,position:1,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"}
+          {id:"40000000-0000-4000-8000-000000000003",user_id:users[0].id,list_id:"30000000-0000-4000-8000-000000000001",question:"choose",answer:"chose",marked:false,success_count:1,position:1,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
+          ...importedCards
         ],
         voka_list_usage: []
       };

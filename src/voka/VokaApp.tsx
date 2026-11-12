@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, ChevronRight, CircleUserRound, Home, Pencil, Plus, Search, Settings, Star, Trash2, X } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, ChevronRight, CircleUserRound, Home, Pencil, Plus, Search, Settings, Share2, Star, Trash2, X } from "lucide-react";
 import type { Language } from "../lib/i18n";
 import { emptyData, loadVoka, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type Subject, type SubjectGroup, type ListInput } from "./data";
 import "./voka.css";
 import { getUserAvatarColor } from "../auth/userColors";
 import { authManager } from "../auth/manager";
 import { suggestSubjectEmoji } from "./subjectEmoji";
+import { clearPendingSharedList, fetchSharedList, importSharedList, pendingSharedListId, shareUrlForList, type SharedList } from "./sharing";
 
 type Screen = "home" | "subject" | "list" | "listForm" | "cardForm" | "manage";
 type Words = Record<string, string>;
@@ -14,6 +15,69 @@ const translations: Record<Language, Words> = {
  en: {mySubjects:"My subjects",createList:"Create list",addCard:"Add card",saveCard:"Save card",saveList:"Save list",empty:"No lists yet",emptyInfo:"Create your first vocabulary list and learn with digital flashcards.",groups:"Subject groups & subjects",addGroup:"Add group",addSubject:"Add subject",edit:"Edit",delete:"Delete",cancel:"Cancel",save:"Save",title:"Title",subject:"Subject",tags:"Tags",addTag:"Add tag",questionLabel:"Question label",answerLabel:"Answer label",both:"Learn in both directions",bothInfo:"Cards are tested both forwards and backwards.",question:"Question",answer:"Answer",marked:"Starred",markedOnly:"Only starred",unseen:"Show unlearned",showAnswers:"Show answers",sorting:"Sort by",alpha:"Alphabetical",points:"By points",position:"By position",learn:"Learn",progress:"Progress",cards:"Cards",noCards:"No cards yet",noMatching:"No cards match these filters",listInfo:"List properties",lists:"Lists",learning:"Learn",search:"Search",statistics:"Statistics",settings:"Settings",manage:"Manage subjects",groupName:"Group name",emoji:"Emoji",confirmDelete:"Delete this and its contents?",noSubject:"Add a subject first.",editCard:"Edit card",editList:"Edit list",updated:"Last used",total:"Lists",automatic:"Learning points are managed automatically. Scores (0–3) will change during learning.",profile:"Profile",loading:"Loading your lists…",chooseSubject:"Choose a subject",newList:"New list",newCard:"New card",create:"Create",starred:"Starred",none:"No lists in this subject"},
  fr:{},nl:{},da:{},it:{}
 };
+const sharingWords: Record<Language,Record<string,string>> = {
+ de:{
+  share:"Teilen",shareCopied:"Link kopiert",shareCopy:"Link kopieren",shareFallback:"Diesen Link kopieren und weitergeben",
+  shareFailed:"Der Link konnte nicht geteilt werden.",importHeading:"Geteilte Liste importieren",
+  importDetails:"Wähle das Fach und passe bei Bedarf den Namen und die Tags an.",
+  importSubject:"Ziel-Fach",importTitle:"Name der Liste",importTags:"Tags (durch Komma getrennt)",
+  importCards:"Karten",importReset:"Beim Import werden Lernpunkte und Position aller Karten auf 0 gesetzt.",
+  importNow:"Liste importieren",importLoading:"Geteilte Liste wird geladen…",
+  importUnavailable:"Diese geteilte Liste wurde nicht gefunden oder ist nicht mehr verfügbar.",
+  importError:"Der Import ist fehlgeschlagen. Bitte erneut versuchen."
+ },
+ en:{
+  share:"Share",shareCopied:"Link copied",shareCopy:"Copy link",shareFallback:"Copy and send this link",
+  shareFailed:"Could not share the link.",importHeading:"Import shared list",
+  importDetails:"Choose a subject and optionally edit the title and tags.",
+  importSubject:"Destination subject",importTitle:"List title",importTags:"Tags (comma separated)",
+  importCards:"Cards",importReset:"All imported cards start with 0 points and position 0.",
+  importNow:"Import list",importLoading:"Loading shared list…",
+  importUnavailable:"This shared list was not found or is no longer available.",
+  importError:"Import failed. Please try again."
+ },
+ fr:{
+  share:"Partager",shareCopied:"Lien copié",shareCopy:"Copier le lien",shareFallback:"Copiez et envoyez ce lien",
+  shareFailed:"Impossible de partager le lien.",importHeading:"Importer une liste partagée",
+  importDetails:"Choisissez une matière et modifiez le titre ou les étiquettes si nécessaire.",
+  importSubject:"Matière de destination",importTitle:"Titre de la liste",importTags:"Étiquettes (séparées par des virgules)",
+  importCards:"Cartes",importReset:"Les points et positions des cartes importées sont remis à zéro.",
+  importNow:"Importer",importLoading:"Chargement de la liste…",
+  importUnavailable:"Cette liste partagée est introuvable ou indisponible.",
+  importError:"L'importation a échoué. Réessayez."
+ },
+ nl:{
+  share:"Delen",shareCopied:"Link gekopieerd",shareCopy:"Link kopiëren",shareFallback:"Kopieer en verstuur deze link",
+  shareFailed:"Link delen is mislukt.",importHeading:"Gedeelde lijst importeren",
+  importDetails:"Kies een vak en pas eventueel de titel en tags aan.",
+  importSubject:"Doelvak",importTitle:"Lijsttitel",importTags:"Tags (gescheiden door komma's)",
+  importCards:"Kaarten",importReset:"Leerpunten en posities beginnen bij 0.",
+  importNow:"Lijst importeren",importLoading:"Gedeelde lijst laden…",
+  importUnavailable:"Deze gedeelde lijst bestaat niet of is niet meer beschikbaar.",
+  importError:"Importeren mislukt. Probeer opnieuw."
+ },
+ da:{
+  share:"Del",shareCopied:"Link kopieret",shareCopy:"Kopiér link",shareFallback:"Kopiér og send dette link",
+  shareFailed:"Linket kunne ikke deles.",importHeading:"Importér delt liste",
+  importDetails:"Vælg et fag og redigér eventuelt titel og tags.",
+  importSubject:"Fag",importTitle:"Listens titel",importTags:"Tags (adskilt med komma)",
+  importCards:"Kort",importReset:"Point og position nulstilles for alle importerede kort.",
+  importNow:"Importér liste",importLoading:"Henter delt liste…",
+  importUnavailable:"Den delte liste kunne ikke findes eller er ikke længere tilgængelig.",
+  importError:"Importen mislykkedes. Prøv igen."
+ },
+ it:{
+  share:"Condividi",shareCopied:"Link copiato",shareCopy:"Copia link",shareFallback:"Copia e invia questo link",
+  shareFailed:"Impossibile condividere il link.",importHeading:"Importa lista condivisa",
+  importDetails:"Scegli una materia e modifica, se vuoi, il titolo e i tag.",
+  importSubject:"Materia di destinazione",importTitle:"Titolo della lista",importTags:"Tag (separati da virgole)",
+  importCards:"Schede",importReset:"Punti e posizioni delle schede importate ripartono da 0.",
+  importNow:"Importa lista",importLoading:"Caricamento lista condivisa…",
+  importUnavailable:"La lista condivisa non è stata trovata o non è più disponibile.",
+  importError:"Importazione non riuscita. Riprova."
+ }
+};
+
 const supplemental: Partial<Record<Language,Words>> = {
  fr:{mySubjects:"Mes matières",createList:"Créer une liste",addCard:"Ajouter une carte",saveCard:"Enregistrer la carte",saveList:"Enregistrer la liste",empty:"Aucune liste",lists:"Listes",learn:"Apprendre",question:"Question",answer:"Réponse",marked:"Favori",markedOnly:"Favoris uniquement",unseen:"Afficher les non apprises",showAnswers:"Afficher les réponses",alpha:"Alphabétique",points:"Par points",position:"Par position",settings:"Réglages",search:"Rechercher",statistics:"Statistiques",manage:"Gérer les matières",cancel:"Annuler",save:"Enregistrer",delete:"Supprimer",edit:"Modifier",title:"Titre",subject:"Matière",tags:"Étiquettes",groupName:"Nom du groupe",addGroup:"Ajouter un groupe",addSubject:"Ajouter une matière"},
  nl:{mySubjects:"Mijn vakken",createList:"Lijst maken",addCard:"Kaart toevoegen",saveCard:"Kaart opslaan",saveList:"Lijst opslaan",empty:"Nog geen lijsten",lists:"Lijsten",learn:"Leren",question:"Vraag",answer:"Antwoord",marked:"Gemarkeerd",markedOnly:"Alleen gemarkeerde",unseen:"Niet-geleerde tonen",showAnswers:"Antwoorden tonen",alpha:"Alfabetisch",points:"Op punten",position:"Op positie",settings:"Instellingen",search:"Zoeken",statistics:"Statistieken",manage:"Vakken beheren",cancel:"Annuleren",save:"Opslaan",delete:"Verwijderen",edit:"Bewerken",title:"Titel",subject:"Vak",tags:"Tags",groupName:"Groepsnaam",addGroup:"Groep toevoegen",addSubject:"Vak toevoegen"},
@@ -50,7 +114,7 @@ function languageSubject(data:VokaData,subjectId:string):Subject|undefined {
 }
 const stamp=(time:number,language:Language)=>time?new Date(time).toLocaleDateString(language==="de"?"de-DE":language,{day:"numeric",month:"short"}):"–";
 export default function VokaApp({language,onProfile}:{language:Language;onProfile:()=>void}) {
- const t=(key:string)=>globalLabels[language]?.[key]||supplemental[language]?.[key]||translations[language]?.[key]||translations.en[key]||key;
+ const t=(key:string)=>sharingWords[language]?.[key]||globalLabels[language]?.[key]||supplemental[language]?.[key]||translations[language]?.[key]||translations.en[key]||key;
  const [data,setData]=useState<VokaData>(emptyData);
  const [loading,setLoading]=useState(true),[error,setError]=useState("");
  const [screen,setScreen]=useState<Screen>("home");
@@ -100,6 +164,74 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
   return ()=>{window.removeEventListener("keydown",onKeyDown);document.body.style.overflow=previousOverflow;previouslyFocused?.focus();};
  },[manageModalOpen]);
  const [working,setWorking]=useState(false);
+ const [shareStatus,setShareStatus]=useState("");
+ const [shareFallbackUrl,setShareFallbackUrl]=useState<string|null>(null);
+ const [incomingSharedId,setIncomingSharedId]=useState<string|null>(pendingSharedListId);
+ const [sharedPreview,setSharedPreview]=useState<SharedList|null>(null);
+ const [sharedLoading,setSharedLoading]=useState(false);
+ const [sharedError,setSharedError]=useState("");
+ const [importSubject,setImportSubject]=useState("");
+ const [importTitle,setImportTitle]=useState("");
+ const [importTagsText,setImportTagsText]=useState("");
+ const [importBusy,setImportBusy]=useState(false);
+ useEffect(()=>{
+  if(!incomingSharedId||loading)return;
+  let cancelled=false;
+  setSharedPreview(null);setSharedError("");setSharedLoading(true);
+  fetchSharedList(incomingSharedId)
+   .then(shared=>{
+    if(cancelled)return;
+    if(!shared){setSharedError(t("importUnavailable"));return;}
+    setSharedPreview(shared);
+    setImportTitle(shared.title);setImportTagsText(shared.tags.join(", "));
+    setImportSubject("");
+   })
+   .catch(err=>{if(!cancelled)setSharedError(err instanceof Error?err.message:t("importUnavailable"));})
+   .finally(()=>{if(!cancelled)setSharedLoading(false);});
+  return ()=>{cancelled=true;};
+ // The intent and active account are fixed for this mounted VokaApp.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[incomingSharedId,loading]);
+ const dismissSharedImport=()=>{
+  clearPendingSharedList();setIncomingSharedId(null);setSharedPreview(null);
+  setSharedError("");setImportTitle("");setImportTagsText("");
+ };
+ const submitSharedImport=(event:FormEvent)=>{
+  event.preventDefault();
+  if(!incomingSharedId||!sharedPreview||!importSubject||importBusy)return;
+  setImportBusy(true);setSharedError("");
+  void (async()=>{
+   try{
+    const id=await importSharedList(incomingSharedId,importSubject,importTitle.trim(),
+      [...new Set(importTagsText.split(",").map(tag=>tag.trim()).filter(Boolean))]);
+    const updated=await loadVoka();
+    setData(updated);
+    setSelectedSubject(importSubject);setSelectedList(id);setSelectedCard(null);
+    setSort("alpha");setShowAnswers(false);setMarkedOnly(false);setUnlearnedOnly(false);
+    setScreen("list");dismissSharedImport();
+   }catch(err){
+    setSharedError(err instanceof Error?err.message:t("importError"));
+   }finally{setImportBusy(false);}
+  })();
+ };
+ const shareSelectedList=async()=>{
+  if(!currentList)return;
+  const url=shareUrlForList(currentList.id);
+  setShareStatus("");
+  if(typeof navigator.share==="function"){
+   try{
+    await navigator.share({title:currentList.title,url});
+    return;
+   }catch(err){
+    if(err instanceof Error&&err.name==="AbortError")return;
+   }
+  }
+  try{
+   if(!navigator.clipboard?.writeText)throw new Error("Clipboard not supported");
+   await navigator.clipboard.writeText(url);setShareStatus(t("shareCopied"));
+  }catch{setShareFallbackUrl(url);}
+ };
+
  const refresh=useCallback(async()=>{try {setData(await loadVoka());setError("");}catch(e){setError(e instanceof Error?e.message:String(e));}},[]);
  useEffect(()=>{let alive=true;loadVoka().then(result=>{if(alive)setData(result)}).catch(e=>{if(alive)setError(String(e instanceof Error?e.message:e))}).finally(()=>{if(alive)setLoading(false)});return()=>{alive=false};},[]);
  const groups=useMemo(()=>[...data.groups].sort((a,b)=>groupUsage(data,b.id)-groupUsage(data,a.id)||defaultGroupRank(a.title)-defaultGroupRank(b.title)||a.title.localeCompare(b.title)),[data]);
@@ -214,7 +346,10 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
      {wide&&<div className="v-pane-list-heading"><h2>{listTitle}</h2><IconButton label={t("editList")} onClick={()=>editList(currentList)}><Pencil size={18}/></IconButton></div>}
     <div className="v-list-main">
      {currentList.tags.length>0&&<div className="v-list-summary"><div className="v-tag-row">{currentList.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div>}
-      <div className="v-list-actions"><button className="v-primary" type="button" title={t("learn")} onClick={()=>{}}><span>▶</span> {t("learn")}</button><div className="v-progress"><BarChart3 size={21}/><span>{t("progress")}<b>{data.cards.filter(c=>c.list_id===selectedList).length?Math.round(data.cards.filter(c=>c.list_id===selectedList).reduce((sum,c)=>sum+c.success_count,0)/(data.cards.filter(c=>c.list_id===selectedList).length*3)*100):0} %</b></span></div></div>
+      <div className="v-list-actions"><button className="v-primary" type="button" title={t("learn")} onClick={()=>{}}><span>▶</span> {t("learn")}</button><div className="v-progress"><BarChart3 size={21}/><span>{t("progress")}<b>{data.cards.filter(c=>c.list_id===selectedList).length?Math.round(data.cards.filter(c=>c.list_id===selectedList).reduce((sum,c)=>sum+c.success_count,0)/(data.cards.filter(c=>c.list_id===selectedList).length*3)*100):0} %</b></span></div>
+      <button type="button" className="v-outline v-share-button" onClick={()=>void shareSelectedList()}><Share2 size={19}/>{t("share")}</button>
+     </div>
+     {shareStatus&&<p className="v-share-status" role="status">{shareStatus}</p>}
      <div className="v-filter-area">
        <Toggle label={answerVisibilityLabel} value={showAnswers} onChange={setShowAnswers}/>
        <Toggle label={t("markedOnly")} value={markedOnly} onChange={setMarkedOnly}/>
@@ -290,6 +425,41 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
       </div>
     </div>}
    </>}
+   {incomingSharedId&&<div className="v-import-backdrop">
+      <section className="v-import-modal" role="dialog" aria-modal="true" aria-labelledby="v-import-heading">
+       <div className="v-modal-header">
+        <h2 id="v-import-heading">{t("importHeading")}</h2>
+        <button type="button" className="v-icon-button" aria-label={t("cancel")} onClick={dismissSharedImport} disabled={importBusy}><X size={22}/></button>
+       </div>
+       {sharedLoading&&<p role="status">{t("importLoading")}</p>}
+       {sharedError&&<p role="alert" className="v-error">{sharedError}</p>}
+       {!sharedLoading&&sharedPreview&&<form className="v-form" onSubmit={submitSharedImport}>
+        <p className="v-share-intro">{t("importDetails")}</p>
+        <div className="v-import-source"><strong>{sharedPreview.title}</strong><span>{sharedPreview.cards.length} {t("importCards")}</span></div>
+        <label>{t("importSubject")} *
+         <select required value={importSubject} onChange={e=>setImportSubject(e.target.value)}>
+          <option value="" disabled>{t("chooseSubject")}</option>
+          {groups.map(g=><optgroup key={g.id} label={g.title}>
+           {data.subjects.filter(sub=>sub.group_id===g.id).map(sub=><option key={sub.id} value={sub.id}>{sub.emoji} {sub.title}</option>)}
+          </optgroup>)}
+         </select>
+        </label>
+        <label>{t("importTitle")} *<input required maxLength={200} value={importTitle} onChange={e=>setImportTitle(e.target.value)}/></label>
+        <label>{t("importTags")}<input value={importTagsText} onChange={e=>setImportTagsText(e.target.value)}/></label>
+        <p className="v-import-reset">{t("importReset")}</p>
+        <button type="submit" className="v-primary" disabled={importBusy||!importSubject||!importTitle.trim()}>{importBusy?t("importLoading"):t("importNow")}</button>
+       </form>}
+       <button type="button" className="v-outline v-import-cancel" disabled={importBusy} onClick={dismissSharedImport}>{t("cancel")}</button>
+      </section>
+     </div>}
+     {shareFallbackUrl&&<div className="v-import-backdrop">
+      <section className="v-import-modal v-share-fallback" role="dialog" aria-modal="true" aria-label={t("share")}>
+       <h2>{t("shareFallback")}</h2>
+       <input aria-label={t("shareFallback")} readOnly value={shareFallbackUrl} onFocus={e=>e.currentTarget.select()}/>
+       <button className="v-primary" type="button" onClick={()=>{void navigator.clipboard?.writeText(shareFallbackUrl).then(()=>{setShareStatus(t("shareCopied"));setShareFallbackUrl(null)}).catch(()=>{})}}>{t("shareCopy")}</button>
+       <button className="v-outline" type="button" onClick={()=>setShareFallbackUrl(null)}>{t("cancel")}</button>
+      </section>
+     </div>}
   </div>
   <nav className="v-bottom-nav" aria-label={t("navigation")}>
    <button className="active" type="button" onClick={()=>setScreen("home")}><Home size={21} fill="currentColor"/><span>Voka</span></button>

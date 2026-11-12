@@ -75,6 +75,19 @@ The authenticated home page **Meine Fächer** displays a subject only when at le
 
 Card add/edit labels use the current list's `question_label` and `answer_label` instead of the generic words Question/Answer. The answer visibility toggle likewise uses the list's answer label (for example, `Englisch anzeigen` in German). A third sorting control orders cards by ascending `position` (0–20), with the question text as a stable tie-breaker. Alphabetical sorting remains the default and point sorting remains available. No position editing is added to the UI.
 
+## Sharing and importing lists
+
+A list detail screen offers **Share**. On browsers/devices supporting `navigator.share`, this launches the native share sheet. Otherwise the app copies a web-app link to the clipboard; where clipboard access is unavailable it displays a selectable link. The generated URL contains `?importList=<list UUID>` under the current public app base (e.g., `https://mhuhn.github.io/voka/react/?importList=...`). The link contains no account identifiers or credentials.
+
+**Receiving a link:** If there is no active account, the normal login or registration UI appears first with an explanatory message. The incoming list ID is preserved in session storage across Supabase/Apple/Google OAuth callback redirects. When an approved account is active, Voka fetches a safe preview, then opens a modal to choose the destination subject, edit the list's title and tags, and confirm or cancel. Cancel removes the pending link without creating data. A deleted or unknown source reports an error. Only a completed import changes the recipient's data.
+
+**Supabase SQL migration:** `supabase/migrations/20261112214000_voka_list_sharing.sql` adds two narrowly scoped authenticated-only RPCs:
+
+- `public.voka_get_shared_list(p_list_id uuid)` returns a JSON object with title, tags, question/answer labels, both-directions option, and question/answer/mark for each card. It excludes the owner's ID, card learning points, positions, query history, and other private data.
+- `public.voka_import_shared_list(p_list_id uuid,p_subject_id uuid,p_title text,p_tags text[])` atomically creates a new owner-scoped list and copies its cards, preserving the text and marked flag but setting **success_count=0 and position=0** for every card. The new list must be assigned to a subject owned by the importing user.
+
+The public RPCs are `SECURITY INVOKER` wrappers; the privileged implementations reside under the non-exposed `app_private` schema, as installed by `supabase/migrations/20261112214500_voka_sharing_private_implementations.sql`. These implementations enforce `auth.uid() is not null` and `public.can_access_app('voka')`, and both the public RPCs and private helpers deny execution to `anon`. The privileged implementation can read a list through an otherwise unguessable UUID without relaxing existing owner-only table RLS. Anyone with a valid share link **and a permitted signed-in Voka account** may import that list (bearer-link sharing). The links do not expire, and a source owner can invalidate them by deleting the source list. Revocation or expiration controls are not provided in this version. Direct table access across users remains denied. Existing learning progress and assessment histories are never imported.
+
 ## Operations
 
 Deployments continue using the existing `react` branch workflow, with the public React application at <https://mhuhn.github.io/voka/react/>. Migrations are versioned under `supabase/migrations/`; they have already been applied to the existing `storage` project. App source edits trigger GitHub CI (TypeScript, unit, browser tests) before GitHub Pages deployment.
