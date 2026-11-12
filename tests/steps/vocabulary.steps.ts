@@ -22,15 +22,17 @@ When("I open the irregular verbs list", async function (this: VokaWorld) {
 });
 
 Then("the list filters and sorting work", async function (this: VokaWorld) {
-  await expect(this.page.getByText("3 Cards", { exact: true })).toBeVisible();
-  const unlearned = this.page.getByRole("checkbox", { name: "Show unlearned" });
-  await expect(unlearned).not.toBeChecked();
-  await unlearned.check();
   await expect(this.page.getByText("2 Cards", { exact: true })).toBeVisible();
+  const showLearned = this.page.getByRole("checkbox", { name: "Show learned" });
+  await expect(showLearned).not.toBeChecked();
+  await expect(this.page.locator(".v-card-list .v-card-open")).toHaveCount(2);
+  await showLearned.check();
+  await expect(this.page.getByText("3 Cards", { exact: true })).toBeVisible();
+  await expect(this.page.locator(".v-card-list .v-card-open")).toHaveCount(3);
   await this.page.getByRole("checkbox", { name: "Show Englisch" }).check();
   await expect(this.page.getByText("went", { exact: true })).toBeVisible();
   await this.page.getByRole("checkbox", { name: "Only starred" }).check();
-  await expect(this.page.getByText("1 Cards", { exact: true })).toBeVisible();
+  await expect(this.page.getByText("1 Card", { exact: true })).toBeVisible();
   await this.page.getByRole("button", { name: "By points" }).click();
 });
 
@@ -314,6 +316,7 @@ Then("an existing group is updated through the dialog", async function(this:Voka
 });
 
 Then("cards sort by increasing position", async function (this: VokaWorld) {
+  await this.page.getByRole("checkbox",{name:"Show learned"}).check();
   const order=()=>this.page.locator(".v-card-list .v-card-question").allTextContents();
   await expect(this.page.getByRole("button",{name:"By position"})).toBeVisible();
   await this.page.getByRole("button",{name:"By position"}).click();
@@ -372,4 +375,43 @@ Then("other school subjects suggest the matching emoji", async function (this: V
     await expect(emoji).toHaveValue(icon);
   }
   await dlg.getByRole("button",{name:"Cancel",exact:true}).last().click();
+});
+
+Then("the German learned-card switch and card counts use the correct wording", async function(this:VokaWorld){
+  const learned=this.page.getByRole("checkbox",{name:"Gelernte anzeigen"});
+  await expect(learned).not.toBeChecked();
+  await expect(this.page.locator(".v-list-count")).toHaveText("2 Karten");
+  await learned.check();
+  await expect(this.page.locator(".v-list-count")).toHaveText("3 Karten");
+  await this.page.getByRole("checkbox",{name:"Nur Markierte"}).check();
+  await expect(this.page.locator(".v-list-count")).toHaveText("1 Karte");
+  await expect(this.page.locator(".v-list-grid .v-list-row").first()).toContainText("3 Karten");
+});
+
+Then("the tablet list overview back arrow returns directly to My subjects",async function(this:VokaWorld){
+  await expect(this.page.locator(".v-lists-pane")).toBeVisible();
+  await expect(this.page.locator(".v-list-detail-pane")).toBeVisible();
+  await this.page.locator(".v-heading").getByRole("button",{name:"Cancel"}).click();
+  await expect(this.page.getByRole("heading",{name:"My subjects"})).toBeVisible();
+  await expect(this.page.locator(".v-lists-pane")).toHaveCount(0);
+  await expect(this.page.locator(".v-list-detail-pane")).toHaveCount(0);
+});
+
+Then("the main learning action uses the logo orange and underline",async function(this:VokaWorld){
+  const button=this.page.locator(".v-home-learn");
+  await expect(button).toHaveClass(/v-learn-cta/);
+  const visual=await button.evaluate(element=>{
+    const style=getComputedStyle(element),underline=getComputedStyle(element,"::after");
+    return {
+      background:style.backgroundImage,
+      underlineColor:underline.backgroundColor,
+      underlineHeight:parseFloat(underline.height),
+      accent:getComputedStyle(element.closest(".v-app")!).getPropertyValue("--v-orange").trim()
+    };
+  });
+  expect(visual.background).toContain("linear-gradient");
+  expect(visual.background).toContain("255");
+  expect(visual.underlineColor).toBe("rgb(255, 158, 0)");
+  expect(visual.underlineHeight).toBeGreaterThanOrEqual(4);
+  expect(visual.accent).toBe("#ff9e00");
 });
