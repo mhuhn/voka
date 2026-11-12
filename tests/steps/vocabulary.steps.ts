@@ -280,3 +280,33 @@ Then("the list editor cancel button discards unsaved changes", async function(th
  await expect(this.page.locator(".v-pane-list-heading")).toContainText("Irregular Verbs");
  await expect(this.page.getByText("A title not saved")).toHaveCount(0);
 });
+
+Then("a new subject is saved through its group dialog", async function(this:VokaWorld){
+ const group=this.page.locator(".v-manage-group").filter({hasText:"Sprachen"});
+ await group.getByRole("button",{name:"Add subject"}).click();
+ const dialog=this.page.getByRole("dialog",{name:"Add subject"});
+ await dialog.getByRole("textbox",{name:/Title/}).fill("Geschichte");
+ await dialog.getByRole("textbox",{name:"Emoji"}).fill("📜");
+ const requestPromise=this.page.waitForRequest(req=>
+   new URL(req.url()).pathname==="/rest/v1/voka_subjects"&&req.method()==="POST");
+ await dialog.getByRole("button",{name:"Save",exact:true}).click();
+ const request=await requestPromise;
+ const payload=request.postDataJSON() as {title:string;emoji:string;group_id:string};
+ expect(payload.title).toBe("Geschichte");
+ expect(payload.emoji).toBe("📜");
+ expect(payload.group_id).toBe("10000000-0000-4000-8000-000000000001");
+ await expect(this.page.getByRole("dialog")).toHaveCount(0);
+ await expect(this.page.getByRole("heading",{name:"Subject groups & subjects"})).toBeVisible();
+});
+
+Then("an existing group is updated through the dialog", async function(this:VokaWorld){
+ await this.page.locator(".v-manage-group").filter({hasText:"Sprachen"}).getByRole("button",{name:"Edit Sprachen"}).click();
+ const dialog=this.page.getByRole("dialog",{name:"Edit Group name"});
+ await dialog.getByRole("textbox",{name:"Group name"}).fill("Neue Sprachen");
+ const requestPromise=this.page.waitForRequest(req=>
+   new URL(req.url()).pathname==="/rest/v1/voka_subjectgroups"&&req.method()==="PATCH");
+ await dialog.getByRole("button",{name:"Save",exact:true}).click();
+ const request=await requestPromise;
+ expect((request.postDataJSON() as {title:string}).title).toBe("Neue Sprachen");
+ await expect(this.page.getByRole("dialog")).toHaveCount(0);
+});
