@@ -121,3 +121,34 @@ Feature: Vocabulary lists
     And I return to vocabulary home
     And I open subject management
     Then an existing group is updated through the dialog
+
+  Scenario: Cards can be sorted by position independently from points
+    Given I open the Voka app
+    When I sign in as "alice@example.test" with password "correct-password"
+    And I return to vocabulary home
+    And I open the English subject
+    And I open the irregular verbs list
+    Then cards sort by increasing position
+
+  Scenario: Question and answer inputs display the list's own labels
+    Given I open the Voka app
+    When I sign in as "alice@example.test" with password "correct-password"
+    And I return to vocabulary home
+    And I open the English subject
+    And I open the irregular verbs list
+    Then the card editor uses its list's question and answer labels
+
+  Scenario: A new language subject automatically receives its flag
+    Given I open the Voka app
+    When I sign in as "alice@example.test" with password "correct-password"
+    And I return to vocabulary home
+    And I open subject management
+    And I add a subject to the language group
+    Then the language subject name suggests the matching flag
+
+  Scenario: New school subjects automatically receive topic emojis
+    Given I open the Voka app
+    When I sign in as "alice@example.test" with password "correct-password"
+    And I return to vocabulary home
+    And I open subject management
+    Then other school subjects suggest the matching emoji
