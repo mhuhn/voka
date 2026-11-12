@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, ChevronRight, CircleUserRound, Home, Pencil, Plus, Search, Settings, Share2, Star, Trash2, X } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, ChevronRight, CircleUserRound, Home, Pencil, Plus, Search, Settings, Share2, Star, Trash2, X, Play } from "lucide-react";
 import type { Language } from "../lib/i18n";
-import { emptyData, loadVoka, beginLearning, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type Subject, type SubjectGroup, type ListInput } from "./data";
+import { emptyData, loadVoka, beginLearning, beginMixedLearning, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type Subject, type SubjectGroup, type ListInput } from "./data";
 import "./voka.css";
 import LearningScreen from "./LearningScreen";
+import MixedLearningPicker from "./MixedLearningPicker";
 import { learningProgress, effectiveLearningPause, calendarPauseDay, formatLearningPause } from "./learning";
 import { getUserAvatarColor } from "../auth/userColors";
 import { authManager } from "../auth/manager";
 import { suggestSubjectEmoji } from "./subjectEmoji";
 import { clearPendingSharedList, fetchSharedList, importSharedList, pendingSharedListId, shareUrlForList, type SharedList } from "./sharing";
 
-type Screen = "home" | "subject" | "list" | "listForm" | "cardForm" | "manage" | "learn";
+type Screen = "home" | "subject" | "list" | "listForm" | "cardForm" | "manage" | "learn" | "mixedSelect";
 type Words = Record<string, string>;
 const translations: Record<Language, Words> = {
  de: { mySubjects:"Meine Fächer", createList:"Liste erstellen", addCard:"Karte hinzufügen", saveCard:"Karte speichern", saveList:"Liste speichern", empty:"Noch keine Listen", emptyInfo:"Erstelle deine erste Vokabelliste und lerne effektiv mit digitalen Karteikarten.", groups:"Fachgruppen & Fächer", addGroup:"Fachgruppe hinzufügen", addSubject:"Fach hinzufügen", edit:"Bearbeiten", delete:"Löschen", cancel:"Abbrechen", save:"Speichern", title:"Titel", subject:"Fach", tags:"Tags", addTag:"Tag hinzufügen", questionLabel:"Frage-Label", answerLabel:"Antwort-Label", both:"In beide Richtungen lernen", bothInfo:"Die Karteikarten werden sowohl vorwärts als auch rückwärts abgefragt.", question:"Frage", answer:"Antwort", marked:"Markiert", markedOnly:"Nur Markierte", unseen:"Ungelernte anzeigen", showAnswers:"Antworten anzeigen", sorting:"Sortieren", alpha:"Alphabetisch", points:"Nach Punkten", position:"Nach Position", learn:"Lernen", progress:"Fortschritt", cards:"Karten", noCards:"Noch keine Karten", noMatching:"Keine Karten für diese Filter", listInfo:"Listeneigenschaften", lists:"Listen", learning:"Lernen", search:"Suchen", statistics:"Statistik", settings:"Einstellungen", manage:"Fächer verwalten", groupName:"Name der Fachgruppe", emoji:"Emoji", confirmDelete:"Wirklich löschen? Zugehörige Inhalte werden ebenfalls gelöscht.", noSubject:"Lege zuerst ein Fach an.", editCard:"Karte bearbeiten", editList:"Liste bearbeiten", updated:"Zuletzt", total:"Listen", automatic:"Lernpunkte werden automatisch verwaltet. Die Punktzahl (0–4) passt sich beim Lernen an.", profile:"Profil", loading:"Lade deine Listen…", chooseSubject:"Fach auswählen", newList:"Neue Liste", newCard:"Neue Karte", create:"Erstellen", starred:"Markierte", none:"Keine Listen in diesem Fach" },
@@ -129,7 +130,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const [data,setData]=useState<VokaData>(emptyData);
  const [loading,setLoading]=useState(true),[error,setError]=useState("");
  const [screen,setScreen]=useState<Screen>("home");
- const [learningSession,setLearningSession]=useState<{queryId:string;cardIds:string[]}|null>(null);
+ const [learningSession,setLearningSession]=useState<{queryId:string;cardIds:string[];mixed?:boolean}|null>(null);
  const [startingLearn,setStartingLearn]=useState(false);
  const [clock,setClock]=useState(()=>Date.now());
  useEffect(()=>{
@@ -260,6 +261,9 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const visibleGroups=useMemo(()=>groups.filter(g=>data.subjects.some(s=>s.group_id===g.id&&subjectsWithLists.has(s.id))),[groups,data.subjects,subjectsWithLists]);
  const currentSubject=data.subjects.find(s=>s.id===selectedSubject);
  const currentList=data.lists.find(l=>l.id===selectedList);
+ const learningList=learningSession?.mixed
+   ?data.lists.find(l=>l.id===data.cards.find(c=>c.id===learningSession.cardIds[0])?.list_id)
+   :currentList;
  const listCards=useMemo(()=>data.cards.filter(c=>c.list_id===selectedList).filter(c=>(!markedOnly||c.marked)&&(!unlearnedOnly||c.success_count<4)).sort((a,b)=>sort==="alpha"?a.question.localeCompare(b.question):sort==="position"?a.position-b.position||a.question.localeCompare(b.question):a.success_count-b.success_count||a.question.localeCompare(b.question)),[data.cards,selectedList,markedOnly,unlearnedOnly,sort]);
  const run=async(fn:()=>Promise<void>)=>{setWorking(true);setError("");try{await fn();await refresh()}catch(e){setError(e instanceof Error?e.message:String(e))}finally{setWorking(false)}};
  const startLearning=async()=>{
@@ -269,7 +273,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
    const session=await beginLearning(currentList.id);
    await refresh();
    if(session.query_id&&session.card_ids.length){
-    setLearningSession({queryId:session.query_id,cardIds:session.card_ids});
+    setLearningSession({queryId:session.query_id,cardIds:session.card_ids,mixed:false});
     setScreen("learn");
    }
    // When there are no due cards, the backend advances the list's positions
@@ -277,7 +281,25 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
   }catch(e){setError(e instanceof Error?e.message:String(e))}
   finally{setStartingLearn(false);}
  };
- const finishLearningView=()=>{setLearningSession(null);setScreen("list")};
+ const startMixedLearning=async(subjectIds:string[],tags:string[])=>{
+   if(startingLearn||!subjectIds.length)return;
+   setStartingLearn(true);setError("");
+   try{
+     const session=await beginMixedLearning(subjectIds,tags);
+     await refresh();
+     if(session.query_id&&session.card_ids.length){
+       setLearningSession({queryId:session.query_id,cardIds:session.card_ids,mixed:true});
+       setScreen("learn");
+     }else{
+       setError(language==="de"?"Heute sind für diese Auswahl keine Karten fällig.":"No matching cards are due today.");
+     }
+   }catch(e){setError(e instanceof Error?e.message:String(e))}
+   finally{setStartingLearn(false);}
+ };
+ const finishLearningView=()=>{
+   const destination=learningSession?.mixed?"home":"list";
+   setLearningSession(null);setScreen(destination);
+ };
  const back=()=>{if(screen==="cardForm"){setSelectedCard(null);setScreen(wide?"home":"list");}else if(screen==="listForm")setScreen(listEditing?"list":selectedSubject?"subject":"home");else if(screen==="list")setScreen("subject");else if(screen==="subject"||screen==="manage")setScreen("home");else setScreen("home")};
  const openList=(id:string)=>{setSelectedList(id);setShowAnswers(false);setMarkedOnly(false);setUnlearnedOnly(false);setSort("alpha");setSelectedCard(null);setScreen("list")};
  const listLabels=(subjectId:string)=>{const subject=languageSubject(data,subjectId);return subject?{question_label:"Deutsch",answer_label:subject.title}:{question_label:t("question"),answer_label:t("answer")};};
@@ -401,7 +423,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
   <div className="v-content">
    {error&&<div role="alert" className="v-error">{error}<button onClick={()=>void refresh()}>↻</button></div>}
    {loading?<div className="v-empty">{t("loading")}</div>:<>
-   {screen!=="learn"&&<header className="v-heading">
+   {screen!=="learn"&&screen!=="mixedSelect"&&<header className="v-heading">
     {screen!=="home"&&<IconButton onClick={back} label={t("cancel")}><ArrowLeft/></IconButton>}
     <h1>{screen==="home"?<span className="v-logo">Voka</span>:wide&&(screen==="subject"||screen==="list"||screen==="cardForm"||(screen==="listForm"&&Boolean(listEditing)))?<span>{currentSubject?.emoji} {currentSubject?.title}</span>:screen==="subject"?currentSubject?.title:screen==="list"?listTitle:screen==="listForm"?(listEditing?t("editList"):t("createList")):screen==="cardForm"?(selectedCard?t("editCard"):t("addCard")):t("manage")}</h1>
     {!wide&&(screen==="list"||screen==="cardForm")&&currentList&&<div className="v-detail-header-actions">
@@ -409,11 +431,20 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
        {screen==="list"&&<IconButton label={t("editList")} onClick={()=>editList(currentList)}><Pencil size={19}/></IconButton>}
      </div>}
    </header>}
-   {screen==="learn"&&learningSession&&currentList&&<LearningScreen language={language} list={currentList}
-     cards={data.cards} session={learningSession} onRefresh={refresh} onExit={finishLearningView}/>}
+   {screen==="learn"&&learningSession&&learningList&&<LearningScreen language={language} list={learningList}
+     cards={data.cards} session={learningSession}
+     mixed={learningSession.mixed?{lists:data.lists,subjects:data.subjects}:undefined}
+     onRefresh={refresh} onExit={finishLearningView}/>}
+   {screen==="mixedSelect"&&<MixedLearningPicker data={data} language={language}
+     busy={startingLearn} onCancel={()=>setScreen("home")}
+     onStart={(subjects,tags)=>void startMixedLearning(subjects,tags)}/>} 
    {screen==="home"&&<div className="v-home">
     {data.lists.length===0&&<section className="v-intro"><div className="v-illustration"><BookOpen size={74}/><span>?</span></div><h2>{t("empty")}</h2><p>{t("emptyInfo")}</p><button className="v-primary" onClick={()=>newList()}><Plus size={18}/>{t("createList")}</button></section>}
-    <div className="v-section-tools"><h2 className="v-section-title">{t("mySubjects")}</h2><button className="v-manage-link" onClick={()=>{setManageModalOpen(false);setScreen("manage")}}>{t("manage")} <Settings size={16}/></button></div>
+    <div className="v-section-tools"><h2 className="v-section-title">{t("mySubjects")}</h2>
+      <div className="v-home-actions">
+       {data.lists.length>0&&<button type="button" className="v-primary v-home-learn" onClick={()=>setScreen("mixedSelect")}><Play size={17}/>{t("learn")}</button>}
+       <button className="v-manage-link" onClick={()=>{setManageModalOpen(false);setScreen("manage")}}>{t("manage")} <Settings size={16}/></button>
+      </div></div>
     <div className="v-group-grid">{visibleGroups.map(g=>{
      const subjects=[...data.subjects.filter(s=>s.group_id===g.id&&subjectsWithLists.has(s.id))].sort((a,b)=>subjectUsage(data,b.id)-subjectUsage(data,a.id)||a.title.localeCompare(b.title));
      return <section className="v-group" key={g.id}><div className="v-group-head"><strong>{g.title}</strong><small>{t("updated")}: {stamp(groupUsage(data,g.id),language)}</small><button aria-label={t("edit")+" "+g.title} onClick={()=>startManage("group",g)}><Pencil size={14}/></button></div>
