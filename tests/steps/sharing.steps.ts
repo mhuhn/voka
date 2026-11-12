@@ -9,6 +9,13 @@ When("I open a shared-list invitation",async function(this:VokaWorld){
  await this.page.goto("http://127.0.0.1:5173/?importList="+sharedId);
 });
 
+When("I sign in to import as {string} with password {string}",async function(this:VokaWorld,email:string,password:string){
+ await this.page.getByLabel("Email").fill(email);
+ await this.page.getByLabel("Password").fill(password);
+ await this.page.getByRole("button",{name:"Sign in",exact:true}).click();
+ await expect(this.page.getByRole("dialog",{name:"Import shared list"})).toBeVisible();
+});
+
 Then("the app requires sign-in before importing the shared list",async function(this:VokaWorld){
  await expect(this.page.getByText("Sign in to import the shared vocabulary list.")).toBeVisible();
  await expect(this.page.getByRole("heading",{name:"Sign in"})).toBeVisible();
@@ -57,11 +64,7 @@ Then("canceling the shared-list import leaves my lists untouched",async function
 });
 
 Then("the list share button calls the native share sheet with the list ID",async function(this:VokaWorld){
- await this.page.evaluate(()=>{
-  Object.defineProperty(navigator,"share",{configurable:true,value:async(payload:ShareData)=>{
-   (window as Window&{__vokaShared?:ShareData}).__vokaShared=payload;
-  }});
- });
+ await this.page.evaluate('Object.defineProperty(navigator,"share",{configurable:true,value:function(payload){window.__vokaShared=payload;return Promise.resolve();}})');
  await this.page.getByRole("button",{name:"Share",exact:true}).click();
  const payload=await this.page.evaluate(()=>(window as Window&{__vokaShared?:ShareData}).__vokaShared);
  expect(payload?.title).toBe("Irregular Verbs");
@@ -72,12 +75,7 @@ Then("the list share button calls the native share sheet with the list ID",async
 });
 
 Then("sharing copies a usable link if no share sheet is supported",async function(this:VokaWorld){
- await this.page.evaluate(()=>{
-  Object.defineProperty(navigator,"share",{configurable:true,value:undefined});
-  Object.defineProperty(navigator,"clipboard",{configurable:true,value:{writeText:async(value:string)=>{
-   (window as Window&{__vokaCopied?:string}).__vokaCopied=value;
-  }}});
- });
+ await this.page.evaluate('Object.defineProperty(navigator,"share",{configurable:true,value:undefined});Object.defineProperty(navigator,"clipboard",{configurable:true,value:{writeText:function(value){window.__vokaCopied=value;return Promise.resolve();}}})');
  await this.page.getByRole("button",{name:"Share",exact:true}).click();
  await expect(this.page.getByRole("status")).toContainText("Link copied");
  const link=await this.page.evaluate(()=>(window as Window&{__vokaCopied?:string}).__vokaCopied);
