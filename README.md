@@ -66,6 +66,39 @@ The browser client persists refresh tokens in origin-scoped local storage. This 
 
 For production handling of higher-value data, implement platform keychain/keystore-backed encrypted session storage, an app-level unlock, CSP and XSS hardening, and test multi-device refresh-token behavior. Each Supabase client operates with the same **publishable** key; authorization for protected data must always be enforced server-side with RLS and validated identity (not a client-selected account ID).
 
-## Deployment
+## Parallel GitHub Pages deployment
 
-Serve `dist/` as a static site over HTTPS. Configure the hosting provider to rewrite unknown navigation requests (including `/auth/callback`) to `/index.html`. PWA installability requires HTTPS (except localhost). Configure the final domain in the Supabase Auth redirect allow list. No app hosting service or domain is provisioned by this branch.
+The new deployment workflow `.github/workflows/pages.yml` assembles **both**
+branches into a single GitHub Pages artifact:
+
+- Existing static main app: `https://mhuhn.github.io/voka/`
+- React PWA from the `react` branch: `https://mhuhn.github.io/voka/react/`
+
+It checks out `main` and `react`, copies the root static site without
+changing its content, builds React with `VITE_PAGES_BASE=/voka/react/`,
+then deploys both to the same Pages site. Commits to either branch trigger
+a fresh deployment. The old main service worker explicitly excludes the React
+subfolder and no longer deletes other applications' caches.
+
+**One-time repository setting:** in GitHub > Settings > Pages > Build and deployment
+choose **GitHub Actions** as the source. This setting cannot be changed by the
+workflow itself. The workflow uses the standard `github-pages` environment and
+needs Pages write permissions. If a custom domain is configured, the base path
+must be adjusted for that domain; the URLs above assume the standard project site.
+
+For Supabase OAuth and password recovery, add this exact URL to Authentication >
+URL Configuration > Redirect URLs:
+
+```
+https://mhuhn.github.io/voka/react/
+```
+
+The GitHub Pages redirect deliberately targets the published directory root
+instead of a non-existent `/auth/callback` page. This is also used for email
+confirmation. The normal local Vite build still uses `/auth/callback`.
+The Apple and Google provider's callback at
+`https://vqpsrqepcypqmfmceiqr.supabase.co/auth/v1/callback`
+remains unchanged. See `docs/AUTH_SETUP.md`.
+
+The default build `npm run build` uses base `/` for native packaging;
+the Pages workflow sets its base separately.

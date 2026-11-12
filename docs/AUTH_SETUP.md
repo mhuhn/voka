@@ -22,3 +22,17 @@ The application displays the Auth user email and metadata; it does not yet modif
 ## Operational limits
 
 Refresh-token persistence is conditional on Supabase session policies, token revocation and persistent WebView storage. A saved account whose session is invalid remains visible, so the user can remove it and log in again. Switching users is a local convenience function, not a strong isolation boundary on a shared unlocked device.
+
+## GitHub Pages React preview
+
+GitHub Pages publishes Voka React at `https://mhuhn.github.io/voka/react/`.
+In Supabase > Authentication > URL Configuration > Redirect URLs, add that
+**exact** URL including the trailing slash. The Pages build uses this URL
+as the Apple/Google OAuth, confirmation and password-recovery return target
+because GitHub Pages does not rewrite arbitrary URLs to an SPA. Local
+development continues to use `http://localhost:5173/auth/callback`.
+
+The Apple Developer Services ID still uses
+`vqpsrqepcypqmfmceiqr.supabase.co` as domain and
+`https://vqpsrqepcypqmfmceiqr.supabase.co/auth/v1/callback` as return URL.
+Do not replace Apple's Supabase callback with the GitHub Pages URL.

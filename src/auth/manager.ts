@@ -1,7 +1,7 @@
 import { createClient, type Session, type SupabaseClient, type User, type Provider } from "@supabase/supabase-js";
 import { App } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
-import { isConfigured, isNative, supabaseKey, supabaseUrl, callbackUrl } from "./config";
+import { isConfigured, isNative, supabaseKey, supabaseUrl, callbackUrl, webCallbackPath } from "./config";
 import { REGISTRY_KEY, addAccount, readRegistry, removeAccount, selectAccount, type AccountRecord, type AccountRegistry } from "./registry";
 
 export type AuthScreen = "login" | "register" | "forgot" | "reset";
@@ -100,7 +100,7 @@ export class AuthManager {
         });
         const launch = await App.getLaunchUrl();
         if (launch?.url) await this.processCallback(launch.url);
-      } else if (window.location.pathname === "/auth/callback") {
+      } else if (window.location.pathname === webCallbackPath) {
         await this.processCallback(window.location.href);
       }
     } catch (error) {
@@ -211,7 +211,7 @@ export class AuthManager {
 
   private async processCallbackInternal(value: string) {
     const url = new URL(value);
-    if (!(url.pathname.endsWith("/auth/callback") || (url.host === "auth" && url.pathname === "/callback"))) return;
+    if (!(url.pathname === webCallbackPath || (url.host === "auth" && url.pathname === "/callback"))) return;
     const query = new URLSearchParams(url.search);
     const hash = new URLSearchParams(url.hash.slice(1));
     const errorText = query.get("error_description") || hash.get("error_description");
@@ -237,7 +237,7 @@ export class AuthManager {
     if (isNative) {
       await Browser.close().catch(() => undefined);
     } else {
-      window.history.replaceState({}, "", "/");
+      window.history.replaceState({}, "", import.meta.env.BASE_URL);
     }
   }
 
