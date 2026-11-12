@@ -367,3 +367,58 @@
 @media(min-width:700px) and (pointer:coarse){
  .v-detail-header-actions .v-icon-button{width:48px;height:48px;min-width:48px}
 }
+
+
+/* Home learning entry and live mixed-subject selection. */
+.v-home-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap}
+.v-home-learn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:43px;min-width:114px;padding:8px 15px;font-size:15px}
+.v-mixed-picker{max-width:1060px;margin:0 auto;display:flex;flex-direction:column;gap:16px;padding:12px 0 40px}
+.v-mixed-picker-head{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.v-mixed-picker-head h2{display:flex;align-items:center;gap:10px;font-size:24px;font-weight:850}
+.v-mixed-intro{line-height:1.5;color:var(--v-muted);max-width:770px;font-size:15px}
+.v-mixed-picker h3{font-size:18px;font-weight:800;margin-top:9px}
+.v-mixed-subjects{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:15px}
+.v-mixed-subjects fieldset{border:1px solid var(--v-line);border-radius:14px;padding:12px 15px 15px;min-width:0;background:var(--v-card)}
+.v-mixed-subjects legend{font-weight:800;padding:0 5px;color:var(--v-navy);font-size:15px}
+.v-mixed-options{display:flex;flex-direction:column;gap:7px}
+.v-mixed-choice{display:flex;align-items:center;gap:10px;border:1px solid var(--v-line);border-radius:11px;padding:10px 12px;background:var(--v-soft);font-size:15px;font-weight:650;cursor:pointer;min-height:46px}
+.v-mixed-choice:has(input:checked){border-color:var(--v-blue);background:#eaf3ff}
+.v-mixed-choice input{accent-color:var(--v-blue);width:18px;height:18px;flex-shrink:0}
+.v-mixed-choice svg{margin-left:auto;color:var(--v-blue)}
+.v-mixed-choice-emoji{font-size:22px}
+.v-mixed-tags{display:flex;gap:9px;flex-wrap:wrap}
+.v-mixed-tag{display:flex;align-items:center;gap:7px;padding:9px 13px;min-height:42px;border:1px solid var(--v-line);border-radius:99px;font-size:14px;cursor:pointer;background:var(--v-card)}
+.v-mixed-tag:has(input:checked){background:#eaf3ff;border-color:var(--v-blue);color:var(--v-blue)}
+.v-mixed-tag input{width:16px;height:16px;accent-color:var(--v-blue)}
+.v-mixed-footer{display:flex;flex-direction:column;gap:11px;margin-top:10px;padding:20px;border:1px solid var(--v-line);border-radius:17px;background:var(--v-card)}
+.v-mixed-card-count{display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:16px;font-weight:750}
+.v-mixed-card-count strong{font-size:29px;font-weight:850;color:var(--v-blue);font-variant-numeric:tabular-nums}
+.v-mixed-checking,.v-mixed-empty{font-size:13px;color:var(--v-muted)}
+.v-mixed-start{display:flex;align-items:center;justify-content:center;gap:9px;min-height:53px;font-size:17px}
+.v-mixed-start:disabled{opacity:.55;cursor:not-allowed}
+.v-learning-transition{position:fixed;inset:0;z-index:105;display:flex;align-items:center;justify-content:center;pointer-events:auto;background:rgba(14,31,62,.52);backdrop-filter:blur(4px);animation:v-learning-transition-appear .19s ease-out}
+.v-learning-transition>div{display:flex;flex-direction:column;align-items:center;gap:18px;min-width:min(340px,85vw);padding:40px 52px;border-radius:25px;background:#fff;box-shadow:0 18px 55px #11284d60}
+.v-learning-transition-emoji{font-size:65px;line-height:1.2}
+.v-learning-transition strong{font-size:27px;font-weight:850;color:#172e54;text-align:center;overflow-wrap:anywhere}
+@keyframes v-learning-transition-appear{from{opacity:0}to{opacity:1}}
+@media(max-width:600px){
+ .v-home-actions{gap:7px}
+ .v-home-learn{min-width:0;font-size:14px;padding:8px 12px}
+ .v-mixed-picker-head h2{font-size:20px}
+ .v-mixed-picker{padding:4px 0 32px}
+ .v-mixed-subjects{grid-template-columns:1fr}
+ .v-mixed-footer{padding:15px}
+ .v-learning-transition-emoji{font-size:57px}
+}
+@media(min-width:700px) and (pointer:coarse){
+ .v-home-learn{min-height:52px;font-size:17px}
+ .v-mixed-choice{min-height:53px;font-size:17px}
+ .v-mixed-tag{min-height:51px;font-size:16px}
+ .v-mixed-start{min-height:61px;font-size:20px}
+}
+@media(prefers-color-scheme:dark){
+ .v-mixed-choice:has(input:checked),.v-mixed-tag:has(input:checked){background:#284d7c}
+ .v-learning-transition>div{background:#182b49}
+ .v-learning-transition strong{color:#eaf3ff}
+}
+@media(prefers-reduced-motion:reduce){.v-learning-transition{animation:none}}
