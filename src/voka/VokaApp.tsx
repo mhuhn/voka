@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, ChevronRight, CircleUserRound, Home, Pencil, Plus, Search, Settings, Star, Trash2, X } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, ChevronRight, CircleUserRound, Home, Pencil, Plus, Search, Settings, Share2, Star, Trash2, X } from "lucide-react";
 import type { Language } from "../lib/i18n";
 import { emptyData, loadVoka, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type Subject, type SubjectGroup, type ListInput } from "./data";
 import "./voka.css";
 import { getUserAvatarColor } from "../auth/userColors";
 import { authManager } from "../auth/manager";
 import { suggestSubjectEmoji } from "./subjectEmoji";
+import { clearPendingSharedList, fetchSharedList, importSharedList, pendingSharedListId, shareUrlForList, type SharedList } from "./sharing";
 
 type Screen = "home" | "subject" | "list" | "listForm" | "cardForm" | "manage";
 type Words = Record<string, string>;
@@ -14,6 +15,69 @@ const translations: Record<Language, Words> = {
  en: {mySubjects:"My subjects",createList:"Create list",addCard:"Add card",saveCard:"Save card",saveList:"Save list",empty:"No lists yet",emptyInfo:"Create your first vocabulary list and learn with digital flashcards.",groups:"Subject groups & subjects",addGroup:"Add group",addSubject:"Add subject",edit:"Edit",delete:"Delete",cancel:"Cancel",save:"Save",title:"Title",subject:"Subject",tags:"Tags",addTag:"Add tag",questionLabel:"Question label",answerLabel:"Answer label",both:"Learn in both directions",bothInfo:"Cards are tested both forwards and backwards.",question:"Question",answer:"Answer",marked:"Starred",markedOnly:"Only starred",unseen:"Show unlearned",showAnswers:"Show answers",sorting:"Sort by",alpha:"Alphabetical",points:"By points",position:"By position",learn:"Learn",progress:"Progress",cards:"Cards",noCards:"No cards yet",noMatching:"No cards match these filters",listInfo:"List properties",lists:"Lists",learning:"Learn",search:"Search",statistics:"Statistics",settings:"Settings",manage:"Manage subjects",groupName:"Group name",emoji:"Emoji",confirmDelete:"Delete this and its contents?",noSubject:"Add a subject first.",editCard:"Edit card",editList:"Edit list",updated:"Last used",total:"Lists",automatic:"Learning points are managed automatically. Scores (0–3) will change during learning.",profile:"Profile",loading:"Loading your lists…",chooseSubject:"Choose a subject",newList:"New list",newCard:"New card",create:"Create",starred:"Starred",none:"No lists in this subject"},
  fr:{},nl:{},da:{},it:{}
 };
+const sharingWords: Record<Language,Record<string,string>> = {
+ de:{
+  share:"Teilen",shareCopied:"Link kopiert",shareCopy:"Link kopieren",shareFallback:"Diesen Link kopieren und weitergeben",
+  shareFailed:"Der Link konnte nicht geteilt werden.",importHeading:"Geteilte Liste importieren",
+  importDetails:"Wähle das Fach und passe bei Bedarf den Namen und die Tags an.",
+  importSubject:"Ziel-Fach",importTitle:"Name der Liste",importTags:"Tags (durch Komma getrennt)",
+  importCards:"Karten",importReset:"Beim Import werden Lernpunkte und Position aller Karten auf 0 gesetzt.",
+  importNow:"Liste importieren",importLoading:"Geteilte Liste wird geladen…",
+  importUnavailable:"Diese geteilte Liste wurde nicht gefunden oder ist nicht mehr verfügbar.",
+  importError:"Der Import ist fehlgeschlagen. Bitte erneut versuchen."
+ },
+ en:{
+  share:"Share",shareCopied:"Link copied",shareCopy:"Copy link",shareFallback:"Copy and send this link",
+  shareFailed:"Could not share the link.",importHeading:"Import shared list",
+  importDetails:"Choose a subject and optionally edit the title and tags.",
+  importSubject:"Destination subject",importTitle:"List title",importTags:"Tags (comma separated)",
+  importCards:"Cards",importReset:"All imported cards start with 0 points and position 0.",
+  importNow:"Import list",importLoading:"Loading shared list…",
+  importUnavailable:"This shared list was not found or is no longer available.",
+  importError:"Import failed. Please try again."
+ },
+ fr:{
+  share:"Partager",shareCopied:"Lien copié",shareCopy:"Copier le lien",shareFallback:"Copiez et envoyez ce lien",
+  shareFailed:"Impossible de partager le lien.",importHeading:"Importer une liste partagée",
+  importDetails:"Choisissez une matière et modifiez le titre ou les étiquettes si nécessaire.",
+  importSubject:"Matière de destination",importTitle:"Titre de la liste",importTags:"Étiquettes (séparées par des virgules)",
+  importCards:"Cartes",importReset:"Les points et positions des cartes importées sont remis à zéro.",
+  importNow:"Importer",importLoading:"Chargement de la liste…",
+  importUnavailable:"Cette liste partagée est introuvable ou indisponible.",
+  importError:"L'importation a échoué. Réessayez."
+ },
+ nl:{
+  share:"Delen",shareCopied:"Link gekopieerd",shareCopy:"Link kopiëren",shareFallback:"Kopieer en verstuur deze link",
+  shareFailed:"Link delen is mislukt.",importHeading:"Gedeelde lijst importeren",
+  importDetails:"Kies een vak en pas eventueel de titel en tags aan.",
+  importSubject:"Doelvak",importTitle:"Lijsttitel",importTags:"Tags (gescheiden door komma's)",
+  importCards:"Kaarten",importReset:"Leerpunten en posities beginnen bij 0.",
+  importNow:"Lijst importeren",importLoading:"Gedeelde lijst laden…",
+  importUnavailable:"Deze gedeelde lijst bestaat niet of is niet meer beschikbaar.",
+  importError:"Importeren mislukt. Probeer opnieuw."
+ },
+ da:{
+  share:"Del",shareCopied:"Link kopieret",shareCopy:"Kopiér link",shareFallback:"Kopiér og send dette link",
+  shareFailed:"Linket kunne ikke deles.",importHeading:"Importér delt liste",
+  importDetails:"Vælg et fag og redigér eventuelt titel og tags.",
+  importSubject:"Fag",importTitle:"Listens titel",importTags:"Tags (adskilt med komma)",
+  importCards:"Kort",importReset:"Point og position nulstilles for alle importerede kort.",
+  importNow:"Importér liste",importLoading:"Henter delt liste…",
+  importUnavailable:"Den delte liste kunne ikke findes eller er ikke længere tilgængelig.",
+  importError:"Importen mislykkedes. Prøv igen."
+ },
+ it:{
+  share:"Condividi",shareCopied:"Link copiato",shareCopy:"Copia link",shareFallback:"Copia e invia questo link",
+  shareFailed:"Impossibile condividere il link.",importHeading:"Importa lista condivisa",
+  importDetails:"Scegli una materia e modifica, se vuoi, il titolo e i tag.",
+  importSubject:"Materia di destinazione",importTitle:"Titolo della lista",importTags:"Tag (separati da virgole)",
+  importCards:"Schede",importReset:"Punti e posizioni delle schede importate ripartono da 0.",
+  importNow:"Importa lista",importLoading:"Caricamento lista condivisa…",
+  importUnavailable:"La lista condivisa non è stata trovata o non è più disponibile.",
+  importError:"Importazione non riuscita. Riprova."
+ }
+};
+
 const supplemental: Partial<Record<Language,Words>> = {
  fr:{mySubjects:"Mes matières",createList:"Créer une liste",addCard:"Ajouter une carte",saveCard:"Enregistrer la carte",saveList:"Enregistrer la liste",empty:"Aucune liste",lists:"Listes",learn:"Apprendre",question:"Question",answer:"Réponse",marked:"Favori",markedOnly:"Favoris uniquement",unseen:"Afficher les non apprises",showAnswers:"Afficher les réponses",alpha:"Alphabétique",points:"Par points",position:"Par position",settings:"Réglages",search:"Rechercher",statistics:"Statistiques",manage:"Gérer les matières",cancel:"Annuler",save:"Enregistrer",delete:"Supprimer",edit:"Modifier",title:"Titre",subject:"Matière",tags:"Étiquettes",groupName:"Nom du groupe",addGroup:"Ajouter un groupe",addSubject:"Ajouter une matière"},
  nl:{mySubjects:"Mijn vakken",createList:"Lijst maken",addCard:"Kaart toevoegen",saveCard:"Kaart opslaan",saveList:"Lijst opslaan",empty:"Nog geen lijsten",lists:"Lijsten",learn:"Leren",question:"Vraag",answer:"Antwoord",marked:"Gemarkeerd",markedOnly:"Alleen gemarkeerde",unseen:"Niet-geleerde tonen",showAnswers:"Antwoorden tonen",alpha:"Alfabetisch",points:"Op punten",position:"Op positie",settings:"Instellingen",search:"Zoeken",statistics:"Statistieken",manage:"Vakken beheren",cancel:"Annuleren",save:"Opslaan",delete:"Verwijderen",edit:"Bewerken",title:"Titel",subject:"Vak",tags:"Tags",groupName:"Groepsnaam",addGroup:"Groep toevoegen",addSubject:"Vak toevoegen"},
@@ -50,7 +114,7 @@ function languageSubject(data:VokaData,subjectId:string):Subject|undefined {
 }
 const stamp=(time:number,language:Language)=>time?new Date(time).toLocaleDateString(language==="de"?"de-DE":language,{day:"numeric",month:"short"}):"–";
 export default function VokaApp({language,onProfile}:{language:Language;onProfile:()=>void}) {
- const t=(key:string)=>globalLabels[language]?.[key]||supplemental[language]?.[key]||translations[language]?.[key]||translations.en[key]||key;
+ const t=(key:string)=>sharingWords[language]?.[key]||globalLabels[language]?.[key]||supplemental[language]?.[key]||translations[language]?.[key]||translations.en[key]||key;
  const [data,setData]=useState<VokaData>(emptyData);
  const [loading,setLoading]=useState(true),[error,setError]=useState("");
  const [screen,setScreen]=useState<Screen>("home");
