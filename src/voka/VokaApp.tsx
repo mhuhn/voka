@@ -4,7 +4,7 @@ import type { Language } from "../lib/i18n";
 import { emptyData, loadVoka, beginLearning, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type Subject, type SubjectGroup, type ListInput } from "./data";
 import "./voka.css";
 import LearningScreen from "./LearningScreen";
-import { learningProgress, pauseMinutesLeft } from "./learning";
+import { learningProgress, effectiveLearningPause, calendarPauseDay } from "./learning";
 import { getUserAvatarColor } from "../auth/userColors";
 import { authManager } from "../auth/manager";
 import { suggestSubjectEmoji } from "./subjectEmoji";
@@ -18,12 +18,12 @@ const translations: Record<Language, Words> = {
  fr:{},nl:{},da:{},it:{}
 };
 const learningButtonWords: Record<Language,Record<string,string>>={
- de:{paused:"Noch",minutesPause:"min Pause",allLearned:"Alle Karten gelernt",starting:"Wird gestartet…"},
- en:{paused:"Pause:",minutesPause:"min left",allLearned:"All cards learned",starting:"Starting…"},
- fr:{paused:"Pause :",minutesPause:"min restantes",allLearned:"Toutes les cartes apprises",starting:"Démarrage…"},
- nl:{paused:"Pauze:",minutesPause:"min over",allLearned:"Alle kaarten geleerd",starting:"Starten…"},
- da:{paused:"Pause:",minutesPause:"min tilbage",allLearned:"Alle kort lært",starting:"Starter…"},
- it:{paused:"Pausa:",minutesPause:"min rimasti",allLearned:"Tutte le schede apprese",starting:"Avvio…"}
+ de:{paused:"Noch",minutesPause:"min Pause",pausedTomorrow:"bis morgen pausiert",pausedDayPrefix:"bis ",pausedDaySuffix:" pausiert",allLearned:"Alle Karten gelernt",starting:"Wird gestartet…"},
+ en:{paused:"Pause:",minutesPause:"min left",pausedTomorrow:"Paused until tomorrow",pausedDayPrefix:"Paused until ",pausedDaySuffix:"",allLearned:"All cards learned",starting:"Starting…"},
+ fr:{paused:"Pause :",minutesPause:"min restantes",pausedTomorrow:"En pause jusqu’à demain",pausedDayPrefix:"En pause jusqu’à ",pausedDaySuffix:"",allLearned:"Toutes les cartes apprises",starting:"Démarrage…"},
+ nl:{paused:"Pauze:",minutesPause:"min over",pausedTomorrow:"Gepauzeerd tot morgen",pausedDayPrefix:"Gepauzeerd tot ",pausedDaySuffix:"",allLearned:"Alle kaarten geleerd",starting:"Starten…"},
+ da:{paused:"Pause:",minutesPause:"min tilbage",pausedTomorrow:"Pause til i morgen",pausedDayPrefix:"Pause til ",pausedDaySuffix:"",allLearned:"Alle kort lært",starting:"Starter…"},
+ it:{paused:"Pausa:",minutesPause:"min rimasti",pausedTomorrow:"In pausa fino a domani",pausedDayPrefix:"In pausa fino a ",pausedDaySuffix:"",allLearned:"Tutte le schede apprese",starting:"Avvio…"}
 };
 
 const sharingWords: Record<Language,Record<string,string>> = {
@@ -346,16 +346,33 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
    "Mostra "+currentList.answer_label
   ):t("showAnswers");
  const listCardsForProgress=data.cards.filter(c=>c.list_id===selectedList);
- const pauseLeft=pauseMinutesLeft(currentList?.learning_paused_until,clock);
+ const calendarUntil=data.learningStates.find(s=>s.list_id===selectedList)?.calendar_pause_until;
+ const effectivePause=effectiveLearningPause(currentList?.learning_paused_until,calendarUntil,clock);
  const everyCardLearned=listCardsForProgress.length>0&&listCardsForProgress.every(c=>c.success_count>=4);
- const learningUnavailable=startingLearn||pauseLeft>0||everyCardLearned||listCardsForProgress.length===0;
- const learningButtonLabel=startingLearn?t("starting"):pauseLeft>0?
-   t("paused")+" "+pauseLeft+" "+t("minutesPause"):
+ const learningUnavailable=startingLearn||Boolean(effectivePause)||everyCardLearned||listCardsForProgress.length===0;
+ const dayPause=effectivePause?.kind==="calendar"?
+   calendarPauseDay(effectivePause.until,currentList?.learning_timezone||"UTC",language,clock):null;
+ // Re-enable learning promptly at local midnight or when the two-hour pause ends.
+ // The regular 30-second clock is still used to update displayed minute counts.
+ useEffect(()=>{
+   const deadlines=[currentList?.learning_paused_until,calendarUntil]
+     .map(value=>value?Date.parse(value):NaN)
+     .filter(value=>Number.isFinite(value)&&value>clock);
+   if(!deadlines.length)return;
+   const until=Math.max(...deadlines);
+   const wait=Math.min(Math.max(until-Date.now()+80,1),2_147_483_647);
+   const timer=window.setTimeout(()=>setClock(Date.now()),wait);
+   return ()=>window.clearTimeout(timer);
+ },[currentList?.learning_paused_until,calendarUntil,clock]);
+ const pauseLabel=effectivePause?.kind==="calendar"?
+   dayPause?.tomorrow?t("pausedTomorrow"):t("pausedDayPrefix")+dayPause?.weekday+t("pausedDaySuffix"):
+   effectivePause?.kind==="hours"?t("paused")+" "+effectivePause.minutes+" "+t("minutesPause"):"";
+ const learningButtonLabel=startingLearn?t("starting"):effectivePause?pauseLabel:
    everyCardLearned?t("allLearned"):listCardsForProgress.length===0?t("noCards"):t("learn");
  const listTitle=currentList?<span className="v-heading-list-title"><span className="v-emoji" aria-hidden="true">{data.subjects.find(s=>s.id===currentList.subject_id)?.emoji||"📘"}</span><span className="v-heading-title-text">{currentList.title}</span></span>:null;
  const actions=<div className="v-floats">{screen==="cardForm"&&<button className="v-icon-button v-floating-star" type="button" title={t("marked")} aria-label={t("marked")} aria-pressed={draftCard.marked} onClick={()=>setDraftCard({...draftCard,marked:!draftCard.marked})}><Star size={19} fill={draftCard.marked?"#ff9b00":"none"} stroke={draftCard.marked?"#ff9b00":"currentColor"}/></button>}<IconButton label={t("notifications")} onClick={()=>{}}><Bell size={19}/></IconButton><IconButton label={t("profile")} className="v-user-float" style={{color:avatarColor,backgroundColor:avatarColor+"24",borderColor:avatarColor+"66"}} onClick={onProfile}><CircleUserRound size={23}/></IconButton></div>;
  const listOverview = <section className="v-page v-lists-pane"><div className="v-section-header"><h2>{wide?t("lists"):`${currentSubject?.emoji||""} ${currentSubject?.title||""} · ${t("lists")}`}</h2></div>
-    <div className="v-list-grid">{data.lists.filter(l=>l.subject_id===selectedSubject).sort((a,b)=>usageDate(data,b.id)-usageDate(data,a.id)||a.title.localeCompare(b.title)).map(l=><button className={"v-list-row"+(l.id===selectedList&&screen!=="subject"?" selected":"")} aria-current={l.id===selectedList&&screen!=="subject"?"true":undefined} key={l.id} onClick={()=>openList(l.id)}><div><strong>{l.title}</strong><small>{data.cards.filter(c=>c.list_id===l.id).length} {t("cards")} · {stamp(usageDate(data,l.id),language)}</small><div className="v-tag-row">{l.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div><ChevronRight size={21}/></button>)}</div>
+    <div className="v-list-grid">{data.lists.filter(l=>l.subject_id===selectedSubject).sort((a,b)=>usageDate(data,b.id)-usageDate(data,a.id)||a.title.localeCompare(b.title)).map(l=>{const listPercent=learningProgress(data.cards.filter(c=>c.list_id===l.id));return <button className={"v-list-row"+(l.id===selectedList&&screen!=="subject"?" selected":"")} aria-current={l.id===selectedList&&screen!=="subject"?"true":undefined} key={l.id} onClick={()=>openList(l.id)}><div><strong>{l.title}</strong><small>{data.cards.filter(c=>c.list_id===l.id).length} {t("cards")} · {stamp(usageDate(data,l.id),language)}</small><div className="v-list-progress-label"><span>{t("progress")}</span><b>{listPercent} %</b></div><div className="v-list-progress-track" role="progressbar" aria-label={t("progress")} aria-valuenow={listPercent} aria-valuemin={0} aria-valuemax={100}><span style={{width:listPercent+"%"}}/></div><div className="v-tag-row">{l.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div><ChevronRight size={21}/></button>})}</div>
     {!data.lists.some(l=>l.subject_id===selectedSubject)&&<div className="v-empty">{t("none")}</div>}
     <button className="v-primary" onClick={()=>newList(selectedSubject||"")}><Plus size={18}/>{t("createList")}</button>
     </section>;

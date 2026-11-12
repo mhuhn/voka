@@ -25,3 +25,22 @@ Feature: Learning cards in Voka
     And I open the irregular verbs list
     And I start learning the open list
     Then stopping early retains the last result and leaves other cards due
+
+  @calendar-blocked
+  Scenario: A list with minimum position one is paused until tomorrow at midnight
+    Given I open the Voka app
+    When I sign in as "alice@example.test" with password "correct-password"
+    And I return to vocabulary home
+    And I open the English subject
+    And I open the irregular verbs list
+    Then the list waits until tomorrow after a one-position delay
+
+  @calendar-ready
+  Scenario: After the calendar pause expires every card position advances by the minimum
+    Given I open the Voka app
+    When I sign in as "alice@example.test" with password "correct-password"
+    And I return to vocabulary home
+    And I open the English subject
+    And I open the irregular verbs list
+    When I start the next permitted calendar-spaced round
+    Then the smallest active card position has been normalized to zero
