@@ -3,6 +3,8 @@ import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, ChevronRig
 import type { Language } from "../lib/i18n";
 import { emptyData, loadVoka, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type Subject, type SubjectGroup, type ListInput } from "./data";
 import "./voka.css";
+import { getUserAvatarColor } from "../auth/userColors";
+import { authManager } from "../auth/manager";
 
 type Screen = "home" | "subject" | "list" | "listForm" | "cardForm" | "manage";
 type Words = Record<string, string>;
@@ -32,8 +34,8 @@ Object.assign(supplemental.it!,{
 });
 
 const globalLabels: Partial<Record<Language,Words>> = {de:{moreSubjects:"weitere Fächer",notifications:"Benachrichtigungen",navigation:"Navigation"},en:{moreSubjects:"more subjects",notifications:"Notifications",navigation:"Navigation"},fr:{moreSubjects:"autres matières",notifications:"Notifications",navigation:"Navigation"},nl:{moreSubjects:"andere vakken",notifications:"Meldingen",navigation:"Navigatie"},da:{moreSubjects:"flere fag",notifications:"Notifikationer",navigation:"Navigation"},it:{moreSubjects:"altre materie",notifications:"Notifiche",navigation:"Navigazione"}};
-function IconButton({onClick,children,label}:{onClick:()=>void;children:React.ReactNode;label:string}) {
- return <button className="v-icon-button" type="button" aria-label={label} title={label} onClick={onClick}>{children}</button>;
+function IconButton({onClick,children,label,style,className}:{onClick:()=>void;children:React.ReactNode;label:string;style?:React.CSSProperties;className?:string}) {
+ return <button className={"v-icon-button"+(className?" "+className:"")} type="button" aria-label={label} title={label} style={style} onClick={onClick}>{children}</button>;
 }
 function Toggle({label,value,onChange}:{label:string;value:boolean;onChange:(next:boolean)=>void}) {
  return <label className="v-toggle"><span>{label}</span><input aria-label={label} type="checkbox" checked={value} onChange={e=>onChange(e.target.checked)}/><span className="v-slider"/></label>;
@@ -104,8 +106,9 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const saveManagement=(e:FormEvent)=>{e.preventDefault();void run(async()=>{if(manageType==="group"){if(manageId)await updateGroup(manageId,manageTitle.trim());else await insertGroup(manageTitle.trim())}else{if(manageId)await updateSubject(manageId,manageTitle.trim(),manageEmoji,manageGroup);else await insertSubject(manageGroup,manageTitle.trim(),manageEmoji)}setScreen("home")})};
  const listCount=(subjectId:string)=>data.lists.filter(l=>l.subject_id===subjectId).length;
  const selectedGroupCount=(groupId:string)=>data.subjects.filter(s=>s.group_id===groupId).length;
+ const avatarColor=getUserAvatarColor(authManager.activeUser?.id||"");
  const listTitle=currentList?<span className="v-heading-list-title"><span className="v-emoji" aria-hidden="true">{data.subjects.find(s=>s.id===currentList.subject_id)?.emoji||"📘"}</span><span className="v-heading-title-text">{currentList.title}</span></span>:null;
- const actions=<div className="v-floats">{screen==="cardForm"&&<button className="v-icon-button v-floating-star" type="button" title={t("marked")} aria-label={t("marked")} aria-pressed={draftCard.marked} onClick={()=>setDraftCard({...draftCard,marked:!draftCard.marked})}><Star size={19} fill={draftCard.marked?"#ff9b00":"none"} stroke={draftCard.marked?"#ff9b00":"currentColor"}/></button>}<IconButton label={t("notifications")} onClick={()=>{}}><Bell size={19}/></IconButton><IconButton label={t("profile")} onClick={onProfile}><CircleUserRound size={20}/></IconButton></div>;
+ const actions=<div className="v-floats">{screen==="cardForm"&&<button className="v-icon-button v-floating-star" type="button" title={t("marked")} aria-label={t("marked")} aria-pressed={draftCard.marked} onClick={()=>setDraftCard({...draftCard,marked:!draftCard.marked})}><Star size={19} fill={draftCard.marked?"#ff9b00":"none"} stroke={draftCard.marked?"#ff9b00":"currentColor"}/></button>}<IconButton label={t("notifications")} onClick={()=>{}}><Bell size={19}/></IconButton><IconButton label={t("profile")} className="v-user-float" style={{color:avatarColor,backgroundColor:avatarColor+"24",borderColor:avatarColor+"66"}} onClick={onProfile}><CircleUserRound size={23}/></IconButton></div>;
  const listOverview = <section className="v-page v-lists-pane"><div className="v-section-header"><h2>{wide?t("lists"):`${currentSubject?.emoji||""} ${currentSubject?.title||""} · ${t("lists")}`}</h2><IconButton label={t("edit")} onClick={()=>currentSubject&&startManage("subject",currentSubject)}><Pencil size={19}/></IconButton></div>
     <div className="v-list-grid">{data.lists.filter(l=>l.subject_id===selectedSubject).sort((a,b)=>usageDate(data,b.id)-usageDate(data,a.id)||a.title.localeCompare(b.title)).map(l=><button className={"v-list-row"+(l.id===selectedList&&screen!=="subject"?" selected":"")} aria-current={l.id===selectedList&&screen!=="subject"?"true":undefined} key={l.id} onClick={()=>openList(l.id)}><div><strong>{l.title}</strong><small>{data.cards.filter(c=>c.list_id===l.id).length} {t("cards")} · {stamp(usageDate(data,l.id),language)}</small><div className="v-tag-row">{l.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div><ChevronRight size={21}/></button>)}</div>
     {!data.lists.some(l=>l.subject_id===selectedSubject)&&<div className="v-empty">{t("none")}</div>}
