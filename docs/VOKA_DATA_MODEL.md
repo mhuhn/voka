@@ -45,6 +45,14 @@ The Learn button is intentionally inert. Search, Statistics and Settings tabs ar
 
 On narrow screens the card editor occupies a separate view. On landscape tablets, the list details remain in the left column and the card editor opens to the right, using the full workspace width. List details show the subject emoji beside the single top-level title, without the subject name, metadata panel or learning-points notice. Card editing also omits its learning-points notice. Phone headers are compact and have no additional desktop-wide header row. The Voka wordmark is the first bottom tab.
 
+## Responsive workspace and account visual design
+
+At viewport widths of 900 pixels or more (including a 1024-pixel iPad in landscape), the subject screen opens with its list overview on the left. Opening a list keeps that overview visible and displays the selected list in a second, adjacent pane. Opening or adding a card adds its editor as a third, right-hand pane without hiding either the list overview or the list details. The selected list remains highlighted. Each pane uses flexible proportions and the available screen width. Below 900 pixels the app retains its sequential, single-screen navigation.
+
+The list editor offers the **Learn in both directions** option as a full-width, keyboard-accessible pressed/unpressed button rather than a switch. It uses the same width as the full-width title and subject fields.
+
+Sign-in, registration, password recovery and password reset now use Voka's navy/blue palette, orange-underlined wordmark, rounded blue actions and matching form fields; existing account management, OAuth conditions and translations remain unchanged.
+
 ## Operations
 
 Deployments continue using the existing `react` branch workflow, with the public React application at <https://mhuhn.github.io/voka/react/>. Migrations are versioned under `supabase/migrations/`; they have already been applied to the existing `storage` project. App source edits trigger GitHub CI (TypeScript, unit, browser tests) before GitHub Pages deployment.
