@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, ChevronRight, CircleUserRound, Home, Pencil, Plus, Search, Settings, Star, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, ChevronRight, CircleUserRound, Home, Pencil, Plus, Search, Settings, Star, Trash2, X } from "lucide-react";
 import type { Language } from "../lib/i18n";
 import { emptyData, loadVoka, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type Subject, type SubjectGroup, type ListInput } from "./data";
 import "./voka.css";
@@ -76,6 +76,27 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const [manageGroup,setManageGroup]=useState("");
  const [manageTitle,setManageTitle]=useState("");
  const [manageEmoji,setManageEmoji]=useState("📘");
+ const [manageModalOpen,setManageModalOpen]=useState(false);
+ const manageDialogRef=useRef<HTMLDivElement>(null);
+ const manageInputRef=useRef<HTMLInputElement>(null);
+ useEffect(()=>{
+  if(!manageModalOpen)return;
+  const previouslyFocused=document.activeElement instanceof HTMLElement?document.activeElement:null;
+  manageInputRef.current?.focus();
+  const previousOverflow=document.body.style.overflow;
+  document.body.style.overflow="hidden";
+  const onKeyDown=(event:KeyboardEvent)=>{
+   if(event.key==="Escape"){event.preventDefault();setManageModalOpen(false);return;}
+   if(event.key!=="Tab")return;
+   const available=Array.from(manageDialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex="0"]')||[]);
+   if(!available.length)return;
+   const first=available[0],last=available[available.length-1];
+   if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+   else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+  };
+  window.addEventListener("keydown",onKeyDown);
+  return ()=>{window.removeEventListener("keydown",onKeyDown);document.body.style.overflow=previousOverflow;previouslyFocused?.focus();};
+ },[manageModalOpen]);
  const [working,setWorking]=useState(false);
  const refresh=useCallback(async()=>{try {setData(await loadVoka());setError("");}catch(e){setError(e instanceof Error?e.message:String(e));}},[]);
  useEffect(()=>{let alive=true;loadVoka().then(result=>{if(alive)setData(result)}).catch(e=>{if(alive)setError(String(e instanceof Error?e.message:e))}).finally(()=>{if(alive)setLoading(false)});return()=>{alive=false};},[]);
@@ -102,14 +123,42 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const saveListForm=(e:FormEvent)=>{e.preventDefault();void run(async()=>{const id=await saveList({...draftList,answer_label:languageSubject(data,draftList.subject_id)?.title||draftList.answer_label,tags:[...new Set([...draftList.tags,...tagText.split(",").map(x=>x.trim()).filter(Boolean)])]},listEditing||undefined);setSelectedSubject(draftList.subject_id);setSelectedList(id);setScreen("list");setListEditing(null);})};
  const saveCardForm=(e:FormEvent)=>{e.preventDefault();if(!selectedList)return;void run(async()=>{await saveCard({...draftCard,list_id:selectedList},selectedCard||undefined);setSelectedCard(null);setScreen("list")})};
  const confirmRemove=(fn:()=>Promise<void>,destination:Screen)=>{if(!window.confirm(t("confirmDelete")))return;void run(async()=>{await fn();setScreen(destination)})};
- const startManage=(type:"group"|"subject", item?:SubjectGroup|Subject)=>{setManageType(type);setManageId(item?.id||null);setManageTitle(item?.title||"");setManageEmoji(item&&"emoji" in item?item.emoji:"📘");setManageGroup(item&&"group_id" in item?item.group_id:data.groups[0]?.id||"");setScreen("manage")};
- const saveManagement=(e:FormEvent)=>{e.preventDefault();void run(async()=>{if(manageType==="group"){if(manageId)await updateGroup(manageId,manageTitle.trim());else await insertGroup(manageTitle.trim())}else{if(manageId)await updateSubject(manageId,manageTitle.trim(),manageEmoji,manageGroup);else await insertSubject(manageGroup,manageTitle.trim(),manageEmoji)}setScreen("home")})};
+ const startManage=(type:"group"|"subject", item?:SubjectGroup|Subject, groupId?:string)=>{
+  setManageType(type);setManageId(item?.id||null);setManageTitle(item?.title||"");
+  setManageEmoji(item&&"emoji" in item?item.emoji:"📘");
+  setManageGroup(item&&"group_id" in item?item.group_id:groupId||data.groups[0]?.id||"");
+  setError("");setManageModalOpen(true);
+ };
+ const closeManageModal=()=>{if(!working)setManageModalOpen(false);};
+ const runManage=async(task:()=>Promise<void>)=>{
+  setWorking(true);setError("");
+  try{await task();await refresh();setManageModalOpen(false);}
+  catch(e){setError(e instanceof Error?e.message:String(e));}
+  finally{setWorking(false);}
+ };
+ const saveManagement=(e:FormEvent)=>{
+  e.preventDefault();
+  void runManage(async()=>{
+   if(manageType==="group"){
+    if(manageId)await updateGroup(manageId,manageTitle.trim());
+    else await insertGroup(manageTitle.trim());
+   }else{
+    if(manageId)await updateSubject(manageId,manageTitle.trim(),manageEmoji,manageGroup);
+    else await insertSubject(manageGroup,manageTitle.trim(),manageEmoji);
+   }
+  });
+ };
+ const removeManagement=()=>{
+  if(!manageId||!window.confirm(t("confirmDelete")))return;
+  const id=manageId;
+  void runManage(()=>manageType==="group"?deleteGroup(id):deleteSubject(id));
+ };
  const listCount=(subjectId:string)=>data.lists.filter(l=>l.subject_id===subjectId).length;
  const selectedGroupCount=(groupId:string)=>data.subjects.filter(s=>s.group_id===groupId).length;
  const avatarColor=getUserAvatarColor(authManager.activeUser?.id||"");
  const listTitle=currentList?<span className="v-heading-list-title"><span className="v-emoji" aria-hidden="true">{data.subjects.find(s=>s.id===currentList.subject_id)?.emoji||"📘"}</span><span className="v-heading-title-text">{currentList.title}</span></span>:null;
  const actions=<div className="v-floats">{screen==="cardForm"&&<button className="v-icon-button v-floating-star" type="button" title={t("marked")} aria-label={t("marked")} aria-pressed={draftCard.marked} onClick={()=>setDraftCard({...draftCard,marked:!draftCard.marked})}><Star size={19} fill={draftCard.marked?"#ff9b00":"none"} stroke={draftCard.marked?"#ff9b00":"currentColor"}/></button>}<IconButton label={t("notifications")} onClick={()=>{}}><Bell size={19}/></IconButton><IconButton label={t("profile")} className="v-user-float" style={{color:avatarColor,backgroundColor:avatarColor+"24",borderColor:avatarColor+"66"}} onClick={onProfile}><CircleUserRound size={23}/></IconButton></div>;
- const listOverview = <section className="v-page v-lists-pane"><div className="v-section-header"><h2>{wide?t("lists"):`${currentSubject?.emoji||""} ${currentSubject?.title||""} · ${t("lists")}`}</h2><IconButton label={t("edit")} onClick={()=>currentSubject&&startManage("subject",currentSubject)}><Pencil size={19}/></IconButton></div>
+ const listOverview = <section className="v-page v-lists-pane"><div className="v-section-header"><h2>{wide?t("lists"):`${currentSubject?.emoji||""} ${currentSubject?.title||""} · ${t("lists")}`}</h2></div>
     <div className="v-list-grid">{data.lists.filter(l=>l.subject_id===selectedSubject).sort((a,b)=>usageDate(data,b.id)-usageDate(data,a.id)||a.title.localeCompare(b.title)).map(l=><button className={"v-list-row"+(l.id===selectedList&&screen!=="subject"?" selected":"")} aria-current={l.id===selectedList&&screen!=="subject"?"true":undefined} key={l.id} onClick={()=>openList(l.id)}><div><strong>{l.title}</strong><small>{data.cards.filter(c=>c.list_id===l.id).length} {t("cards")} · {stamp(usageDate(data,l.id),language)}</small><div className="v-tag-row">{l.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div><ChevronRight size={21}/></button>)}</div>
     {!data.lists.some(l=>l.subject_id===selectedSubject)&&<div className="v-empty">{t("none")}</div>}
     <button className="v-primary" onClick={()=>newList(selectedSubject||"")}><Plus size={18}/>{t("createList")}</button>
@@ -126,7 +175,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
    </header>
    {screen==="home"&&<div className="v-home">
     {data.lists.length===0&&<section className="v-intro"><div className="v-illustration"><BookOpen size={74}/><span>?</span></div><h2>{t("empty")}</h2><p>{t("emptyInfo")}</p><button className="v-primary" onClick={()=>newList()}><Plus size={18}/>{t("createList")}</button></section>}
-    <div className="v-section-tools"><h2 className="v-section-title">{t("mySubjects")}</h2><button className="v-manage-link" onClick={()=>startManage("subject")}>{t("manage")} <Settings size={16}/></button></div>
+    <div className="v-section-tools"><h2 className="v-section-title">{t("mySubjects")}</h2><button className="v-manage-link" onClick={()=>{setManageModalOpen(false);setScreen("manage")}}>{t("manage")} <Settings size={16}/></button></div>
     <div className="v-group-grid">{groups.map(g=>{
      const subjects=[...data.subjects.filter(s=>s.group_id===g.id)].sort((a,b)=>subjectUsage(data,b.id)-subjectUsage(data,a.id)||a.title.localeCompare(b.title));
      return <section className="v-group" key={g.id}><div className="v-group-head"><strong>{g.title}</strong><small>{t("updated")}: {stamp(groupUsage(data,g.id),language)}</small><button aria-label={t("edit")+" "+g.title} onClick={()=>startManage("group",g)}><Pencil size={14}/></button></div>
@@ -179,6 +228,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
      <div className="v-form-columns"><label>{t("questionLabel")} *<input required value={draftList.question_label} onChange={e=>setDraftList({...draftList,question_label:e.target.value})}/></label><label>{t("answerLabel")} *<input required readOnly={Boolean(languageSubject(data,draftList.subject_id))} value={languageSubject(data,draftList.subject_id)?.title||draftList.answer_label} onChange={e=>setDraftList({...draftList,answer_label:e.target.value})}/></label></div>
      <button className={"v-direction-button"+(draftList.learn_both_directions?" is-active":"")} type="button" aria-pressed={draftList.learn_both_directions} onClick={()=>setDraftList({...draftList,learn_both_directions:!draftList.learn_both_directions})}><ArrowLeftRight size={21}/><span>{t("both")}</span><span className="v-direction-check" aria-hidden="true">{draftList.learn_both_directions&&<Check size={16}/>}</span></button>
      <p className="v-help">{t("bothInfo")}</p><button disabled={working||!draftList.subject_id} className="v-primary" type="submit">{listEditing?t("saveList"):t("createList")}</button>
+      <button type="button" className="v-outline v-cancel-list" disabled={working} onClick={()=>{back();setListEditing(null);setTagText("");}}>{t("cancel")}</button>
      {listEditing&&<button type="button" className="v-danger" onClick={()=>confirmRemove(()=>deleteList(listEditing),"subject")}><Trash2 size={16}/>{t("delete")}</button>}
      {!draftList.subject_id&&<p className="v-help">{t("noSubject")} <button type="button" className="v-text-button" onClick={()=>startManage("subject")}>{t("addSubject")}</button></p>}
    </form></section></div>}
