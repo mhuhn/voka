@@ -97,7 +97,7 @@ Then("the language list form uses automatic labels", async function (this: VokaW
 });
 
 When("I switch to a phone-sized viewport", async function (this: VokaWorld) {
-  await this.page.setViewportSize({width:390,height:844});
+  await this.page.setViewportSize({width:375,height:667});
 });
 
 Then("the phone card editor stands alone with a floating star", async function (this: VokaWorld) {
@@ -187,8 +187,8 @@ Then("the small phone has larger floating icon targets", async function(this:Vok
  for(const box of await targets.all()){
   const dims=await box.boundingBox();
   expect(dims).not.toBeNull();
-  expect(dims!.width).toBeGreaterThanOrEqual(42);
-  expect(dims!.height).toBeGreaterThanOrEqual(42);
+  expect(dims!.width).toBeGreaterThanOrEqual(44);
+  expect(dims!.height).toBeGreaterThanOrEqual(44);
  }
 });
 
