@@ -191,3 +191,21 @@ Then("the small phone has larger floating icon targets", async function(this:Vok
   expect(dims!.height).toBeGreaterThanOrEqual(42);
  }
 });
+
+Then("the iPad uses comfortably sized touch controls and typography", async function(this:VokaWorld){
+ const coarse=await this.page.evaluate(()=>window.matchMedia("(pointer:coarse)").matches);
+ expect(coarse).toBe(true);
+ const font=await this.page.locator(".v-app").evaluate(el=>parseFloat(getComputedStyle(el).fontSize));
+ expect(font).toBeGreaterThanOrEqual(17);
+ const floats=this.page.locator(".v-floats .v-icon-button");
+ for(const b of await floats.all()){
+  const dims=await b.boundingBox();
+  expect(dims).not.toBeNull();
+  expect(dims!.width).toBeGreaterThanOrEqual(48);
+  expect(dims!.height).toBeGreaterThanOrEqual(48);
+ }
+ const firstAction=this.page.locator(".v-app .v-primary").first();
+ const dims=await firstAction.boundingBox();
+ expect(dims).not.toBeNull();
+ expect(dims!.height).toBeGreaterThanOrEqual(50);
+});
