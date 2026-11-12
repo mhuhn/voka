@@ -84,6 +84,12 @@ When("I open the Voka app in German", async function (this: VokaWorld) {
 });
 
 Then("I see the German sign-in form", async function (this: VokaWorld) {
+  console.log("GERMAN TEST STATE", JSON.stringify({
+    languages: await this.page.evaluate(() => navigator.languages),
+    lang: await this.page.locator("html").getAttribute("lang"),
+    body: (await this.page.locator("body").innerText()).slice(0, 900),
+    url: this.page.url()
+  }));
   await expect(this.page.getByRole("heading", { name: "Anmelden" })).toBeVisible();
   await expect(this.page.getByRole("button", { name: "Registrieren" })).toBeVisible();
   await expect(this.page.locator("html")).toHaveAttribute("lang", "de");
