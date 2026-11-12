@@ -67,6 +67,14 @@ The subject detail page shows its lists without a subject edit icon. Subject and
 
 Both creation and editing of a vocabulary list now offer an explicit **Cancel** button, restoring the previous view without saving draft changes. The existing card editor Cancel button is unchanged.
 
+## Subject emoji suggestions and list card controls
+
+The subject management modal suggests an emoji as the subject title is entered: Spanish 🇪🇸, Italian 🇮🇹, Polish 🇵🇱, Danish 🇩🇰, Portuguese 🇵🇹, Czech 🇨🇿, Swedish 🇸🇪, Russian 🇷🇺, Chinese 🇨🇳, Japanese 🇯🇵 (only for subjects in the `Sprachen` group). For Geographie 🌍, Schwimmen 🏊, Medien 📰, Sozialkunde 🏛️, Gesellschaftskunde 👥, Politik 🗳️, Wirtschaft 📈, Ethik ⚖️, and Religion 🕊️, suggestions work in any subject group. Suggestions are triggered by typing or changing groups; a manually selected emoji is preserved. Saved emojis are unchanged when existing subjects are edited.
+
+The authenticated home page **Meine Fächer** displays a subject only when at least one vocabulary list belongs to it, and omits groups with no such visible subjects. **Fächer verwalten** continues showing every group and subject, including empty ones.
+
+Card add/edit labels use the current list's `question_label` and `answer_label` instead of the generic words Question/Answer. The answer visibility toggle likewise uses the list's answer label (for example, `Englisch anzeigen` in German). A third sorting control orders cards by ascending `position` (0–20), with the question text as a stable tie-breaker. Alphabetical sorting remains the default and point sorting remains available. No position editing is added to the UI.
+
 ## Operations
 
 Deployments continue using the existing `react` branch workflow, with the public React application at <https://mhuhn.github.io/voka/react/>. Migrations are versioned under `supabase/migrations/`; they have already been applied to the existing `storage` project. App source edits trigger GitHub CI (TypeScript, unit, browser tests) before GitHub Pages deployment.
