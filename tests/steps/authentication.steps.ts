@@ -152,3 +152,51 @@ Then("the registration form keeps that visual theme", async function (this: Voka
   await expect(this.page.locator(".v-auth-card").getByRole("heading",{name:"Create an account"})).toBeVisible();
   await expect(this.page.locator(".v-auth-card button[type=submit]")).toHaveClass(/v-auth-primary/);
 });
+
+Then("the Voka home-screen icon is explicitly linked on iOS", async function(this:VokaWorld){
+ const icon=this.page.locator('link[rel="apple-touch-icon"]');
+ await expect(icon).toHaveAttribute("sizes","180x180");
+ const path=await icon.getAttribute("href");
+ expect(path).toContain("apple-touch-icon.png");
+ expect(path).not.toContain("%BASE_URL%");
+ const response=await this.page.request.get(new URL(path!,this.page.url()).toString());
+ expect(response.ok()).toBe(true);
+ expect(response.headers()["content-type"]).toContain("image/png");
+});
+
+Then("each account has a different persistent profile color", async function(this:VokaWorld){
+ const map=await this.page.evaluate(()=>{
+  const value=localStorage.getItem("voka:user-avatar-colors:v1");
+  return value?JSON.parse(value) as Record<string,string>:{};
+ });
+ const ids=["00000000-0000-4000-8000-000000000001","00000000-0000-4000-8000-000000000002"];
+ expect(map[ids[0]]).toMatch(/^#[0-9A-F]{6}$/);
+ expect(map[ids[1]]).toMatch(/^#[0-9A-F]{6}$/);
+ expect(map[ids[0]]).not.toBe(map[ids[1]]);
+ const badge=this.page.locator(".v-profile-avatar");
+ await expect(badge).toBeVisible();
+ await expect(badge).toHaveCSS("color",/^rgb/);
+ const actual=await badge.evaluate(el=>getComputedStyle(el).color);
+ const expected=map[ids[1]].match(/\w\w/g)!.map(n=>parseInt(n,16));
+ expect(actual).toBe("rgb("+expected.join(", ")+")");
+ await expect(this.page.locator(".v-profile .v-profile-action").first()).toBeVisible();
+});
+
+Then("the selected user's floating avatar retains their profile color", async function(this:VokaWorld){
+ const map=await this.page.evaluate(()=>JSON.parse(localStorage.getItem("voka:user-avatar-colors:v1")||"{}") as Record<string,string>);
+ const id="00000000-0000-4000-8000-000000000001";
+ const expected=map[id].match(/\w\w/g)!.map(n=>parseInt(n,16));
+ await this.page.getByRole("button",{name:"Voka",exact:true}).click();
+ const avatar=this.page.locator(".v-user-float");
+ await expect(avatar).toBeVisible();
+ await expect(avatar).toHaveCSS("color","rgb("+expected.join(", ")+")");
+});
+
+Then("the account profile has no green-themed controls", async function(this:VokaWorld){
+ await expect(this.page.locator(".v-profile-card")).toHaveCount(2);
+ await expect(this.page.locator(".v-profile-avatar")).toBeVisible();
+ const logout=this.page.locator(".v-profile-card .v-profile-action").first();
+ await expect(logout).toBeVisible();
+ await expect(logout).toHaveCSS("color",/rgb/);
+ await expect(this.page.locator(".v-profile .bg-green-50, .v-profile .text-green-800, .v-profile .text-green-900")).toHaveCount(0);
+});
