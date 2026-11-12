@@ -48,11 +48,27 @@ Before(async function (this: VokaWorld, { pickle }) {
   };
   const locale = pickle.tags.map(tag => locales[tag.name]).find(Boolean) ?? "en-US";
   const sampleData = pickle.tags.some(tag => tag.name === "@voka");
+  const learningData = pickle.tags.some(tag => tag.name === "@learning");
   const touchTablet = pickle.tags.some(tag => tag.name === "@touch");
   this.context = await this.browser.newContext({ locale, ...(touchTablet ? {hasTouch:true,viewport:{width:1180,height:820}} : {}) });
   this.page = await this.context.newPage();
   let importedList: Record<string,unknown> | null = null;
   let importedCards: Record<string,unknown>[] = [];
+  let learningPausedUntil:string|null=null;
+  let activeLearningQuery:string|null=null;
+  const gradedLearningIds=new Set<string>();
+  let learningCards=[
+    {id:"40000000-0000-4000-8000-000000000001",user_id:users[0].id,
+     list_id:"30000000-0000-4000-8000-000000000001",question:"go",answer:"went",
+     marked:true,success_count:0,position:0,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
+    {id:"40000000-0000-4000-8000-000000000002",user_id:users[0].id,
+     list_id:"30000000-0000-4000-8000-000000000001",question:"be",answer:"was/were",
+     marked:false,success_count:1,position:0,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
+    {id:"40000000-0000-4000-8000-000000000003",user_id:users[0].id,
+     list_id:"30000000-0000-4000-8000-000000000001",question:"choose",answer:"chose",
+     marked:false,success_count:2,position:0,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"}
+  ];
+
   const sharedId="50000000-0000-4000-8000-000000000001";
   const importedId="60000000-0000-4000-8000-000000000001";
   const sharedCards=[
@@ -133,6 +149,66 @@ Before(async function (this: VokaWorld, { pickle }) {
       await route.fulfill(json(null));
       return;
     }
+    if(learningData && path==="/rest/v1/rpc/voka_begin_learning" && method==="POST"){
+      const due=learningCards.filter(c=>c.position===0&&c.success_count<4);
+      if(learningPausedUntil && Date.parse(learningPausedUntil)>Date.now()){
+        await route.fulfill(json({paused_until:learningPausedUntil,card_ids:[]}));return;
+      }
+      if(learningCards.every(c=>c.success_count>=4)){
+        await route.fulfill(json({all_learned:true,card_ids:[]}));return;
+      }
+      if(!due.length){
+        for(const card of learningCards)card.position=Math.max(0,card.position-1);
+        learningPausedUntil=new Date(Date.now()+120*60_000).toISOString();
+        await route.fulfill(json({paused_until:learningPausedUntil,card_ids:[]}));return;
+      }
+      activeLearningQuery="80000000-0000-4000-8000-000000000001";
+      gradedLearningIds.clear();
+      await route.fulfill(json({
+        query_id:activeLearningQuery,
+        card_ids:due.map(c=>c.id).reverse()
+      }));
+      return;
+    }
+    if(learningData && path==="/rest/v1/rpc/voka_grade_learning" && method==="POST"){
+      const body=request.postDataJSON() as {p_query_id:string;p_card_id:string;p_result:string};
+      const card=learningCards.find(c=>c.id===body.p_card_id);
+      if(!card||body.p_query_id!==activeLearningQuery||card.position!==0||gradedLearningIds.has(card.id)){
+        await route.fulfill(json({message:"Card is not due"},400));return;
+      }
+      gradedLearningIds.add(card.id);
+      const before=card.success_count;
+      if(body.p_result==="known"){
+        card.success_count=Math.min(4,before+1);
+        card.position=before===0?2:before===1?6:19;
+      }else if(body.p_result==="unknown"){
+        card.success_count=0;card.position=1;
+      }else { card.position=1; }
+      const finished=learningCards.every(c=>c.position!==0||c.success_count>=4);
+      const position=card.position,success_count=card.success_count;
+      if(finished){
+        for(const entry of learningCards)entry.position=Math.max(0,entry.position-1);
+        learningPausedUntil=new Date(Date.now()+120*60_000).toISOString();
+        activeLearningQuery=null;
+      }
+      await route.fulfill(json({success_count,position,finished,paused_until:learningPausedUntil}));
+      return;
+    }
+    if(learningData && path==="/rest/v1/rpc/voka_finish_learning" && method==="POST"){
+      activeLearningQuery=null;
+      await route.fulfill(json(null));return;
+    }
+    if(learningData && path==="/rest/v1/voka_cards" && method==="PATCH"){
+      const cardId=url.searchParams.get("id")?.replace("eq.","");
+      const card=learningCards.find(c=>c.id===cardId);
+      const values=request.postDataJSON() as Record<string,unknown>;
+      if(card){
+        if(typeof values.question==="string")card.question=values.question;
+        if(typeof values.answer==="string")card.answer=values.answer;
+        if(typeof values.marked==="boolean")card.marked=values.marked;
+      }
+      await route.fulfill(json(null,204));return;
+    }
     if (path === "/rest/v1/rpc/voka_get_shared_list" && method === "POST") {
       const body=request.postDataJSON() as {p_list_id:string};
       await route.fulfill(json(body.p_list_id===sharedId ? {
@@ -175,10 +251,10 @@ Before(async function (this: VokaWorld, { pickle }) {
           {id:"20000000-0000-4000-8000-000000000002",user_id:users[0].id,group_id:"10000000-0000-4000-8000-000000000002",title:"Mathe",emoji:"➗"}
         ],
         voka_lists: [
-          {id:"30000000-0000-4000-8000-000000000001",user_id:users[0].id,subject_id:"20000000-0000-4000-8000-000000000001",title:"Irregular Verbs",tags:["Verben","Unit 3"],question_label:"Infinitiv",answer_label:"Englisch",learn_both_directions:true,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
+          {id:"30000000-0000-4000-8000-000000000001",user_id:users[0].id,subject_id:"20000000-0000-4000-8000-000000000001",title:"Irregular Verbs",tags:["Verben","Unit 3"],question_label:"Infinitiv",answer_label:"Englisch",learn_both_directions:!learningData,learning_paused_until:learningPausedUntil,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
           ...(importedList?[importedList]:[])
         ],
-        voka_cards: [
+        voka_cards: learningData ? [...learningCards, ...importedCards] : [
           {id:"40000000-0000-4000-8000-000000000001",user_id:users[0].id,list_id:"30000000-0000-4000-8000-000000000001",question:"go",answer:"went",marked:true,success_count:0,position:3,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
           {id:"40000000-0000-4000-8000-000000000002",user_id:users[0].id,list_id:"30000000-0000-4000-8000-000000000001",question:"be",answer:"was/were",marked:false,success_count:3,position:6,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
           {id:"40000000-0000-4000-8000-000000000003",user_id:users[0].id,list_id:"30000000-0000-4000-8000-000000000001",question:"choose",answer:"chose",marked:false,success_count:1,position:1,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
