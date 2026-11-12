@@ -352,6 +352,18 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const learningUnavailable=startingLearn||Boolean(effectivePause)||everyCardLearned||listCardsForProgress.length===0;
  const dayPause=effectivePause?.kind==="calendar"?
    calendarPauseDay(effectivePause.until,currentList?.learning_timezone||"UTC",language,clock):null;
+ // Re-enable learning promptly at local midnight or when the two-hour pause ends.
+ // The regular 30-second clock is still used to update displayed minute counts.
+ useEffect(()=>{
+   const deadlines=[currentList?.learning_paused_until,calendarUntil]
+     .map(value=>value?Date.parse(value):NaN)
+     .filter(value=>Number.isFinite(value)&&value>clock);
+   if(!deadlines.length)return;
+   const until=Math.max(...deadlines);
+   const wait=Math.min(Math.max(until-Date.now()+80,1),2_147_483_647);
+   const timer=window.setTimeout(()=>setClock(Date.now()),wait);
+   return ()=>window.clearTimeout(timer);
+ },[currentList?.learning_paused_until,calendarUntil,clock]);
  const pauseLabel=effectivePause?.kind==="calendar"?
    dayPause?.tomorrow?t("pausedTomorrow"):t("pausedDayPrefix")+dayPause?.weekday+t("pausedDaySuffix"):
    effectivePause?.kind==="hours"?t("paused")+" "+effectivePause.minutes+" "+t("minutesPause"):"";
