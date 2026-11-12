@@ -69,7 +69,7 @@ Both creation and editing of a vocabulary list now offer an explicit **Cancel** 
 
 ## Subject emoji suggestions and list card controls
 
-The subject management modal suggests an emoji as the subject title is entered: Spanish 🇪🇸, Italian 🇮🇹, Polish 🇵🇱, Danish 🇩🇰, Portuguese 🇵🇹, Czech 🇨🇿, Swedish 🇸🇪, Russian 🇷🇺, Chinese 🇨🇳, Japanese 🇯🇵 (only for subjects in the `Sprachen` group). For Geographie 🌍, Schwimmen 🏊, Medien 📰, Sozialkunde 🏛️, Gesellschaftskunde 👥, Politik 🗳️, Wirtschaft 📈, Ethik ⚖️, and Religion 🕊️, suggestions work in any subject group. Suggestions are triggered by typing or changing groups; a manually selected emoji is preserved. Saved emojis are unchanged when existing subjects are edited.
+The subject management modal suggests an emoji as the subject title is entered: Spanish 🇪🇸, Italian 🇮🇹, Polish 🇵🇱, Danish 🇩🇰, Portuguese 🇵🇹, Czech 🇨🇿, Swedish 🇸🇪, Russian 🇷🇺, Chinese 🇨🇳, Japanese 🇯🇵 (for subjects in any group). For Geographie 🌍, Schwimmen 🏊, Medien 📰, Sozialkunde 🏛️, Gesellschaftskunde 👥, Politik 🗳️, Wirtschaft 📈, Ethik ⚖️, and Religion 🕊️, suggestions work in any subject group. Suggestions are triggered by typing or changing groups; a manually selected emoji is preserved. Saved emojis are unchanged when existing subjects are edited.
 
 The authenticated home page **Meine Fächer** displays a subject only when at least one vocabulary list belongs to it, and omits groups with no such visible subjects. **Fächer verwalten** continues showing every group and subject, including empty ones.
 
