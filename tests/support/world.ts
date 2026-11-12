@@ -132,19 +132,20 @@ Before(async function (this: VokaWorld, { pickle }) {
         ],
         voka_subjects: [
           {id:"20000000-0000-4000-8000-000000000001",user_id:users[0].id,group_id:"10000000-0000-4000-8000-000000000001",title:"Englisch",emoji:"🇬🇧"},
+          {id:"20000000-0000-4000-8000-000000000003",user_id:users[0].id,group_id:"10000000-0000-4000-8000-000000000001",title:"Französisch",emoji:"🇫🇷"},
+          {id:"20000000-0000-4000-8000-000000000004",user_id:users[0].id,group_id:"10000000-0000-4000-8000-000000000001",title:"Latein",emoji:"🏛️"},
+          {id:"20000000-0000-4000-8000-000000000005",user_id:users[0].id,group_id:"10000000-0000-4000-8000-000000000001",title:"Griechisch",emoji:"🇬🇷"},
           {id:"20000000-0000-4000-8000-000000000002",user_id:users[0].id,group_id:"10000000-0000-4000-8000-000000000002",title:"Mathe",emoji:"➗"}
         ],
         voka_lists: [
-          {id:"30000000-0000-4000-8000-000000000001",user_id:users[0].id,subject_id:"20000000-0000-4000-8000-000000000001",title:"Irregular Verbs",tags:["Verben","Unit 3"],question_label:"Infinitiv",answer_label:"Simple Past",learn_both_directions:true,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"}
+          {id:"30000000-0000-4000-8000-000000000001",user_id:users[0].id,subject_id:"20000000-0000-4000-8000-000000000001",title:"Irregular Verbs",tags:["Verben","Unit 3"],question_label:"Infinitiv",answer_label:"Englisch",learn_both_directions:true,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"}
         ],
         voka_cards: [
           {id:"40000000-0000-4000-8000-000000000001",user_id:users[0].id,list_id:"30000000-0000-4000-8000-000000000001",question:"go",answer:"went",marked:true,success_count:0,position:0,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
           {id:"40000000-0000-4000-8000-000000000002",user_id:users[0].id,list_id:"30000000-0000-4000-8000-000000000001",question:"be",answer:"was/were",marked:false,success_count:3,position:0,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
           {id:"40000000-0000-4000-8000-000000000003",user_id:users[0].id,list_id:"30000000-0000-4000-8000-000000000001",question:"choose",answer:"chose",marked:false,success_count:1,position:0,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"}
         ],
-        voka_list_usage: [
-          {list_id:"30000000-0000-4000-8000-000000000001",user_id:users[0].id,last_used_at:"2026-11-12T09:00:00Z"}
-        ]
+        voka_list_usage: []
       };
       await route.fulfill(json(sampleData ? fixtures[path.split("/").pop() || ""] || [] : []));
       return;
