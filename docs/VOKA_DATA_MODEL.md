@@ -61,6 +61,12 @@ Voka uses the previously generated blue flashcard icon from 3 November 2026: the
 
 Each signed-in account receives an unused random avatar color selected from a 20-color palette, stored locally under `voka:user-avatar-colors:v1`. It stays stable after reloads and account switching **on that device**. The same color appears on the floating profile icon, on the profile badge, and beside the account in the account switcher. The profile UI no longer uses the earlier green action color. For touch devices at widths of 700 CSS pixels or above, including iPad portrait and landscape, the app increases type sizes and tap targets. On narrow iPhones, floating control hit areas are 43×43 CSS pixels.
 
+## Subject management and cancellation
+
+The subject detail page shows its lists without a subject edit icon. Subject and subject-group changes belong to **Manage subjects**. Its initial view contains only the subject-group cards and their subjects (no inline editor). Each group ends with an **Add subject** button that opens a modal with that group preselected; **Add group** appears after the subject-group cards. Tapping an existing subject or a group's edit icon opens the same modal in editing mode. Its Cancel button, close icon, Escape key, or backdrop close the dialog without saving; focus is returned to the original control. Saving and deleting keep the user on the subject management overview.
+
+Both creation and editing of a vocabulary list now offer an explicit **Cancel** button, restoring the previous view without saving draft changes. The existing card editor Cancel button is unchanged.
+
 ## Operations
 
 Deployments continue using the existing `react` branch workflow, with the public React application at <https://mhuhn.github.io/voka/react/>. Migrations are versioned under `supabase/migrations/`; they have already been applied to the existing `storage` project. App source edits trigger GitHub CI (TypeScript, unit, browser tests) before GitHub Pages deployment.
