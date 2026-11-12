@@ -84,6 +84,10 @@ Then("sharing copies a usable link if no share sheet is supported",async functio
  expect(new URL(link||"").searchParams.get("importList")).toBe(sourceId);
 });
 
+When("I open a link to a missing shared list",async function(this:VokaWorld){
+ await this.page.goto("http://127.0.0.1:5173/?importList=50000000-0000-4000-8000-000000000999");
+});
+
 Then("an unknown list cannot be imported",async function(this:VokaWorld){
  const modal=this.page.getByRole("dialog",{name:"Import shared list"});
  await expect(modal.getByRole("alert")).toContainText("This shared list was not found");
