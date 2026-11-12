@@ -147,3 +147,7 @@ Then("the direction control is a full-width push button", async function (this: 
   await button.click();
   await expect(button).toHaveAttribute("aria-pressed","false");
 });
+
+When("I switch to iPad landscape width", async function (this: VokaWorld) {
+  await this.page.setViewportSize({width:1024,height:768});
+});
