@@ -47,6 +47,7 @@ Before(async function (this: VokaWorld, { pickle }) {
     "@da": "da-DK", "@it": "it-IT"
   };
   const locale = pickle.tags.map(tag => locales[tag.name]).find(Boolean) ?? "en-US";
+  const sampleData = pickle.tags.some(tag => tag.name === "@voka");
   this.context = await this.browser.newContext({ locale });
   this.page = await this.context.newPage();
 
@@ -123,7 +124,29 @@ Before(async function (this: VokaWorld, { pickle }) {
       return;
     }
     if (path.startsWith("/rest/v1/voka_") && method === "GET") {
-      await route.fulfill(json([]));
+      const fixtures: Record<string, unknown[]> = {
+        voka_subjectgroups: [
+          {id:"10000000-0000-4000-8000-000000000001",user_id:users[0].id,title:"Sprachen"},
+          {id:"10000000-0000-4000-8000-000000000002",user_id:users[0].id,title:"MINT"},
+          {id:"10000000-0000-4000-8000-000000000003",user_id:users[0].id,title:"Sonstige"}
+        ],
+        voka_subjects: [
+          {id:"20000000-0000-4000-8000-000000000001",user_id:users[0].id,group_id:"10000000-0000-4000-8000-000000000001",title:"Englisch",emoji:"🇬🇧"},
+          {id:"20000000-0000-4000-8000-000000000002",user_id:users[0].id,group_id:"10000000-0000-4000-8000-000000000002",title:"Mathe",emoji:"➗"}
+        ],
+        voka_lists: [
+          {id:"30000000-0000-4000-8000-000000000001",user_id:users[0].id,subject_id:"20000000-0000-4000-8000-000000000001",title:"Irregular Verbs",tags:["Verben","Unit 3"],question_label:"Infinitiv",answer_label:"Simple Past",learn_both_directions:true,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"}
+        ],
+        voka_cards: [
+          {id:"40000000-0000-4000-8000-000000000001",user_id:users[0].id,list_id:"30000000-0000-4000-8000-000000000001",question:"go",answer:"went",marked:true,success_count:0,position:0,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
+          {id:"40000000-0000-4000-8000-000000000002",user_id:users[0].id,list_id:"30000000-0000-4000-8000-000000000001",question:"be",answer:"was/were",marked:false,success_count:3,position:0,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
+          {id:"40000000-0000-4000-8000-000000000003",user_id:users[0].id,list_id:"30000000-0000-4000-8000-000000000001",question:"choose",answer:"chose",marked:false,success_count:1,position:0,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"}
+        ],
+        voka_list_usage: [
+          {list_id:"30000000-0000-4000-8000-000000000001",user_id:users[0].id,last_used_at:"2026-11-12T09:00:00Z"}
+        ]
+      };
+      await route.fulfill(json(sampleData ? fixtures[path.split("/").pop() || ""] || [] : []));
       return;
     }
     if (path.startsWith("/rest/v1/voka_") && ["POST","PATCH","DELETE"].includes(method)) {
