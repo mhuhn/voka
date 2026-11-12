@@ -106,6 +106,11 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const selectedGroupCount=(groupId:string)=>data.subjects.filter(s=>s.group_id===groupId).length;
  const listTitle=currentList?<span className="v-heading-list-title"><span className="v-emoji" aria-hidden="true">{data.subjects.find(s=>s.id===currentList.subject_id)?.emoji||"📘"}</span><span className="v-heading-title-text">{currentList.title}</span></span>:null;
  const actions=<div className="v-floats">{screen==="cardForm"&&<button className="v-icon-button v-floating-star" type="button" title={t("marked")} aria-label={t("marked")} aria-pressed={draftCard.marked} onClick={()=>setDraftCard({...draftCard,marked:!draftCard.marked})}><Star size={19} fill={draftCard.marked?"#ff9b00":"none"} stroke={draftCard.marked?"#ff9b00":"currentColor"}/></button>}<IconButton label={t("notifications")} onClick={()=>{}}><Bell size={19}/></IconButton><IconButton label={t("profile")} onClick={onProfile}><CircleUserRound size={20}/></IconButton></div>;
+ const listOverview = <section className="v-page v-lists-pane"><div className="v-section-header"><h2>{wide?t("lists"):`${currentSubject?.emoji||""} ${currentSubject?.title||""} · ${t("lists")}`}</h2><IconButton label={t("edit")} onClick={()=>currentSubject&&startManage("subject",currentSubject)}><Pencil size={19}/></IconButton></div>
+    <div className="v-list-grid">{data.lists.filter(l=>l.subject_id===selectedSubject).sort((a,b)=>usageDate(data,b.id)-usageDate(data,a.id)||a.title.localeCompare(b.title)).map(l=><button className={"v-list-row"+(l.id===selectedList&&screen!=="subject"?" selected":"")} aria-current={l.id===selectedList&&screen!=="subject"?"true":undefined} key={l.id} onClick={()=>openList(l.id)}><div><strong>{l.title}</strong><small>{data.cards.filter(c=>c.list_id===l.id).length} {t("cards")} · {stamp(usageDate(data,l.id),language)}</small><div className="v-tag-row">{l.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div><ChevronRight size={21}/></button>)}</div>
+    {!data.lists.some(l=>l.subject_id===selectedSubject)&&<div className="v-empty">{t("none")}</div>}
+    <button className="v-primary" onClick={()=>newList(selectedSubject||"")}><Plus size={18}/>{t("createList")}</button>
+    </section>;
  return <div className={"v-app"+(screen==="cardForm"?" v-card-form-active":"")}>
   {actions}
   <div className="v-content">
@@ -129,11 +134,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
     {data.lists.length>0&&<button className="v-primary v-create-home" onClick={()=>newList()}><Plus size={19}/>{t("createList")}</button>}
    </div>}
    {(screen==="subject"||screen==="list"||screen==="cardForm")&&<div className={"v-subject-workspace "+(screen==="subject"?"is-subject":screen==="cardForm"?"is-card":"is-list")}>
-    <section className="v-page v-lists-pane"><div className="v-section-header"><h2>{wide?t("lists"):`${currentSubject?.emoji||""} ${currentSubject?.title||""} · ${t("lists")}`}</h2><IconButton label={t("edit")} onClick={()=>currentSubject&&startManage("subject",currentSubject)}><Pencil size={19}/></IconButton></div>
-    <div className="v-list-grid">{data.lists.filter(l=>l.subject_id===selectedSubject).sort((a,b)=>usageDate(data,b.id)-usageDate(data,a.id)||a.title.localeCompare(b.title)).map(l=><button className={"v-list-row"+(l.id===selectedList&&screen!=="subject"?" selected":"")} aria-current={l.id===selectedList&&screen!=="subject"?"true":undefined} key={l.id} onClick={()=>openList(l.id)}><div><strong>{l.title}</strong><small>{data.cards.filter(c=>c.list_id===l.id).length} {t("cards")} · {stamp(usageDate(data,l.id),language)}</small><div className="v-tag-row">{l.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div><ChevronRight size={21}/></button>)}</div>
-    {!data.lists.some(l=>l.subject_id===selectedSubject)&&<div className="v-empty">{t("none")}</div>}
-    <button className="v-primary" onClick={()=>newList(selectedSubject||"")}><Plus size={18}/>{t("createList")}</button>
-    </section>
+    {listOverview}
     {(screen==="list"||screen==="cardForm")&&currentList&&<div className={"v-list-page"+(screen==="cardForm"?" v-list-page-editing":"")}>
      <section className="v-list-detail-pane">
      {wide&&<div className="v-pane-list-heading"><h2>{listTitle}</h2><IconButton label={t("editList")} onClick={()=>editList(currentList)}><Pencil size={18}/></IconButton></div>}
@@ -158,12 +159,17 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
        <label>{t("question")} *<textarea required rows={3} value={draftCard.question} onChange={e=>setDraftCard({...draftCard,question:e.target.value})}/></label>
        <label>{t("answer")} *<textarea required rows={3} value={draftCard.answer} onChange={e=>setDraftCard({...draftCard,answer:e.target.value})}/></label>
        <button className="v-primary" type="submit" disabled={working}>{t("saveCard")}</button>
+       <button className="v-outline v-cancel-card" type="button" disabled={working} onClick={()=>{setSelectedCard(null);setScreen("list")}}>{t("cancel")}</button>
        {selectedCard&&<button type="button" className="v-danger" onClick={()=>confirmRemove(()=>deleteCard(selectedCard),"list")}><Trash2 size={16}/>{t("delete")}</button>}
       </form>
      </aside>}
    </div>}
    </div>}
-   {screen==="listForm"&&<form className="v-form" onSubmit={saveListForm}>
+   {screen==="listForm"&&<div className={"v-list-form-workspace"+(wide&&listEditing?" is-wide":"")}>
+     {wide&&Boolean(listEditing)&&listOverview}
+     <section className="v-list-edit-pane">
+      {wide&&listEditing&&<h2 className="v-edit-pane-heading">{t("editList")}</h2>}
+      <form className="v-form" onSubmit={saveListForm}>
      <label>{t("title")} *<input required maxLength={200} value={draftList.title} onChange={e=>setDraftList({...draftList,title:e.target.value})}/></label>
      <label>{t("subject")} *<select required value={draftList.subject_id} onChange={e=>changeListSubject(e.target.value)}><option value="" disabled>{t("chooseSubject")}</option>{groups.flatMap(g=>data.subjects.filter(s=>s.group_id===g.id).map(s=><option key={s.id} value={s.id}>{s.emoji} {s.title}</option>))}</select></label>
      <label>{t("tags")}<div className="v-tag-editor"><div className="v-tag-row">{draftList.tags.map(tag=><button className="v-tag" key={tag} type="button" onClick={()=>setDraftList({...draftList,tags:draftList.tags.filter(a=>a!==tag)})}>{tag} ×</button>)}</div><input placeholder={t("addTag")+" (,)"} value={tagText} onChange={e=>setTagText(e.target.value)} /></div></label>
@@ -172,7 +178,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
      <p className="v-help">{t("bothInfo")}</p><button disabled={working||!draftList.subject_id} className="v-primary" type="submit">{listEditing?t("saveList"):t("createList")}</button>
      {listEditing&&<button type="button" className="v-danger" onClick={()=>confirmRemove(()=>deleteList(listEditing),"subject")}><Trash2 size={16}/>{t("delete")}</button>}
      {!draftList.subject_id&&<p className="v-help">{t("noSubject")} <button type="button" className="v-text-button" onClick={()=>startManage("subject")}>{t("addSubject")}</button></p>}
-   </form>}
+   </form></section></div>}
    {screen==="manage"&&<div className="v-page v-manage"><h2>{t("groups")}</h2><div className="v-group-grid">{groups.map(g=><div className="v-group" key={g.id}><div className="v-group-head"><b>{g.title}</b><IconButton label={t("edit")} onClick={()=>startManage("group",g)}><Pencil size={17}/></IconButton></div>{data.subjects.filter(s=>s.group_id===g.id).map(s=><button className="v-subject-row" key={s.id} onClick={()=>startManage("subject",s)}><span>{s.emoji}</span><strong>{s.title}</strong><Pencil size={15}/></button>)}</div>)}</div>
      <form className="v-form v-manage-form" onSubmit={saveManagement}><div className="v-segments"><button type="button" className={manageType==="group"?"active":""} onClick={()=>startManage("group")}>{t("addGroup")}</button><button type="button" className={manageType==="subject"?"active":""} onClick={()=>startManage("subject")}>{t("addSubject")}</button></div>
        <label>{manageType==="group"?t("groupName"):t("title")} *<input required value={manageTitle} onChange={e=>setManageTitle(e.target.value)}/></label>
