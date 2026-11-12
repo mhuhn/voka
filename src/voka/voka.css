@@ -125,3 +125,77 @@
  .v-direction-button.is-active{background:#203b60;color:#b7d9ff;border-color:#76a8ff}
  .v-direction-button.is-active .v-direction-check{background:#1d67c8;border-color:#1d67c8}
 }
+
+
+/* List editing keeps the subject's list overview visible on wide screens. */
+.v-list-form-workspace{width:100%;min-width:0}
+.v-list-edit-pane{min-width:0}
+.v-list-edit-pane>.v-form{max-width:700px}
+.v-edit-pane-heading{font-size:20px;font-weight:800;margin:0 0 17px;letter-spacing:-.3px}
+.v-cancel-card{margin-top:0}
+.v-floats{opacity:.88}
+.v-floats .v-user-float{opacity:1}
+@media(min-width:900px){
+ .v-list-form-workspace.is-wide{display:grid;grid-template-columns:minmax(220px,.8fr) minmax(0,1.8fr);gap:20px;align-items:start}
+ .v-list-form-workspace.is-wide .v-lists-pane{max-width:none}
+ .v-list-form-workspace.is-wide .v-list-edit-pane>.v-form{max-width:none}
+}
+@media(max-width:600px){
+ .v-floats{right:11px;gap:6px}
+ .v-floats .v-icon-button{height:43px;width:43px}
+ .v-floats .v-icon-button svg{height:22px;width:22px}
+ .v-heading{padding-right:112px}
+ .v-card-form-active .v-heading{padding-right:153px}
+}
+/* iPad Air and other touch tablets have more screen area but need larger
+   touch targets and type than a mouse/keyboard desktop. */
+@media(min-width:900px) and (pointer:coarse){
+ .v-app{font-size:18px}
+ .v-app .v-content{padding:30px 30px 126px;max-width:none}
+ .v-heading h1{font-size:29px}
+ .v-heading{min-height:73px;margin-bottom:24px}
+ .v-heading .v-logo{font-size:42px}
+ .v-section-title,.v-section-header h2{font-size:23px}
+ .v-section-tools .v-manage-link{font-size:15px}
+ .v-group-head strong{font-size:19px}
+ .v-group-head small{font-size:13px}
+ .v-subject-row{min-height:60px;gap:12px}
+ .v-subject-label b{font-size:17px}
+ .v-subject-label small{font-size:14px}
+ .v-lists-pane .v-section-header h2{font-size:21px}
+ .v-lists-pane .v-list-row{min-height:72px;padding:14px}
+ .v-lists-pane .v-list-row strong{font-size:17px}
+ .v-lists-pane .v-list-row small{font-size:14px}
+ .v-list-row strong{font-size:16px}
+ .v-list-row small{font-size:14px}
+ .v-pane-list-heading h2{font-size:22px}
+ .v-primary{font-size:17px;min-height:53px;padding:12px 16px}
+ .v-outline,.v-direction-button{font-size:16px;min-height:50px}
+ .v-progress span{font-size:14px}
+ .v-progress b{font-size:16px}
+ .v-list-count{font-size:15px}
+ .v-tag{font-size:14px;padding:4px 11px}
+ .v-filter-area{padding:13px}
+ .v-toggle{font-size:16px;min-height:47px}
+ .v-sort label{font-size:15px}
+ .v-segments button{min-height:43px;font-size:15px;padding:9px 7px}
+ .v-card-row{min-height:55px}
+ .v-card-open{min-height:55px}
+ .v-card-question{font-size:17px}
+ .v-card-answer{font-size:15px}
+ .v-card-open>b{font-size:14px}
+ .v-card-editor h2,.v-edit-pane-heading{font-size:22px}
+ .v-form>label,.v-form-columns>label{font-size:16px}
+ .v-form input:not([type=checkbox]),.v-form select,.v-form textarea,.v-tag-editor{font-size:17px;min-height:48px}
+ .v-form .v-help{font-size:14px}
+ .v-floats{top:calc(env(safe-area-inset-top) + 21px);right:22px;gap:9px}
+ .v-floats .v-icon-button{width:51px;height:51px}
+ .v-floats .v-icon-button svg{width:25px;height:25px}
+ .v-bottom-nav{min-height:82px;gap:42px}
+ .v-bottom-nav button{font-size:14px;min-width:82px;gap:5px}
+ .v-bottom-nav button svg{height:25px;width:25px}
+ .v-subject-workspace{gap:20px}
+ .v-subject-workspace.is-card{grid-template-columns:minmax(175px,.65fr) minmax(275px,1.15fr) minmax(245px,1fr)}
+ .v-subject-workspace.is-list{grid-template-columns:minmax(220px,.83fr) minmax(0,1.7fr)}
+ .v-list-form-workspace.is-wide{grid-template-columns:minmax(220px,.8fr) minmax(0,1.7fr)}
+}
