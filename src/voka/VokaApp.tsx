@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, ChevronRight, CircleUserRound, Home, Pencil, Plus, Search, Settings, Share2, Star, Trash2, X, Play } from "lucide-react";
 import type { Language } from "../lib/i18n";
 import { emptyData, loadVoka, beginLearning, beginMixedLearning, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type Subject, type SubjectGroup, type ListInput } from "./data";
@@ -329,7 +329,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
     }
   });
  };
- const cardEnter=(event:KeyboardEvent<HTMLTextAreaElement>,field:"question"|"answer")=>{
+ const cardEnter=(event:ReactKeyboardEvent<HTMLTextAreaElement>,field:"question"|"answer")=>{
    if(event.key!=="Enter"||event.shiftKey||event.nativeEvent.isComposing)return;
    event.preventDefault();
    if(field==="question")cardAnswerRef.current?.focus();
