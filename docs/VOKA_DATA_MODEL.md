@@ -31,7 +31,9 @@ The data migration creates the `voka_initialize_defaults()` RPC. Calling it for 
 - MINT: Mathe, Informatik, Bio, Erdkunde, Physik, Chemie
 - Sonstige: Kunst, Musik
 
-Groups and subjects are fully editable/deletable after creation, without automatic recreation. `voka_settings` remembers initialization. There are no sample vocabulary lists or cards.\n\n**Language list labels:** New lists belonging to a subject in the group named `Sprachen` use `Deutsch` as their default question label and the subject name as their automatic answer label. The answer label is read-only in the UI. Postgres triggers synchronize language list answer labels whenever the subject is renamed and enforce the same value on list writes; existing language lists were aligned without changing custom question labels.
+Groups and subjects are fully editable/deletable after creation, without automatic recreation. `voka_settings` remembers initialization. There are no sample vocabulary lists or cards.
+
+**Language list labels:** New lists belonging to a subject in the group named `Sprachen` use `Deutsch` as their default question label and the subject name as their automatic answer label. The answer label is read-only in the UI. Postgres triggers synchronize language list answer labels whenever the subject is renamed and enforce the same value on list writes; existing language lists were aligned without changing custom question labels.
 
 ## Frontend navigation
 
