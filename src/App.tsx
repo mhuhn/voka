@@ -8,6 +8,7 @@ import { authManager } from "./auth/manager";
 import { isConfigured } from "./auth/config";
 import { detectLanguage, translations, translateError, type Language } from "./lib/i18n";
 import { changedAt, version, formatLastChange } from "./lib/buildInfo";
+import VokaApp from "./voka/VokaApp";
 
 const googleEnabled = import.meta.env.VITE_GOOGLE_LOGIN_ENABLED === "true";
 
@@ -113,6 +114,7 @@ function VersionFooter({ language }: { language: Language }) {
 
 export default function App() {
   const [language, setLanguage] = useState<Language>(detectLanguage);
+  const [profileOpen, setProfileOpen] = useState(false);
   const t = translations[language];
   const state = useSyncExternalStore(authManager.subscribe, authManager.snapshot);
   useEffect(() => {
@@ -124,7 +126,9 @@ export default function App() {
   useEffect(() => { document.documentElement.lang = language; }, [language]);
   const user = authManager.activeUser;
   const showAuth = state.adding || !user || state.screen === "reset";
-  return <><main className="safe-top safe-bottom mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 sm:px-6">
+  useEffect(() => { setProfileOpen(false); }, [user?.id]);
+  return <>{!state.loading && !showAuth && !profileOpen ? <VokaApp key={user.id} language={language} onProfile={() => setProfileOpen(true)}/> : <main className="safe-top safe-bottom mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 sm:px-6">
+    {profileOpen && !showAuth && <Button variant="ghost" className="mb-3 w-fit" onClick={() => setProfileOpen(false)}><ArrowLeft size={16}/> Voka</Button>}
     <Brand/>
     {!isConfigured && <div role="alert" className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">{t.config}</div>}
     {state.error && <div role="alert" className="mb-4 rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800">{translateError(state.error, language)}</div>}
@@ -133,5 +137,5 @@ export default function App() {
       {state.registry.accounts.length > 0 && !state.adding && !user && <Card className="mb-4"><CardHeader><CardTitle>{t.saved}</CardTitle></CardHeader><CardContent className="space-y-2">{state.registry.accounts.map(a => <div key={a.id} className="flex items-center justify-between gap-2"><button className="truncate text-sm underline" onClick={() => void authManager.choose(a.id)}>{a.email}</button><button className="text-xs text-red-700 underline" onClick={() => void authManager.forget(a.id)}>{t.remove}</button></div>)}</CardContent></Card>}
       <AuthForm language={language}/>
     </> : <Profile language={language}/>}
-  </main><VersionFooter language={language}/></>;
+  </main>}<VersionFooter language={language}/></>;
 }
