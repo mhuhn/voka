@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  isCardDue,learningProgress,pauseMinutesLeft,pickReverseDirection,
+  isCardDue,learningProgress,pauseMinutesLeft,pickReverseDirection,formatLearningPause,
   effectiveLearningPause,calendarPauseDay,
   MAX_LEARNING_POINTS,LEARNING_PAUSE_MINUTES
 } from "../../src/voka/learning";
@@ -29,6 +29,12 @@ describe("Voka learning rules",()=>{
    expect(pauseMinutesLeft("2026-11-12T10:00:01Z",now)).toBe(1);
    expect(pauseMinutesLeft("2026-11-12T09:00:00Z",now)).toBe(0);
    expect(pauseMinutesLeft(null,now)).toBe(0);
+   expect(pauseMinutesLeft("2026-11-12T12:00:00.500Z",now)).toBe(120);
+   expect(pauseMinutesLeft("2026-11-12T12:00:03Z",now)).toBe(120);
+   expect(formatLearningPause(60,"min","h")).toBe("60 min");
+   expect(formatLearningPause(64,"min","h")).toBe("1:04 h");
+   expect(formatLearningPause(120,"min","h")).toBe("2:00 h");
+   expect(formatLearningPause(121,"min","h")).toBe("2:01 h");
  });
  it("chooses the later of the calendar and two-hour pause",()=>{
    const now=Date.parse("2026-11-16T17:00:00Z"); // Monday 18:00 Berlin

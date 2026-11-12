@@ -1,9 +1,9 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { ArrowLeft, Check, Pencil, RotateCcw, Star, X } from "lucide-react";
 import type { Language } from "../lib/i18n";
 import {
-  finishLearning, gradeLearning, markCard, saveCard,
-  type LearningResult, type VokaCard, type VokaList
+  finishLearning, gradeLearning, gradeMixedLearning, markCard, saveCard,
+  type LearningResult, type Subject, type VokaCard, type VokaList
 } from "./data";
 import { pickReverseDirection } from "./learning";
 
@@ -55,12 +55,13 @@ const texts:Record<Language,Record<string,string>>={
 };
 
 export default function LearningScreen({
-  language, list, cards, session, onRefresh, onExit
+  language, list, cards, session, mixed, onRefresh, onExit
 }:{
   language: Language;
   list: VokaList;
   cards: VokaCard[];
   session: LearningSession;
+  mixed?: {lists:VokaList[];subjects:Subject[]};
   onRefresh: () => Promise<void>;
   onExit: () => void;
 }){
@@ -71,15 +72,31 @@ export default function LearningScreen({
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
   const [editing,setEditing]=useState(false);
+  const [transition,setTransition]=useState(false);
   const [editQuestion,setEditQuestion]=useState("");
   const [editAnswer,setEditAnswer]=useState("");
   const currentId=session.cardIds[index];
   const currentCard=cards.find(card=>card.id===currentId);
   const total=session.cardIds.length;
+  const activeList=(mixed?.lists.find(entry=>entry.id===currentCard?.list_id)||list);
+  const activeSubject=mixed?.subjects.find(subject=>subject.id===activeList.subject_id);
   const faceQuestion=reverse?currentCard?.answer:currentCard?.question;
   const faceAnswer=reverse?currentCard?.question:currentCard?.answer;
-  const questionLabel=reverse?list.answer_label:list.question_label;
-  const answerLabel=reverse?list.question_label:list.answer_label;
+  const questionLabel=reverse?activeList.answer_label:activeList.question_label;
+  const answerLabel=reverse?activeList.question_label:activeList.answer_label;
+  useEffect(()=>{
+    if(!mixed||index===0){setTransition(false);return;}
+    const prior=cards.find(card=>card.id===session.cardIds[index-1]);
+    const next=cards.find(card=>card.id===session.cardIds[index]);
+    const previousSubject=mixed.lists.find(l=>l.id===prior?.list_id)?.subject_id;
+    const nextSubject=mixed.lists.find(l=>l.id===next?.list_id)?.subject_id;
+    if(!previousSubject||previousSubject===nextSubject){setTransition(false);return;}
+    setTransition(true);
+    const timer=window.setTimeout(()=>setTransition(false),1400);
+    return ()=>window.clearTimeout(timer);
+  // Subject changes are driven by the session card index, not server refreshes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[index]);
 
   async function leave(){
     if(busy)return;
@@ -98,14 +115,16 @@ export default function LearningScreen({
     if(!currentCard||busy||!revealed||editing)return;
     setBusy(true);setError("");
     try {
-      const gradeResult=await gradeLearning(session.queryId,currentCard.id,result);
+      const gradeResult=mixed?await gradeMixedLearning(session.queryId,currentCard.id,result):await gradeLearning(session.queryId,currentCard.id,result);
       await onRefresh();
       if(gradeResult.finished||index+1>=total){
         if(!gradeResult.finished)await finishLearning(session.queryId);
         onExit();
       }else{
         setIndex(value=>value+1);
-        setReverse(pickReverseDirection(list.learn_both_directions));
+        const nextCard=cards.find(card=>card.id===session.cardIds[index+1]);
+        const nextList=mixed?.lists.find(l=>l.id===nextCard?.list_id)||list;
+        setReverse(pickReverseDirection(nextList.learn_both_directions));
         setRevealed(false);
       }
     }catch(e){
@@ -138,7 +157,7 @@ export default function LearningScreen({
     setBusy(true);setError("");
     try {
       await saveCard({
-        list_id:list.id,question:editQuestion.trim(),
+        list_id:activeList.id,question:editQuestion.trim(),
         answer:editAnswer.trim(),marked:currentCard.marked
       },currentCard.id);
       await onRefresh();
@@ -148,13 +167,13 @@ export default function LearningScreen({
     }finally{setBusy(false)}
   }
 
-  return <section className="v-learning" aria-label={list.title}>
+  return <section className="v-learning" aria-label={mixed?(activeSubject?.title||activeList.title):list.title}>
     <header className="v-learning-header">
       <button type="button" className="v-learning-exit" onClick={()=>void leave()} disabled={busy}>
         <ArrowLeft size={20}/>{t.exit}
       </button>
       <div className="v-learning-session-name">
-        <strong>{list.title}</strong>
+        <strong>{mixed?`${activeSubject?.emoji||""} ${activeSubject?.title||""} · ${activeList.title}`:list.title}</strong>
         <span>{t.stage} {index+1} {t.of} {total}</span>
       </div>
       <div className="v-learning-points" aria-label={t.points}>
@@ -180,7 +199,7 @@ export default function LearningScreen({
         </div>
       </div>
 
-      {!revealed?<button type="button" className="v-primary v-learning-reveal" disabled={busy}
+      {!revealed?<button type="button" className="v-primary v-learning-reveal" disabled={busy||transition}
         onClick={()=>setRevealed(true)}>
         <RotateCcw size={21}/>{t.reveal}
       </button>:<>
@@ -205,6 +224,10 @@ export default function LearningScreen({
         </div>
       </>}
     </div>:<div className="v-empty">{t.noCard}</div>}
+    {transition&&activeSubject&&<div className="v-learning-transition" role="status" aria-live="polite">
+       <div><span className="v-learning-transition-emoji">{activeSubject.emoji}</span>
+       <strong>{activeSubject.title}</strong></div>
+     </div>}
 
     {editing&&currentCard&&<div className="v-modal-backdrop">
       <div role="dialog" aria-modal="true" aria-labelledby="v-learn-edit-title"
@@ -215,11 +238,11 @@ export default function LearningScreen({
             aria-label={t.cancel} onClick={()=>setEditing(false)}><X/></button>
         </div>
         <form className="v-form" onSubmit={event=>void saveCorrection(event)}>
-          <label>{list.question_label} *
+          <label>{activeList.question_label} *
             <textarea autoFocus required rows={3} value={editQuestion}
               onChange={e=>setEditQuestion(e.target.value)}/>
           </label>
-          <label>{list.answer_label} *
+          <label>{activeList.answer_label} *
             <textarea required rows={3} value={editAnswer}
               onChange={e=>setEditAnswer(e.target.value)}/>
           </label>

@@ -78,19 +78,19 @@ Then("all three answers save the rules and finish the list",async function(this:
   expect((await grade3).postDataJSON()).toMatchObject({p_card_id:cardIds.go,p_result:"unknown"});
   await expect(this.page.locator(".v-learning")).toHaveCount(0);
   await expect(this.page.locator(".v-list-detail-pane")).toBeVisible();
-  await expect(this.page.getByRole("button",{name:/Pause:.*min left/})).toBeDisabled();
+  await expect(this.page.getByRole("button",{name:/Pause:.*(?:min|h) left/})).toBeDisabled();
   await expect(this.page.locator(".v-card-list .v-card-open")).toHaveCount(3);
   await expect(this.page.locator(".v-card-list .v-card-open").filter({hasText:"choose corrected"})).toContainText("3 P");
 });
 
 Then("the two-hour pause survives a page reload",async function(this:VokaWorld){
-  const pause=this.page.getByRole("button",{name:/Pause:.*min left/});
+  const pause=this.page.getByRole("button",{name:/Pause:.*(?:min|h) left/});
   await expect(pause).toBeDisabled();
   await this.page.reload();
   await this.page.getByRole("button",{name:"Voka",exact:true}).click();
   await this.page.getByRole("button",{name:/Englisch/}).click();
   await this.page.getByRole("button",{name:/Irregular Verbs/}).click();
-  await expect(this.page.getByRole("button",{name:/Pause:.*min left/})).toBeDisabled();
+  await expect(this.page.getByRole("button",{name:/Pause:.*(?:min|h) left/})).toBeDisabled();
 });
 
 Then("stopping early retains the last result and leaves other cards due",async function(this:VokaWorld){

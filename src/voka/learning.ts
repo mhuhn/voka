@@ -8,7 +8,11 @@ export function pauseMinutesLeft(until: string | null | undefined, now = Date.no
   if (!until) return 0;
   const timestamp = Date.parse(until);
   if (!Number.isFinite(timestamp)) return 0;
-  return Math.max(0, Math.ceil((timestamp - now) / 60_000));
+  const remaining = timestamp - now;
+  // Rounding to the nearest minute avoids a spurious "121 min" when the
+  // server starts a 120-minute pause a few milliseconds after the UI clock.
+  if (remaining <= 0) return 0;
+  return Math.max(1, Math.round(remaining / 60_000));
 }
 
 /** Cards can be learned only when they are due at position zero and not completed. */
@@ -70,4 +74,11 @@ export function calendarPauseDay(
   const dayDistance=calendarDayInZone(target,timezone)-calendarDayInZone(new Date(now),timezone);
   const weekday=new Intl.DateTimeFormat(locale,{weekday:"long",timeZone:timezone}).format(target);
   return {tomorrow:dayDistance===1,weekday};
+}
+
+/** E.g. 64 minutes is "1:04 h", not "64 min"; keep minutes at 60. */
+export function formatLearningPause(minutes:number, minuteUnit:string, hourUnit:string):string {
+  const total=Math.max(0,Math.floor(minutes));
+  if(total>60) return Math.floor(total/60)+":"+String(total%60).padStart(2,"0")+" "+hourUnit;
+  return total+" "+minuteUnit;
 }
