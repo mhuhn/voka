@@ -77,8 +77,21 @@ Before(async function (this: VokaWorld) {
     }
 
     if (path === "/auth/v1/user" && method === "GET") {
-      const auth = request.headers()["authorization"] || "";
-      const found = users.find(u => auth.includes(makeToken(u).split(".")[1]));
+      // Validate the JWT originally issued by the mock, rather than generating
+      // a new JWT: its time-dependent exp claim changes between requests.
+      const bearer = (request.headers()["authorization"] || "").replace(/^Bearer\s+/i, "");
+      let sub: string | undefined;
+      try {
+        const [header, payload, signature] = bearer.split(".");
+        const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
+          sub?: string; exp?: number;
+        };
+        if (header && signature === "test-signature" &&
+            typeof claims.exp === "number" && claims.exp > Date.now() / 1000) {
+          sub = claims.sub;
+        }
+      } catch { /* Malformed mock JWT */ }
+      const found = users.find(u => u.id === sub);
       await route.fulfill(found ? json(userPayload(found)) : json({ msg: "Invalid JWT" }, 401));
       return;
     }
