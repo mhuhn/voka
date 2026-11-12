@@ -1,0 +1,29 @@
+name: React application checks
+on:
+  push:
+    branches: [react]
+  pull_request:
+    branches: [react]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit
+      - run: npm run build
+      - run: npm run test:unit
+      - run: npx playwright install --with-deps chromium
+      - name: Start mocked Vite server
+        run: |
+          npm run dev -- --mode test-e2e > /tmp/voka-vite.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:5173/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/voka-vite.log
+          exit 1
+      - run: npm run test:e2e
