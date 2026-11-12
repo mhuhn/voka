@@ -15,11 +15,13 @@ Then("the live count uses selected subjects and every selected tag",async functi
   await picker.getByRole("checkbox",{name:/Mathe/}).check();
   await expect(picker.locator(".v-mixed-card-count strong")).toHaveText("3");
   await picker.getByRole("checkbox",{name:"Verben"}).check();
-  await picker.getByRole("checkbox",{name:"Unit 3"}).check();
-  await expect(picker.locator(".v-mixed-card-count strong")).toHaveText("2");
-  const request=await this.page.waitForRequest(req=>
+  const requestPromise=this.page.waitForRequest(req=>
      new URL(req.url()).pathname==="/rest/v1/rpc/voka_preview_mixed_learning" &&
      (req.postDataJSON() as {p_tags:string[]}).p_tags.length===2);
+  await picker.getByRole("checkbox",{name:"Unit 3"}).check();
+  await expect(picker.locator(".v-mixed-card-count strong")).toHaveText("2");
+  const request=await requestPromise;
+
   expect((request.postDataJSON() as {p_tags:string[]}).p_tags.slice().sort()).toEqual(["Unit 3","Verben"]);
 });
 
@@ -94,4 +96,9 @@ Then("the tablet overview back arrow returns straight to My subjects",async func
   await this.page.locator(".v-heading").getByRole("button",{name:"Cancel"}).click();
   await expect(this.page.getByRole("heading",{name:"My subjects"})).toBeVisible();
   await expect(this.page.locator(".v-lists-pane")).toHaveCount(0);
+});
+
+When("I open the first card for tablet navigation",async function(this:VokaWorld){
+  await this.page.locator(".v-card-list .v-card-open").first().click();
+  await expect(this.page.locator(".v-card-editor")).toBeVisible();
 });
