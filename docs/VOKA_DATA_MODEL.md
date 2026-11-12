@@ -119,6 +119,24 @@ The migration `supabase/migrations/20261112233500_voka_calendar_learning_pause.s
 
 **List progress** is the equally weighted sum of successful runs divided by four times the number of cards, displayed as a percentage and progress bar in every row of the subject's list overview. This is the same formula already used by the list detail page. For example, five cards with points `[0,1,1,3,4]` yield `9 / 20 = 45%`.
 
+## Multi-subject learning and card entry shortcuts (Voka 0.8.0)
+
+**Share location:** List detail shows a compact round Share icon in the top-right heading, on phone and tablet; the previous full-width Share action has been removed.
+
+**Pause display:** A new 120-minute cooldown displays 120, not 121, by rounding the precise server/user clock difference to the closest minute, and values above 60 minutes use `h:mm h` (e.g. `Noch 1:04 h Pause`). Both two-hour and calendar-day pauses are still enforced in Supabase.
+
+**Card entry:** While creating or editing a card, plain Enter in the question textarea focuses the answer textarea; Enter in the answer submits the form. Shift+Enter still inserts a newline. After saving a **new** card the editor remains open, clears both text fields and the star, and returns focus to the question field for fast consecutive entry. Editing an existing card still returns to list detail. On a wide iPad layout, the header back arrow from the card editor returns directly to **Meine Fächer**.
+
+**Home learning:** **Lernen** is now available alongside **Fächer verwalten** on the `Meine Fächer` page. It opens a picker with multiple subject checkboxes and optional tag checkboxes. Tags use **AND** semantics: a list must have **all** chosen tags. The picker instantly calculates today's eligible cards from client-cached positions, points and pause timestamps, then confirms the count with the authenticated `voka_preview_mixed_learning` RPC. Fully learned or paused lists contribute zero.
+
+**Atomic mixed learning:** `supabase/migrations/20261113000000_voka_mixed_learning.sql` adds three SECURITY INVOKER RPCs:
+
+- `voka_preview_mixed_learning(subject_ids,tags)`: counts due cards from the owner's matching lists without modifying their data.
+- `voka_begin_mixed_learning(subject_ids,tags,timezone)`: locks matching lists, applies each list's existing two-hour/calendar-day eligibility and minimum-position normalization, creates one `voka_queries` record, and returns its card IDs grouped in subject order (randomized within each list).
+- `voka_grade_mixed_learning(query_id,card_id,result)`: applies the same grade/position rules as single-list learning. A list is reduced by one position and paused for two hours as soon as its own due cards are completed; the combined query closes only after the final card across all included subjects is graded. Early exit closes the combined query without changing cards not yet graded.
+
+Cross-subject learning uses the existing `LearningScreen`; its list-specific question/answer labels, correction and mark controls still work. On switching to a new subject, a brief overlay displays that subject's emoji and title. The user's existing single-list learning pathway is unchanged.
+
 ## Operations
 
 Deployments continue using the existing `react` branch workflow, with the public React application at <https://mhuhn.github.io/voka/react/>. Migrations are versioned under `supabase/migrations/`; they have already been applied to the existing `storage` project. App source edits trigger GitHub CI (TypeScript, unit, browser tests) before GitHub Pages deployment.
