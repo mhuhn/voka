@@ -135,3 +135,20 @@ Then("the account section heading is {string}", async function (this: VokaWorld,
 Then("the add-account button is {string}", async function (this: VokaWorld, label: string) {
   await expect(this.page.getByRole("button", { name: label, exact: true })).toBeVisible();
 });
+
+Then("the sign-in form uses the Voka visual theme", async function (this: VokaWorld) {
+  await expect(this.page.locator(".v-auth-wordmark")).toHaveText("Voka");
+  await expect(this.page.locator(".v-auth-card")).toBeVisible();
+  await expect(this.page.locator(".v-auth-card").getByRole("heading",{name:"Sign in"})).toBeVisible();
+  const primary=this.page.locator(".v-auth-card button[type=submit]");
+  await expect(primary).toHaveClass(/v-auth-primary/);
+  const gradient=await primary.evaluate(el=>getComputedStyle(el).backgroundImage);
+  expect(gradient).toContain("linear-gradient");
+});
+
+Then("the registration form keeps that visual theme", async function (this: VokaWorld) {
+  await expect(this.page.locator(".v-auth-wordmark")).toHaveText("Voka");
+  await expect(this.page.locator(".v-auth-card")).toBeVisible();
+  await expect(this.page.locator(".v-auth-card").getByRole("heading",{name:"Create an account"})).toBeVisible();
+  await expect(this.page.locator(".v-auth-card button[type=submit]")).toHaveClass(/v-auth-primary/);
+});
