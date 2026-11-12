@@ -30,3 +30,44 @@ export function learningProgress(cards: Pick<VokaCard,"success_count">[]): numbe
 export function pickReverseDirection(bothDirections:boolean, random = Math.random): boolean {
   return bothDirections && random() < 0.5;
 }
+
+export type LearningPause =
+  | {kind:"calendar";until:string}
+  | {kind:"hours";minutes:number};
+
+/**
+ * Both restrictions must have expired. Show the one that ends later.
+ * Calendar pauses take precedence when they extend beyond the two-hour pause.
+ */
+export function effectiveLearningPause(
+  twoHourUntil:string|null|undefined,
+  calendarUntil:string|null|undefined,
+  now=Date.now()
+):LearningPause|null {
+  const hourEnd=twoHourUntil?Date.parse(twoHourUntil):NaN;
+  const dayEnd=calendarUntil?Date.parse(calendarUntil):NaN;
+  const hourValid=Number.isFinite(hourEnd)&&hourEnd>now;
+  const dayValid=Number.isFinite(dayEnd)&&dayEnd>now;
+  if(dayValid&&(!hourValid||dayEnd>=hourEnd))return {kind:"calendar",until:calendarUntil!};
+  if(hourValid)return {kind:"hours",minutes:pauseMinutesLeft(twoHourUntil,now)};
+  return null;
+}
+
+function calendarDayInZone(date:Date,zone:string):number {
+  const parts=new Intl.DateTimeFormat("en-GB",{
+    timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit"
+  }).formatToParts(date);
+  const number=(key:string)=>Number(parts.find(p=>p.type===key)?.value);
+  return Math.floor(Date.UTC(number("year"),number("month")-1,number("day"))/86_400_000);
+}
+
+/** The pause uses the timezone of the last learning session, including DST. */
+export function calendarPauseDay(
+  pauseUntil:string,zone:string,locale:string,now=Date.now()
+):{tomorrow:boolean;weekday:string} {
+  const target=new Date(pauseUntil);
+  const timezone=zone||"UTC";
+  const dayDistance=calendarDayInZone(target,timezone)-calendarDayInZone(new Date(now),timezone);
+  const weekday=new Intl.DateTimeFormat(locale,{weekday:"long",timeZone:timezone}).format(target);
+  return {tomorrow:dayDistance===1,weekday};
+}
