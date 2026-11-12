@@ -1,20 +1,31 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, ChevronRight, CircleUserRound, Home, Pencil, Plus, Search, Settings, Share2, Star, Trash2, X } from "lucide-react";
 import type { Language } from "../lib/i18n";
-import { emptyData, loadVoka, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type Subject, type SubjectGroup, type ListInput } from "./data";
+import { emptyData, loadVoka, beginLearning, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type Subject, type SubjectGroup, type ListInput } from "./data";
 import "./voka.css";
+import LearningScreen from "./LearningScreen";
+import { learningProgress, pauseMinutesLeft } from "./learning";
 import { getUserAvatarColor } from "../auth/userColors";
 import { authManager } from "../auth/manager";
 import { suggestSubjectEmoji } from "./subjectEmoji";
 import { clearPendingSharedList, fetchSharedList, importSharedList, pendingSharedListId, shareUrlForList, type SharedList } from "./sharing";
 
-type Screen = "home" | "subject" | "list" | "listForm" | "cardForm" | "manage";
+type Screen = "home" | "subject" | "list" | "listForm" | "cardForm" | "manage" | "learn";
 type Words = Record<string, string>;
 const translations: Record<Language, Words> = {
- de: { mySubjects:"Meine Fächer", createList:"Liste erstellen", addCard:"Karte hinzufügen", saveCard:"Karte speichern", saveList:"Liste speichern", empty:"Noch keine Listen", emptyInfo:"Erstelle deine erste Vokabelliste und lerne effektiv mit digitalen Karteikarten.", groups:"Fachgruppen & Fächer", addGroup:"Fachgruppe hinzufügen", addSubject:"Fach hinzufügen", edit:"Bearbeiten", delete:"Löschen", cancel:"Abbrechen", save:"Speichern", title:"Titel", subject:"Fach", tags:"Tags", addTag:"Tag hinzufügen", questionLabel:"Frage-Label", answerLabel:"Antwort-Label", both:"In beide Richtungen lernen", bothInfo:"Die Karteikarten werden sowohl vorwärts als auch rückwärts abgefragt.", question:"Frage", answer:"Antwort", marked:"Markiert", markedOnly:"Nur Markierte", unseen:"Ungelernte anzeigen", showAnswers:"Antworten anzeigen", sorting:"Sortieren", alpha:"Alphabetisch", points:"Nach Punkten", position:"Nach Position", learn:"Lernen", progress:"Fortschritt", cards:"Karten", noCards:"Noch keine Karten", noMatching:"Keine Karten für diese Filter", listInfo:"Listeneigenschaften", lists:"Listen", learning:"Lernen", search:"Suchen", statistics:"Statistik", settings:"Einstellungen", manage:"Fächer verwalten", groupName:"Name der Fachgruppe", emoji:"Emoji", confirmDelete:"Wirklich löschen? Zugehörige Inhalte werden ebenfalls gelöscht.", noSubject:"Lege zuerst ein Fach an.", editCard:"Karte bearbeiten", editList:"Liste bearbeiten", updated:"Zuletzt", total:"Listen", automatic:"Lernpunkte werden automatisch verwaltet. Die Punktzahl (0–3) passt sich beim Lernen an.", profile:"Profil", loading:"Lade deine Listen…", chooseSubject:"Fach auswählen", newList:"Neue Liste", newCard:"Neue Karte", create:"Erstellen", starred:"Markierte", none:"Keine Listen in diesem Fach" },
- en: {mySubjects:"My subjects",createList:"Create list",addCard:"Add card",saveCard:"Save card",saveList:"Save list",empty:"No lists yet",emptyInfo:"Create your first vocabulary list and learn with digital flashcards.",groups:"Subject groups & subjects",addGroup:"Add group",addSubject:"Add subject",edit:"Edit",delete:"Delete",cancel:"Cancel",save:"Save",title:"Title",subject:"Subject",tags:"Tags",addTag:"Add tag",questionLabel:"Question label",answerLabel:"Answer label",both:"Learn in both directions",bothInfo:"Cards are tested both forwards and backwards.",question:"Question",answer:"Answer",marked:"Starred",markedOnly:"Only starred",unseen:"Show unlearned",showAnswers:"Show answers",sorting:"Sort by",alpha:"Alphabetical",points:"By points",position:"By position",learn:"Learn",progress:"Progress",cards:"Cards",noCards:"No cards yet",noMatching:"No cards match these filters",listInfo:"List properties",lists:"Lists",learning:"Learn",search:"Search",statistics:"Statistics",settings:"Settings",manage:"Manage subjects",groupName:"Group name",emoji:"Emoji",confirmDelete:"Delete this and its contents?",noSubject:"Add a subject first.",editCard:"Edit card",editList:"Edit list",updated:"Last used",total:"Lists",automatic:"Learning points are managed automatically. Scores (0–3) will change during learning.",profile:"Profile",loading:"Loading your lists…",chooseSubject:"Choose a subject",newList:"New list",newCard:"New card",create:"Create",starred:"Starred",none:"No lists in this subject"},
+ de: { mySubjects:"Meine Fächer", createList:"Liste erstellen", addCard:"Karte hinzufügen", saveCard:"Karte speichern", saveList:"Liste speichern", empty:"Noch keine Listen", emptyInfo:"Erstelle deine erste Vokabelliste und lerne effektiv mit digitalen Karteikarten.", groups:"Fachgruppen & Fächer", addGroup:"Fachgruppe hinzufügen", addSubject:"Fach hinzufügen", edit:"Bearbeiten", delete:"Löschen", cancel:"Abbrechen", save:"Speichern", title:"Titel", subject:"Fach", tags:"Tags", addTag:"Tag hinzufügen", questionLabel:"Frage-Label", answerLabel:"Antwort-Label", both:"In beide Richtungen lernen", bothInfo:"Die Karteikarten werden sowohl vorwärts als auch rückwärts abgefragt.", question:"Frage", answer:"Antwort", marked:"Markiert", markedOnly:"Nur Markierte", unseen:"Ungelernte anzeigen", showAnswers:"Antworten anzeigen", sorting:"Sortieren", alpha:"Alphabetisch", points:"Nach Punkten", position:"Nach Position", learn:"Lernen", progress:"Fortschritt", cards:"Karten", noCards:"Noch keine Karten", noMatching:"Keine Karten für diese Filter", listInfo:"Listeneigenschaften", lists:"Listen", learning:"Lernen", search:"Suchen", statistics:"Statistik", settings:"Einstellungen", manage:"Fächer verwalten", groupName:"Name der Fachgruppe", emoji:"Emoji", confirmDelete:"Wirklich löschen? Zugehörige Inhalte werden ebenfalls gelöscht.", noSubject:"Lege zuerst ein Fach an.", editCard:"Karte bearbeiten", editList:"Liste bearbeiten", updated:"Zuletzt", total:"Listen", automatic:"Lernpunkte werden automatisch verwaltet. Die Punktzahl (0–4) passt sich beim Lernen an.", profile:"Profil", loading:"Lade deine Listen…", chooseSubject:"Fach auswählen", newList:"Neue Liste", newCard:"Neue Karte", create:"Erstellen", starred:"Markierte", none:"Keine Listen in diesem Fach" },
+ en: {mySubjects:"My subjects",createList:"Create list",addCard:"Add card",saveCard:"Save card",saveList:"Save list",empty:"No lists yet",emptyInfo:"Create your first vocabulary list and learn with digital flashcards.",groups:"Subject groups & subjects",addGroup:"Add group",addSubject:"Add subject",edit:"Edit",delete:"Delete",cancel:"Cancel",save:"Save",title:"Title",subject:"Subject",tags:"Tags",addTag:"Add tag",questionLabel:"Question label",answerLabel:"Answer label",both:"Learn in both directions",bothInfo:"Cards are tested both forwards and backwards.",question:"Question",answer:"Answer",marked:"Starred",markedOnly:"Only starred",unseen:"Show unlearned",showAnswers:"Show answers",sorting:"Sort by",alpha:"Alphabetical",points:"By points",position:"By position",learn:"Learn",progress:"Progress",cards:"Cards",noCards:"No cards yet",noMatching:"No cards match these filters",listInfo:"List properties",lists:"Lists",learning:"Learn",search:"Search",statistics:"Statistics",settings:"Settings",manage:"Manage subjects",groupName:"Group name",emoji:"Emoji",confirmDelete:"Delete this and its contents?",noSubject:"Add a subject first.",editCard:"Edit card",editList:"Edit list",updated:"Last used",total:"Lists",automatic:"Learning points are managed automatically. Scores (0–4) will change during learning.",profile:"Profile",loading:"Loading your lists…",chooseSubject:"Choose a subject",newList:"New list",newCard:"New card",create:"Create",starred:"Starred",none:"No lists in this subject"},
  fr:{},nl:{},da:{},it:{}
 };
+const learningButtonWords: Record<Language,Record<string,string>>={
+ de:{paused:"Noch",minutesPause:"min Pause",allLearned:"Alle Karten gelernt",starting:"Wird gestartet…"},
+ en:{paused:"Pause:",minutesPause:"min left",allLearned:"All cards learned",starting:"Starting…"},
+ fr:{paused:"Pause :",minutesPause:"min restantes",allLearned:"Toutes les cartes apprises",starting:"Démarrage…"},
+ nl:{paused:"Pauze:",minutesPause:"min over",allLearned:"Alle kaarten geleerd",starting:"Starten…"},
+ da:{paused:"Pause:",minutesPause:"min tilbage",allLearned:"Alle kort lært",starting:"Starter…"},
+ it:{paused:"Pausa:",minutesPause:"min rimasti",allLearned:"Tutte le schede apprese",starting:"Avvio…"}
+};
+
 const sharingWords: Record<Language,Record<string,string>> = {
  de:{
   share:"Teilen",shareCopied:"Link kopiert",shareCopy:"Link kopieren",shareFallback:"Diesen Link kopieren und weitergeben",
@@ -86,16 +97,16 @@ const supplemental: Partial<Record<Language,Words>> = {
 };
 
 Object.assign(supplemental.fr!,{
- emptyInfo:"Créez votre première liste de vocabulaire et apprenez avec des fiches numériques.",groups:"Groupes et matières",addTag:"Ajouter un tag",questionLabel:"Intitulé de la question",answerLabel:"Intitulé de la réponse",both:"Apprendre dans les deux sens",bothInfo:"Les cartes seront interrogées dans les deux sens.",sorting:"Trier",progress:"Progression",cards:"Cartes",noCards:"Aucune carte",noMatching:"Aucune carte ne correspond aux filtres",listInfo:"Propriétés de la liste",learning:"Apprendre",groupName:"Nom du groupe",emoji:"Émoji",confirmDelete:"Supprimer également le contenu associé ?",noSubject:"Ajoutez d'abord une matière.",editCard:"Modifier la carte",editList:"Modifier la liste",updated:"Dernière utilisation",total:"Listes",automatic:"Les points (0–3) sont gérés automatiquement pendant l'apprentissage.",profile:"Profil",loading:"Chargement des listes…",chooseSubject:"Choisir une matière",newList:"Nouvelle liste",newCard:"Nouvelle carte",create:"Créer",starred:"Favoris",none:"Aucune liste dans cette matière",markedOnly:"Seulement les favorites",unseen:"Afficher les non apprises",showAnswers:"Afficher les réponses",addGroup:"Ajouter un groupe",addSubject:"Ajouter une matière",marked:"Favorite",saveList:"Enregistrer la liste",saveCard:"Enregistrer la carte"
+ emptyInfo:"Créez votre première liste de vocabulaire et apprenez avec des fiches numériques.",groups:"Groupes et matières",addTag:"Ajouter un tag",questionLabel:"Intitulé de la question",answerLabel:"Intitulé de la réponse",both:"Apprendre dans les deux sens",bothInfo:"Les cartes seront interrogées dans les deux sens.",sorting:"Trier",progress:"Progression",cards:"Cartes",noCards:"Aucune carte",noMatching:"Aucune carte ne correspond aux filtres",listInfo:"Propriétés de la liste",learning:"Apprendre",groupName:"Nom du groupe",emoji:"Émoji",confirmDelete:"Supprimer également le contenu associé ?",noSubject:"Ajoutez d'abord une matière.",editCard:"Modifier la carte",editList:"Modifier la liste",updated:"Dernière utilisation",total:"Listes",automatic:"Les points (0–4) sont gérés automatiquement pendant l'apprentissage.",profile:"Profil",loading:"Chargement des listes…",chooseSubject:"Choisir une matière",newList:"Nouvelle liste",newCard:"Nouvelle carte",create:"Créer",starred:"Favoris",none:"Aucune liste dans cette matière",markedOnly:"Seulement les favorites",unseen:"Afficher les non apprises",showAnswers:"Afficher les réponses",addGroup:"Ajouter un groupe",addSubject:"Ajouter une matière",marked:"Favorite",saveList:"Enregistrer la liste",saveCard:"Enregistrer la carte"
 });
 Object.assign(supplemental.nl!,{
- emptyInfo:"Maak je eerste woordenlijst en leer met digitale flashcards.",groups:"Vakgroepen en vakken",addTag:"Tag toevoegen",questionLabel:"Vraaglabel",answerLabel:"Antwoordlabel",both:"In beide richtingen leren",bothInfo:"Kaarten worden in beide richtingen gevraagd.",sorting:"Sorteren",progress:"Voortgang",cards:"Kaarten",noCards:"Nog geen kaarten",noMatching:"Geen kaarten voldoen aan de filters",listInfo:"Lijsteigenschappen",learning:"Leren",emoji:"Emoji",confirmDelete:"Ook alle bijbehorende inhoud verwijderen?",noSubject:"Voeg eerst een vak toe.",editCard:"Kaart bewerken",editList:"Lijst bewerken",updated:"Laatst gebruikt",total:"Lijsten",automatic:"Leerpunten (0–3) worden automatisch bijgewerkt tijdens het leren.",profile:"Profiel",loading:"Lijsten laden…",chooseSubject:"Kies een vak",newList:"Nieuwe lijst",newCard:"Nieuwe kaart",create:"Aanmaken",starred:"Gemarkeerd",none:"Geen lijsten in dit vak"
+ emptyInfo:"Maak je eerste woordenlijst en leer met digitale flashcards.",groups:"Vakgroepen en vakken",addTag:"Tag toevoegen",questionLabel:"Vraaglabel",answerLabel:"Antwoordlabel",both:"In beide richtingen leren",bothInfo:"Kaarten worden in beide richtingen gevraagd.",sorting:"Sorteren",progress:"Voortgang",cards:"Kaarten",noCards:"Nog geen kaarten",noMatching:"Geen kaarten voldoen aan de filters",listInfo:"Lijsteigenschappen",learning:"Leren",emoji:"Emoji",confirmDelete:"Ook alle bijbehorende inhoud verwijderen?",noSubject:"Voeg eerst een vak toe.",editCard:"Kaart bewerken",editList:"Lijst bewerken",updated:"Laatst gebruikt",total:"Lijsten",automatic:"Leerpunten (0–4) worden automatisch bijgewerkt tijdens het leren.",profile:"Profiel",loading:"Lijsten laden…",chooseSubject:"Kies een vak",newList:"Nieuwe lijst",newCard:"Nieuwe kaart",create:"Aanmaken",starred:"Gemarkeerd",none:"Geen lijsten in dit vak"
 });
 Object.assign(supplemental.da!,{
- emptyInfo:"Opret din første ordliste, og lær med digitale kort.",groups:"Faggrupper og fag",addTag:"Tilføj tag",questionLabel:"Spørgsmålslabel",answerLabel:"Svarlabel",both:"Lær i begge retninger",bothInfo:"Kortene spørges i begge retninger.",sorting:"Sortér",progress:"Fremskridt",cards:"Kort",noCards:"Ingen kort endnu",noMatching:"Ingen kort matcher filtrene",listInfo:"Listeegenskaber",learning:"Lær",emoji:"Emoji",confirmDelete:"Slet også alt tilhørende indhold?",noSubject:"Tilføj et fag først.",editCard:"Rediger kort",editList:"Rediger liste",updated:"Sidst brugt",total:"Lister",automatic:"Læringspoint (0–3) opdateres automatisk under læring.",profile:"Profil",loading:"Indlæser lister…",chooseSubject:"Vælg fag",newList:"Ny liste",newCard:"Nyt kort",create:"Opret",starred:"Markerede",none:"Ingen lister i dette fag"
+ emptyInfo:"Opret din første ordliste, og lær med digitale kort.",groups:"Faggrupper og fag",addTag:"Tilføj tag",questionLabel:"Spørgsmålslabel",answerLabel:"Svarlabel",both:"Lær i begge retninger",bothInfo:"Kortene spørges i begge retninger.",sorting:"Sortér",progress:"Fremskridt",cards:"Kort",noCards:"Ingen kort endnu",noMatching:"Ingen kort matcher filtrene",listInfo:"Listeegenskaber",learning:"Lær",emoji:"Emoji",confirmDelete:"Slet også alt tilhørende indhold?",noSubject:"Tilføj et fag først.",editCard:"Rediger kort",editList:"Rediger liste",updated:"Sidst brugt",total:"Lister",automatic:"Læringspoint (0–4) opdateres automatisk under læring.",profile:"Profil",loading:"Indlæser lister…",chooseSubject:"Vælg fag",newList:"Ny liste",newCard:"Nyt kort",create:"Opret",starred:"Markerede",none:"Ingen lister i dette fag"
 });
 Object.assign(supplemental.it!,{
- emptyInfo:"Crea il tuo primo elenco di vocaboli e studia con le schede digitali.",groups:"Gruppi e materie",addTag:"Aggiungi tag",questionLabel:"Etichetta domanda",answerLabel:"Etichetta risposta",both:"Studia in entrambe le direzioni",bothInfo:"Le schede vengono proposte in entrambe le direzioni.",sorting:"Ordina",progress:"Progresso",cards:"Schede",noCards:"Nessuna scheda",noMatching:"Nessuna scheda corrisponde ai filtri",listInfo:"Proprietà della lista",learning:"Impara",emoji:"Emoji",confirmDelete:"Eliminare anche tutti i contenuti associati?",noSubject:"Aggiungi prima una materia.",editCard:"Modifica scheda",editList:"Modifica lista",updated:"Ultimo utilizzo",total:"Liste",automatic:"I punti (0–3) vengono aggiornati automaticamente durante lo studio.",profile:"Profilo",loading:"Caricamento liste…",chooseSubject:"Scegli materia",newList:"Nuova lista",newCard:"Nuova scheda",create:"Crea",starred:"Preferite",none:"Nessuna lista in questa materia"
+ emptyInfo:"Crea il tuo primo elenco di vocaboli e studia con le schede digitali.",groups:"Gruppi e materie",addTag:"Aggiungi tag",questionLabel:"Etichetta domanda",answerLabel:"Etichetta risposta",both:"Studia in entrambe le direzioni",bothInfo:"Le schede vengono proposte in entrambe le direzioni.",sorting:"Ordina",progress:"Progresso",cards:"Schede",noCards:"Nessuna scheda",noMatching:"Nessuna scheda corrisponde ai filtri",listInfo:"Proprietà della lista",learning:"Impara",emoji:"Emoji",confirmDelete:"Eliminare anche tutti i contenuti associati?",noSubject:"Aggiungi prima una materia.",editCard:"Modifica scheda",editList:"Modifica lista",updated:"Ultimo utilizzo",total:"Liste",automatic:"I punti (0–4) vengono aggiornati automaticamente durante lo studio.",profile:"Profilo",loading:"Caricamento liste…",chooseSubject:"Scegli materia",newList:"Nuova lista",newCard:"Nuova scheda",create:"Crea",starred:"Preferite",none:"Nessuna lista in questa materia"
 });
 
 const globalLabels: Partial<Record<Language,Words>> = {de:{moreSubjects:"weitere Fächer",notifications:"Benachrichtigungen",navigation:"Navigation"},en:{moreSubjects:"more subjects",notifications:"Notifications",navigation:"Navigation"},fr:{moreSubjects:"autres matières",notifications:"Notifications",navigation:"Navigation"},nl:{moreSubjects:"andere vakken",notifications:"Meldingen",navigation:"Navigatie"},da:{moreSubjects:"flere fag",notifications:"Notifikationer",navigation:"Navigation"},it:{moreSubjects:"altre materie",notifications:"Notifiche",navigation:"Navigazione"}};
@@ -114,10 +125,18 @@ function languageSubject(data:VokaData,subjectId:string):Subject|undefined {
 }
 const stamp=(time:number,language:Language)=>time?new Date(time).toLocaleDateString(language==="de"?"de-DE":language,{day:"numeric",month:"short"}):"–";
 export default function VokaApp({language,onProfile}:{language:Language;onProfile:()=>void}) {
- const t=(key:string)=>sharingWords[language]?.[key]||globalLabels[language]?.[key]||supplemental[language]?.[key]||translations[language]?.[key]||translations.en[key]||key;
+ const t=(key:string)=>learningButtonWords[language]?.[key]||sharingWords[language]?.[key]||globalLabels[language]?.[key]||supplemental[language]?.[key]||translations[language]?.[key]||translations.en[key]||key;
  const [data,setData]=useState<VokaData>(emptyData);
  const [loading,setLoading]=useState(true),[error,setError]=useState("");
  const [screen,setScreen]=useState<Screen>("home");
+ const [learningSession,setLearningSession]=useState<{queryId:string;cardIds:string[]}|null>(null);
+ const [startingLearn,setStartingLearn]=useState(false);
+ const [clock,setClock]=useState(()=>Date.now());
+ useEffect(()=>{
+  const interval=window.setInterval(()=>setClock(Date.now()),30_000);
+  return ()=>window.clearInterval(interval);
+ },[]);
+
  const [wide,setWide]=useState(()=>window.matchMedia("(min-width: 900px)").matches);
  useEffect(()=>{
   const query=window.matchMedia("(min-width: 900px)");
@@ -239,8 +258,24 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const visibleGroups=useMemo(()=>groups.filter(g=>data.subjects.some(s=>s.group_id===g.id&&subjectsWithLists.has(s.id))),[groups,data.subjects,subjectsWithLists]);
  const currentSubject=data.subjects.find(s=>s.id===selectedSubject);
  const currentList=data.lists.find(l=>l.id===selectedList);
- const listCards=useMemo(()=>data.cards.filter(c=>c.list_id===selectedList).filter(c=>(!markedOnly||c.marked)&&(!unlearnedOnly||c.success_count<3)).sort((a,b)=>sort==="alpha"?a.question.localeCompare(b.question):sort==="position"?a.position-b.position||a.question.localeCompare(b.question):a.success_count-b.success_count||a.question.localeCompare(b.question)),[data.cards,selectedList,markedOnly,unlearnedOnly,sort]);
+ const listCards=useMemo(()=>data.cards.filter(c=>c.list_id===selectedList).filter(c=>(!markedOnly||c.marked)&&(!unlearnedOnly||c.success_count<4)).sort((a,b)=>sort==="alpha"?a.question.localeCompare(b.question):sort==="position"?a.position-b.position||a.question.localeCompare(b.question):a.success_count-b.success_count||a.question.localeCompare(b.question)),[data.cards,selectedList,markedOnly,unlearnedOnly,sort]);
  const run=async(fn:()=>Promise<void>)=>{setWorking(true);setError("");try{await fn();await refresh()}catch(e){setError(e instanceof Error?e.message:String(e))}finally{setWorking(false)}};
+ const startLearning=async()=>{
+  if(!currentList||startingLearn)return;
+  setStartingLearn(true);setError("");
+  try{
+   const session=await beginLearning(currentList.id);
+   await refresh();
+   if(session.query_id&&session.card_ids.length){
+    setLearningSession({queryId:session.query_id,cardIds:session.card_ids});
+    setScreen("learn");
+   }
+   // When there are no due cards, the backend advances the list's positions
+   // and returns its two-hour pause instead of opening an empty session.
+  }catch(e){setError(e instanceof Error?e.message:String(e))}
+  finally{setStartingLearn(false);}
+ };
+ const finishLearningView=()=>{setLearningSession(null);setScreen("list")};
  const back=()=>{if(screen==="cardForm"){setSelectedCard(null);setScreen("list");}else if(screen==="listForm")setScreen(listEditing?"list":selectedSubject?"subject":"home");else if(screen==="list")setScreen("subject");else if(screen==="subject"||screen==="manage")setScreen("home");else setScreen("home")};
  const openList=(id:string)=>{setSelectedList(id);setShowAnswers(false);setMarkedOnly(false);setUnlearnedOnly(false);setSort("alpha");setSelectedCard(null);setScreen("list")};
  const listLabels=(subjectId:string)=>{const subject=languageSubject(data,subjectId);return subject?{question_label:"Deutsch",answer_label:subject.title}:{question_label:t("question"),answer_label:t("answer")};};
@@ -310,6 +345,13 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
    language==="da"?"Vis "+currentList.answer_label:
    "Mostra "+currentList.answer_label
   ):t("showAnswers");
+ const listCardsForProgress=data.cards.filter(c=>c.list_id===selectedList);
+ const pauseLeft=pauseMinutesLeft(currentList?.learning_paused_until,clock);
+ const everyCardLearned=listCardsForProgress.length>0&&listCardsForProgress.every(c=>c.success_count>=4);
+ const learningUnavailable=startingLearn||pauseLeft>0||everyCardLearned||listCardsForProgress.length===0;
+ const learningButtonLabel=startingLearn?t("starting"):pauseLeft>0?
+   t("paused")+" "+pauseLeft+" "+t("minutesPause"):
+   everyCardLearned?t("allLearned"):listCardsForProgress.length===0?t("noCards"):t("learn");
  const listTitle=currentList?<span className="v-heading-list-title"><span className="v-emoji" aria-hidden="true">{data.subjects.find(s=>s.id===currentList.subject_id)?.emoji||"📘"}</span><span className="v-heading-title-text">{currentList.title}</span></span>:null;
  const actions=<div className="v-floats">{screen==="cardForm"&&<button className="v-icon-button v-floating-star" type="button" title={t("marked")} aria-label={t("marked")} aria-pressed={draftCard.marked} onClick={()=>setDraftCard({...draftCard,marked:!draftCard.marked})}><Star size={19} fill={draftCard.marked?"#ff9b00":"none"} stroke={draftCard.marked?"#ff9b00":"currentColor"}/></button>}<IconButton label={t("notifications")} onClick={()=>{}}><Bell size={19}/></IconButton><IconButton label={t("profile")} className="v-user-float" style={{color:avatarColor,backgroundColor:avatarColor+"24",borderColor:avatarColor+"66"}} onClick={onProfile}><CircleUserRound size={23}/></IconButton></div>;
  const listOverview = <section className="v-page v-lists-pane"><div className="v-section-header"><h2>{wide?t("lists"):`${currentSubject?.emoji||""} ${currentSubject?.title||""} · ${t("lists")}`}</h2></div>
@@ -317,16 +359,18 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
     {!data.lists.some(l=>l.subject_id===selectedSubject)&&<div className="v-empty">{t("none")}</div>}
     <button className="v-primary" onClick={()=>newList(selectedSubject||"")}><Plus size={18}/>{t("createList")}</button>
     </section>;
- return <div className={"v-app"+(screen==="cardForm"?" v-card-form-active":"")}>
-  {actions}
+ return <div className={"v-app"+(screen==="cardForm"?" v-card-form-active":"")+(screen==="learn"?" v-learning-active":"")}>
+  {screen!=="learn"&&actions}
   <div className="v-content">
    {error&&<div role="alert" className="v-error">{error}<button onClick={()=>void refresh()}>↻</button></div>}
    {loading?<div className="v-empty">{t("loading")}</div>:<>
-   <header className="v-heading">
+   {screen!=="learn"&&<header className="v-heading">
     {screen!=="home"&&<IconButton onClick={back} label={t("cancel")}><ArrowLeft/></IconButton>}
     <h1>{screen==="home"?<span className="v-logo">Voka</span>:wide&&(screen==="subject"||screen==="list"||screen==="cardForm"||(screen==="listForm"&&Boolean(listEditing)))?<span>{currentSubject?.emoji} {currentSubject?.title}</span>:screen==="subject"?currentSubject?.title:screen==="list"?listTitle:screen==="listForm"?(listEditing?t("editList"):t("createList")):screen==="cardForm"?(selectedCard?t("editCard"):t("addCard")):t("manage")}</h1>
     {!wide&&screen==="list"&&currentList&&<IconButton label={t("editList")} onClick={()=>editList(currentList)}><Pencil size={19}/></IconButton>}
-   </header>
+   </header>}
+   {screen==="learn"&&learningSession&&currentList&&<LearningScreen language={language} list={currentList}
+     cards={data.cards} session={learningSession} onRefresh={refresh} onExit={finishLearningView}/>}
    {screen==="home"&&<div className="v-home">
     {data.lists.length===0&&<section className="v-intro"><div className="v-illustration"><BookOpen size={74}/><span>?</span></div><h2>{t("empty")}</h2><p>{t("emptyInfo")}</p><button className="v-primary" onClick={()=>newList()}><Plus size={18}/>{t("createList")}</button></section>}
     <div className="v-section-tools"><h2 className="v-section-title">{t("mySubjects")}</h2><button className="v-manage-link" onClick={()=>{setManageModalOpen(false);setScreen("manage")}}>{t("manage")} <Settings size={16}/></button></div>
@@ -346,7 +390,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
      {wide&&<div className="v-pane-list-heading"><h2>{listTitle}</h2><IconButton label={t("editList")} onClick={()=>editList(currentList)}><Pencil size={18}/></IconButton></div>}
     <div className="v-list-main">
      {currentList.tags.length>0&&<div className="v-list-summary"><div className="v-tag-row">{currentList.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div>}
-      <div className="v-list-actions"><button className="v-primary" type="button" title={t("learn")} onClick={()=>{}}><span>▶</span> {t("learn")}</button><div className="v-progress"><BarChart3 size={21}/><span>{t("progress")}<b>{data.cards.filter(c=>c.list_id===selectedList).length?Math.round(data.cards.filter(c=>c.list_id===selectedList).reduce((sum,c)=>sum+c.success_count,0)/(data.cards.filter(c=>c.list_id===selectedList).length*3)*100):0} %</b></span></div>
+      <div className="v-list-actions"><button className="v-primary" type="button" title={learningButtonLabel} aria-label={learningButtonLabel} disabled={learningUnavailable} onClick={()=>void startLearning()}><span>▶</span> {learningButtonLabel}</button><div className="v-progress"><BarChart3 size={21}/><span>{t("progress")}<b>{learningProgress(listCardsForProgress)} %</b></span></div>
       <button type="button" className="v-outline v-share-button" onClick={()=>void shareSelectedList()}><Share2 size={19}/>{t("share")}</button>
      </div>
      {shareStatus&&<p className="v-share-status" role="status">{shareStatus}</p>}
@@ -357,7 +401,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
        <div className="v-sort"><label>{t("sorting")}:</label><div className="v-segments"><button className={sort==="alpha"?"active":""} onClick={()=>setSort("alpha")}>{t("alpha")}</button><button className={sort==="points"?"active":""} onClick={()=>setSort("points")}>{t("points")}</button><button className={sort==="position"?"active":""} onClick={()=>setSort("position")}>{t("position")}</button></div></div>
      </div>
      <div className="v-list-count">{listCards.length} {t("cards")}</div>
-     <div className="v-card-list">{listCards.map(c=><div key={c.id} className={"v-card-row "+(selectedCard===c.id?"selected":"")}><button className="v-card-star" aria-label={t("marked")} onClick={()=>void run(()=>markCard(c.id,!c.marked))}><Star size={19} fill={c.marked?"#ff9b00":"none"} stroke={c.marked?"#ff9b00":"currentColor"}/></button><button className="v-card-open" onClick={()=>openCard(c)}><span className="v-card-question">{c.question}{showAnswers&&<span className="v-card-answer">{c.answer}</span>}</span><span className="v-dots">{[0,1,2].map(n=><i key={n} className={n<c.success_count?"filled":""}/>)}</span><b>{c.success_count} P</b></button></div>)}</div>
+     <div className="v-card-list">{listCards.map(c=><div key={c.id} className={"v-card-row "+(selectedCard===c.id?"selected":"")}><button className="v-card-star" aria-label={t("marked")} onClick={()=>void run(()=>markCard(c.id,!c.marked))}><Star size={19} fill={c.marked?"#ff9b00":"none"} stroke={c.marked?"#ff9b00":"currentColor"}/></button><button className="v-card-open" onClick={()=>openCard(c)}><span className="v-card-question">{c.question}{showAnswers&&<span className="v-card-answer">{c.answer}</span>}</span><span className="v-dots">{[0,1,2,3].map(n=><i key={n} className={n<c.success_count?"filled":""}/>)}</span><b>{c.success_count} P</b></button></div>)}</div>
      {listCards.length===0&&<p className="v-empty">{data.cards.some(c=>c.list_id===selectedList)?t("noMatching"):t("noCards")}</p>}
      <button className="v-primary v-add-card" onClick={()=>openCard()}><Plus size={18}/>{t("addCard")}</button>
     </div>
@@ -461,11 +505,11 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
       </section>
      </div>}
   </div>
-  <nav className="v-bottom-nav" aria-label={t("navigation")}>
+  {screen!=="learn"&&<nav className="v-bottom-nav" aria-label={t("navigation")}>
    <button className="active" type="button" onClick={()=>setScreen("home")}><Home size={21} fill="currentColor"/><span>Voka</span></button>
    <button type="button" onClick={()=>{}}><Search size={21}/><span>{t("search")}</span></button>
    <button type="button" onClick={()=>{}}><BarChart3 size={21}/><span>{t("statistics")}</span></button>
    <button type="button" onClick={()=>{}}><Settings size={21}/><span>{t("settings")}</span></button>
-  </nav>
+  </nav>}
  </div>;
 }

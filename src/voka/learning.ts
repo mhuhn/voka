@@ -1,0 +1,32 @@
+import type { VokaCard } from "./data";
+
+export const MAX_LEARNING_POINTS = 4;
+export const LEARNING_PAUSE_MINUTES = 120;
+
+/** A list pause is based on the server-provided timestamp, not local storage. */
+export function pauseMinutesLeft(until: string | null | undefined, now = Date.now()): number {
+  if (!until) return 0;
+  const timestamp = Date.parse(until);
+  if (!Number.isFinite(timestamp)) return 0;
+  return Math.max(0, Math.ceil((timestamp - now) / 60_000));
+}
+
+/** Cards can be learned only when they are due at position zero and not completed. */
+export function isCardDue(card: Pick<VokaCard, "position" | "success_count">): boolean {
+  return card.position === 0 && card.success_count < MAX_LEARNING_POINTS;
+}
+
+export function learningProgress(cards: Pick<VokaCard,"success_count">[]): number {
+  if (cards.length === 0) return 0;
+  const achieved = cards.reduce((total,card) =>
+    total + Math.min(MAX_LEARNING_POINTS, Math.max(0,card.success_count)),0);
+  return Math.round(achieved / (cards.length * MAX_LEARNING_POINTS) * 100);
+}
+
+/**
+ * One rating per card in a round. The inverse orientation is randomly chosen
+ * for lists configured to learn both directions.
+ */
+export function pickReverseDirection(bothDirections:boolean, random = Math.random): boolean {
+  return bothDirections && random() < 0.5;
+}

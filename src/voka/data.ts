@@ -2,7 +2,7 @@ import { authManager } from "../auth/manager";
 
 export interface SubjectGroup { id: string; user_id: string; title: string }
 export interface Subject { id: string; user_id: string; group_id: string; title: string; emoji: string }
-export interface VokaList { id: string; user_id: string; subject_id: string; title: string; tags: string[]; question_label: string; answer_label: string; learn_both_directions: boolean; updated_at: string; created_at: string }
+export interface VokaList { id: string; user_id: string; subject_id: string; title: string; tags: string[]; question_label: string; answer_label: string; learn_both_directions: boolean; learning_paused_until: string | null; updated_at: string; created_at: string }
 export interface VokaCard { id: string; user_id: string; list_id: string; question: string; answer: string; marked: boolean; success_count: number; position: number; created_at: string; updated_at: string }
 export interface Usage { list_id: string; user_id: string; last_used_at: string | null }
 export interface VokaData { groups: SubjectGroup[]; subjects: Subject[]; lists: VokaList[]; cards: VokaCard[]; usage: Usage[] }
@@ -60,4 +60,41 @@ export function subjectUsage(data:VokaData,subjectId:string):number {
 }
 export function groupUsage(data:VokaData,groupId:string):number {
   return Math.max(0,...data.subjects.filter(s=>s.group_id===groupId).map(s=>subjectUsage(data,s.id)));
+}
+
+export type LearningResult = "known" | "unknown" | "unsure";
+export interface BeginLearningResponse {
+  query_id?: string;
+  card_ids: string[];
+  paused_until?: string | null;
+  all_learned?: boolean;
+}
+export interface GradeLearningResponse {
+  success_count: number;
+  position: number;
+  finished: boolean;
+  paused_until: string | null;
+}
+
+/** The backend starts one query for all due (position-zero) cards in random order. */
+export async function beginLearning(listId: string): Promise<BeginLearningResponse> {
+  return await check<BeginLearningResponse>(
+    client().rpc("voka_begin_learning", {p_list_id:listId})
+  );
+}
+
+/** Grades exactly one due card once; the backend also closes the round atomically. */
+export async function gradeLearning(
+  queryId: string,cardId: string,result: LearningResult
+): Promise<GradeLearningResponse> {
+  return await check<GradeLearningResponse>(
+    client().rpc("voka_grade_learning",{
+      p_query_id:queryId,p_card_id:cardId,p_result:result
+    })
+  );
+}
+
+/** Early exit keeps all already graded cards and closes the current query. */
+export async function finishLearning(queryId: string): Promise<void> {
+  await check(client().rpc("voka_finish_learning",{p_query_id:queryId}));
 }
