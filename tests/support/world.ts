@@ -118,6 +118,19 @@ Before(async function (this: VokaWorld, { pickle }) {
       return;
     }
 
+    if (path === "/rest/v1/rpc/voka_initialize_defaults" && method === "POST") {
+      await route.fulfill(json(null));
+      return;
+    }
+    if (path.startsWith("/rest/v1/voka_") && method === "GET") {
+      await route.fulfill(json([]));
+      return;
+    }
+    if (path.startsWith("/rest/v1/voka_") && ["POST","PATCH","DELETE"].includes(method)) {
+      await route.fulfill(json(null, 204));
+      return;
+    }
+
     await route.fulfill(json({ error: "Unsupported mock endpoint: " + method + " " + path }, 404));
   });
 });
