@@ -76,6 +76,10 @@ export class AuthManager {
   get activeUser(): User | null {
     return this.state.users[this.state.registry.activeId || ""] || null;
   }
+  get activeClient(): SupabaseClient | null {
+    const id = this.state.registry.activeId;
+    return id && this.activeUser ? this.accountClient(id) : null;
+  }
 
   initialize(): Promise<void> {
     return this.initializePromise ??= this.initializeInternal();
