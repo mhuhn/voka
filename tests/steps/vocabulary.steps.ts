@@ -151,3 +151,43 @@ Then("the direction control is a full-width push button", async function (this: 
 When("I switch to iPad landscape width", async function (this: VokaWorld) {
   await this.page.setViewportSize({width:1024,height:768});
 });
+
+When("I open list editing from its details", async function(this:VokaWorld){
+ await this.page.locator(".v-pane-list-heading").getByRole("button",{name:"Edit list"}).click();
+});
+
+Then("the list editor stays beside the list overview", async function(this:VokaWorld){
+ const overview=this.page.locator(".v-list-form-workspace .v-lists-pane");
+ const editor=this.page.locator(".v-list-form-workspace .v-list-edit-pane");
+ await expect(overview).toBeVisible(); await expect(editor).toBeVisible();
+ await expect(overview.getByRole("button",{name:/Irregular Verbs/})).toBeVisible();
+ await expect(editor.getByRole("textbox",{name:/Title/})).toHaveValue("Irregular Verbs");
+ const a=await overview.boundingBox(), b=await editor.boundingBox();
+ expect(a).not.toBeNull();expect(b).not.toBeNull();
+ expect(b!.x).toBeGreaterThan(a!.x+a!.width-12);
+});
+
+When("I open the add-card form", async function(this:VokaWorld){
+ await this.page.getByRole("button",{name:"Add card"}).click();
+ await expect(this.page.locator(".v-card-editor")).toBeVisible();
+});
+
+Then("I can cancel a new card without saving it", async function(this:VokaWorld){
+ const editor=this.page.locator(".v-card-editor");
+ await editor.getByRole("textbox",{name:/Question/}).fill("never saved");
+ await editor.getByRole("button",{name:"Cancel"}).click();
+ await expect(editor).toHaveCount(0);
+ await expect(this.page.locator(".v-card-list")).toBeVisible();
+ await expect(this.page.getByText("never saved")).toHaveCount(0);
+});
+
+Then("the small phone has larger floating icon targets", async function(this:VokaWorld){
+ const targets=this.page.locator(".v-floats .v-icon-button");
+ await expect(targets).toHaveCount(2);
+ for(const box of await targets.all()){
+  const dims=await box.boundingBox();
+  expect(dims).not.toBeNull();
+  expect(dims!.width).toBeGreaterThanOrEqual(42);
+  expect(dims!.height).toBeGreaterThanOrEqual(42);
+ }
+});
