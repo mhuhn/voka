@@ -45,3 +45,30 @@ Feature: Vocabulary lists
     Then the list detail is beside the complete subject list overview
     When I can open the card editor without editing progress
     Then the card editor occupies a third column
+
+  Scenario: iPad list editing keeps the list overview visible
+    Given I open the Voka app
+    When I sign in as "alice@example.test" with password "correct-password"
+    And I return to vocabulary home
+    And I switch to iPad landscape width
+    And I open the English subject
+    And I open the irregular verbs list
+    And I open list editing from its details
+    Then the list editor stays beside the list overview
+
+  Scenario: Cancel adding a card without creating it
+    Given I open the Voka app
+    When I sign in as "alice@example.test" with password "correct-password"
+    And I return to vocabulary home
+    And I switch to iPad landscape width
+    And I open the English subject
+    And I open the irregular verbs list
+    And I open the add-card form
+    Then I can cancel a new card without saving it
+
+  Scenario: iPhone SE-sized floating controls are accessible
+    Given I open the Voka app
+    When I sign in as "alice@example.test" with password "correct-password"
+    And I return to vocabulary home
+    And I switch to a phone-sized viewport
+    Then the small phone has larger floating icon targets
