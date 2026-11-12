@@ -36,6 +36,6 @@ Feature: Share and import vocabulary lists
 
   Scenario: An invalid or deleted source list cannot be imported
     Given I open the Voka app
-    When I open a shared-list invitation
+    When I open a link to a missing shared list
     And I sign in as "alice@example.test" with password "correct-password"
-    Then the shared-list import dialog appears with the source details
+    Then an unknown list cannot be imported
