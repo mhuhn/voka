@@ -5,19 +5,20 @@ import { emptyData, loadVoka, saveList, deleteList, saveCard, deleteCard, markCa
 import "./voka.css";
 import { getUserAvatarColor } from "../auth/userColors";
 import { authManager } from "../auth/manager";
+import { suggestSubjectEmoji } from "./subjectEmoji";
 
 type Screen = "home" | "subject" | "list" | "listForm" | "cardForm" | "manage";
 type Words = Record<string, string>;
 const translations: Record<Language, Words> = {
- de: { mySubjects:"Meine Fächer", createList:"Liste erstellen", addCard:"Karte hinzufügen", saveCard:"Karte speichern", saveList:"Liste speichern", empty:"Noch keine Listen", emptyInfo:"Erstelle deine erste Vokabelliste und lerne effektiv mit digitalen Karteikarten.", groups:"Fachgruppen & Fächer", addGroup:"Fachgruppe hinzufügen", addSubject:"Fach hinzufügen", edit:"Bearbeiten", delete:"Löschen", cancel:"Abbrechen", save:"Speichern", title:"Titel", subject:"Fach", tags:"Tags", addTag:"Tag hinzufügen", questionLabel:"Frage-Label", answerLabel:"Antwort-Label", both:"In beide Richtungen lernen", bothInfo:"Die Karteikarten werden sowohl vorwärts als auch rückwärts abgefragt.", question:"Frage", answer:"Antwort", marked:"Markiert", markedOnly:"Nur Markierte", unseen:"Ungelernte anzeigen", showAnswers:"Antworten anzeigen", sorting:"Sortieren", alpha:"Alphabetisch", points:"Nach Punkten", learn:"Lernen", progress:"Fortschritt", cards:"Karten", noCards:"Noch keine Karten", noMatching:"Keine Karten für diese Filter", listInfo:"Listeneigenschaften", lists:"Listen", learning:"Lernen", search:"Suchen", statistics:"Statistik", settings:"Einstellungen", manage:"Fächer verwalten", groupName:"Name der Fachgruppe", emoji:"Emoji", confirmDelete:"Wirklich löschen? Zugehörige Inhalte werden ebenfalls gelöscht.", noSubject:"Lege zuerst ein Fach an.", editCard:"Karte bearbeiten", editList:"Liste bearbeiten", updated:"Zuletzt", total:"Listen", automatic:"Lernpunkte werden automatisch verwaltet. Die Punktzahl (0–3) passt sich beim Lernen an.", profile:"Profil", loading:"Lade deine Listen…", chooseSubject:"Fach auswählen", newList:"Neue Liste", newCard:"Neue Karte", create:"Erstellen", starred:"Markierte", none:"Keine Listen in diesem Fach" },
- en: {mySubjects:"My subjects",createList:"Create list",addCard:"Add card",saveCard:"Save card",saveList:"Save list",empty:"No lists yet",emptyInfo:"Create your first vocabulary list and learn with digital flashcards.",groups:"Subject groups & subjects",addGroup:"Add group",addSubject:"Add subject",edit:"Edit",delete:"Delete",cancel:"Cancel",save:"Save",title:"Title",subject:"Subject",tags:"Tags",addTag:"Add tag",questionLabel:"Question label",answerLabel:"Answer label",both:"Learn in both directions",bothInfo:"Cards are tested both forwards and backwards.",question:"Question",answer:"Answer",marked:"Starred",markedOnly:"Only starred",unseen:"Show unlearned",showAnswers:"Show answers",sorting:"Sort by",alpha:"Alphabetical",points:"By points",learn:"Learn",progress:"Progress",cards:"Cards",noCards:"No cards yet",noMatching:"No cards match these filters",listInfo:"List properties",lists:"Lists",learning:"Learn",search:"Search",statistics:"Statistics",settings:"Settings",manage:"Manage subjects",groupName:"Group name",emoji:"Emoji",confirmDelete:"Delete this and its contents?",noSubject:"Add a subject first.",editCard:"Edit card",editList:"Edit list",updated:"Last used",total:"Lists",automatic:"Learning points are managed automatically. Scores (0–3) will change during learning.",profile:"Profile",loading:"Loading your lists…",chooseSubject:"Choose a subject",newList:"New list",newCard:"New card",create:"Create",starred:"Starred",none:"No lists in this subject"},
+ de: { mySubjects:"Meine Fächer", createList:"Liste erstellen", addCard:"Karte hinzufügen", saveCard:"Karte speichern", saveList:"Liste speichern", empty:"Noch keine Listen", emptyInfo:"Erstelle deine erste Vokabelliste und lerne effektiv mit digitalen Karteikarten.", groups:"Fachgruppen & Fächer", addGroup:"Fachgruppe hinzufügen", addSubject:"Fach hinzufügen", edit:"Bearbeiten", delete:"Löschen", cancel:"Abbrechen", save:"Speichern", title:"Titel", subject:"Fach", tags:"Tags", addTag:"Tag hinzufügen", questionLabel:"Frage-Label", answerLabel:"Antwort-Label", both:"In beide Richtungen lernen", bothInfo:"Die Karteikarten werden sowohl vorwärts als auch rückwärts abgefragt.", question:"Frage", answer:"Antwort", marked:"Markiert", markedOnly:"Nur Markierte", unseen:"Ungelernte anzeigen", showAnswers:"Antworten anzeigen", sorting:"Sortieren", alpha:"Alphabetisch", points:"Nach Punkten", position:"Nach Position", learn:"Lernen", progress:"Fortschritt", cards:"Karten", noCards:"Noch keine Karten", noMatching:"Keine Karten für diese Filter", listInfo:"Listeneigenschaften", lists:"Listen", learning:"Lernen", search:"Suchen", statistics:"Statistik", settings:"Einstellungen", manage:"Fächer verwalten", groupName:"Name der Fachgruppe", emoji:"Emoji", confirmDelete:"Wirklich löschen? Zugehörige Inhalte werden ebenfalls gelöscht.", noSubject:"Lege zuerst ein Fach an.", editCard:"Karte bearbeiten", editList:"Liste bearbeiten", updated:"Zuletzt", total:"Listen", automatic:"Lernpunkte werden automatisch verwaltet. Die Punktzahl (0–3) passt sich beim Lernen an.", profile:"Profil", loading:"Lade deine Listen…", chooseSubject:"Fach auswählen", newList:"Neue Liste", newCard:"Neue Karte", create:"Erstellen", starred:"Markierte", none:"Keine Listen in diesem Fach" },
+ en: {mySubjects:"My subjects",createList:"Create list",addCard:"Add card",saveCard:"Save card",saveList:"Save list",empty:"No lists yet",emptyInfo:"Create your first vocabulary list and learn with digital flashcards.",groups:"Subject groups & subjects",addGroup:"Add group",addSubject:"Add subject",edit:"Edit",delete:"Delete",cancel:"Cancel",save:"Save",title:"Title",subject:"Subject",tags:"Tags",addTag:"Add tag",questionLabel:"Question label",answerLabel:"Answer label",both:"Learn in both directions",bothInfo:"Cards are tested both forwards and backwards.",question:"Question",answer:"Answer",marked:"Starred",markedOnly:"Only starred",unseen:"Show unlearned",showAnswers:"Show answers",sorting:"Sort by",alpha:"Alphabetical",points:"By points",position:"By position",learn:"Learn",progress:"Progress",cards:"Cards",noCards:"No cards yet",noMatching:"No cards match these filters",listInfo:"List properties",lists:"Lists",learning:"Learn",search:"Search",statistics:"Statistics",settings:"Settings",manage:"Manage subjects",groupName:"Group name",emoji:"Emoji",confirmDelete:"Delete this and its contents?",noSubject:"Add a subject first.",editCard:"Edit card",editList:"Edit list",updated:"Last used",total:"Lists",automatic:"Learning points are managed automatically. Scores (0–3) will change during learning.",profile:"Profile",loading:"Loading your lists…",chooseSubject:"Choose a subject",newList:"New list",newCard:"New card",create:"Create",starred:"Starred",none:"No lists in this subject"},
  fr:{},nl:{},da:{},it:{}
 };
 const supplemental: Partial<Record<Language,Words>> = {
- fr:{mySubjects:"Mes matières",createList:"Créer une liste",addCard:"Ajouter une carte",saveCard:"Enregistrer la carte",saveList:"Enregistrer la liste",empty:"Aucune liste",lists:"Listes",learn:"Apprendre",question:"Question",answer:"Réponse",marked:"Favori",markedOnly:"Favoris uniquement",unseen:"Afficher les non apprises",showAnswers:"Afficher les réponses",alpha:"Alphabétique",points:"Par points",settings:"Réglages",search:"Rechercher",statistics:"Statistiques",manage:"Gérer les matières",cancel:"Annuler",save:"Enregistrer",delete:"Supprimer",edit:"Modifier",title:"Titre",subject:"Matière",tags:"Étiquettes",groupName:"Nom du groupe",addGroup:"Ajouter un groupe",addSubject:"Ajouter une matière"},
- nl:{mySubjects:"Mijn vakken",createList:"Lijst maken",addCard:"Kaart toevoegen",saveCard:"Kaart opslaan",saveList:"Lijst opslaan",empty:"Nog geen lijsten",lists:"Lijsten",learn:"Leren",question:"Vraag",answer:"Antwoord",marked:"Gemarkeerd",markedOnly:"Alleen gemarkeerde",unseen:"Niet-geleerde tonen",showAnswers:"Antwoorden tonen",alpha:"Alfabetisch",points:"Op punten",settings:"Instellingen",search:"Zoeken",statistics:"Statistieken",manage:"Vakken beheren",cancel:"Annuleren",save:"Opslaan",delete:"Verwijderen",edit:"Bewerken",title:"Titel",subject:"Vak",tags:"Tags",groupName:"Groepsnaam",addGroup:"Groep toevoegen",addSubject:"Vak toevoegen"},
- da:{mySubjects:"Mine fag",createList:"Opret liste",addCard:"Tilføj kort",saveCard:"Gem kort",saveList:"Gem liste",empty:"Ingen lister endnu",lists:"Lister",learn:"Lær",question:"Spørgsmål",answer:"Svar",marked:"Markeret",markedOnly:"Kun markerede",unseen:"Vis ikke-lærte",showAnswers:"Vis svar",alpha:"Alfabetisk",points:"Efter point",settings:"Indstillinger",search:"Søg",statistics:"Statistik",manage:"Administrer fag",cancel:"Annuller",save:"Gem",delete:"Slet",edit:"Rediger",title:"Titel",subject:"Fag",tags:"Tags",groupName:"Gruppenavn",addGroup:"Tilføj gruppe",addSubject:"Tilføj fag"},
- it:{mySubjects:"Le mie materie",createList:"Crea lista",addCard:"Aggiungi scheda",saveCard:"Salva scheda",saveList:"Salva lista",empty:"Nessuna lista",lists:"Liste",learn:"Impara",question:"Domanda",answer:"Risposta",marked:"Preferita",markedOnly:"Solo preferite",unseen:"Mostra non apprese",showAnswers:"Mostra risposte",alpha:"Alfabetico",points:"Per punti",settings:"Impostazioni",search:"Cerca",statistics:"Statistiche",manage:"Gestisci materie",cancel:"Annulla",save:"Salva",delete:"Elimina",edit:"Modifica",title:"Titolo",subject:"Materia",tags:"Tag",groupName:"Nome gruppo",addGroup:"Aggiungi gruppo",addSubject:"Aggiungi materia"}
+ fr:{mySubjects:"Mes matières",createList:"Créer une liste",addCard:"Ajouter une carte",saveCard:"Enregistrer la carte",saveList:"Enregistrer la liste",empty:"Aucune liste",lists:"Listes",learn:"Apprendre",question:"Question",answer:"Réponse",marked:"Favori",markedOnly:"Favoris uniquement",unseen:"Afficher les non apprises",showAnswers:"Afficher les réponses",alpha:"Alphabétique",points:"Par points",position:"Par position",settings:"Réglages",search:"Rechercher",statistics:"Statistiques",manage:"Gérer les matières",cancel:"Annuler",save:"Enregistrer",delete:"Supprimer",edit:"Modifier",title:"Titre",subject:"Matière",tags:"Étiquettes",groupName:"Nom du groupe",addGroup:"Ajouter un groupe",addSubject:"Ajouter une matière"},
+ nl:{mySubjects:"Mijn vakken",createList:"Lijst maken",addCard:"Kaart toevoegen",saveCard:"Kaart opslaan",saveList:"Lijst opslaan",empty:"Nog geen lijsten",lists:"Lijsten",learn:"Leren",question:"Vraag",answer:"Antwoord",marked:"Gemarkeerd",markedOnly:"Alleen gemarkeerde",unseen:"Niet-geleerde tonen",showAnswers:"Antwoorden tonen",alpha:"Alfabetisch",points:"Op punten",position:"Op positie",settings:"Instellingen",search:"Zoeken",statistics:"Statistieken",manage:"Vakken beheren",cancel:"Annuleren",save:"Opslaan",delete:"Verwijderen",edit:"Bewerken",title:"Titel",subject:"Vak",tags:"Tags",groupName:"Groepsnaam",addGroup:"Groep toevoegen",addSubject:"Vak toevoegen"},
+ da:{mySubjects:"Mine fag",createList:"Opret liste",addCard:"Tilføj kort",saveCard:"Gem kort",saveList:"Gem liste",empty:"Ingen lister endnu",lists:"Lister",learn:"Lær",question:"Spørgsmål",answer:"Svar",marked:"Markeret",markedOnly:"Kun markerede",unseen:"Vis ikke-lærte",showAnswers:"Vis svar",alpha:"Alfabetisk",points:"Efter point",position:"Efter position",settings:"Indstillinger",search:"Søg",statistics:"Statistik",manage:"Administrer fag",cancel:"Annuller",save:"Gem",delete:"Slet",edit:"Rediger",title:"Titel",subject:"Fag",tags:"Tags",groupName:"Gruppenavn",addGroup:"Tilføj gruppe",addSubject:"Tilføj fag"},
+ it:{mySubjects:"Le mie materie",createList:"Crea lista",addCard:"Aggiungi scheda",saveCard:"Salva scheda",saveList:"Salva lista",empty:"Nessuna lista",lists:"Liste",learn:"Impara",question:"Domanda",answer:"Risposta",marked:"Preferita",markedOnly:"Solo preferite",unseen:"Mostra non apprese",showAnswers:"Mostra risposte",alpha:"Alfabetico",points:"Per punti",position:"Per posizione",settings:"Impostazioni",search:"Cerca",statistics:"Statistiche",manage:"Gestisci materie",cancel:"Annulla",save:"Salva",delete:"Elimina",edit:"Modifica",title:"Titolo",subject:"Materia",tags:"Tag",groupName:"Nome gruppo",addGroup:"Aggiungi gruppo",addSubject:"Aggiungi materia"}
 };
 
 Object.assign(supplemental.fr!,{
@@ -70,12 +71,13 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const [draftCard,setDraftCard]=useState({question:"",answer:"",marked:false});
  const [tagText,setTagText]=useState("");
  const [showAnswers,setShowAnswers]=useState(false),[markedOnly,setMarkedOnly]=useState(false),[unlearnedOnly,setUnlearnedOnly]=useState(false);
- const [sort,setSort]=useState<"alpha"|"points">("alpha");
+ const [sort,setSort]=useState<"alpha"|"points"|"position">("alpha");
  const [manageType,setManageType]=useState<"group"|"subject">("subject");
  const [manageId,setManageId]=useState<string|null>(null);
  const [manageGroup,setManageGroup]=useState("");
  const [manageTitle,setManageTitle]=useState("");
  const [manageEmoji,setManageEmoji]=useState("📘");
+ const [manageEmojiManual,setManageEmojiManual]=useState(false);
  const [manageModalOpen,setManageModalOpen]=useState(false);
  const manageDialogRef=useRef<HTMLDivElement>(null);
  const manageInputRef=useRef<HTMLInputElement>(null);
@@ -101,9 +103,11 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const refresh=useCallback(async()=>{try {setData(await loadVoka());setError("");}catch(e){setError(e instanceof Error?e.message:String(e));}},[]);
  useEffect(()=>{let alive=true;loadVoka().then(result=>{if(alive)setData(result)}).catch(e=>{if(alive)setError(String(e instanceof Error?e.message:e))}).finally(()=>{if(alive)setLoading(false)});return()=>{alive=false};},[]);
  const groups=useMemo(()=>[...data.groups].sort((a,b)=>groupUsage(data,b.id)-groupUsage(data,a.id)||defaultGroupRank(a.title)-defaultGroupRank(b.title)||a.title.localeCompare(b.title)),[data]);
+ const subjectsWithLists=useMemo(()=>new Set(data.lists.map(l=>l.subject_id)),[data.lists]);
+ const visibleGroups=useMemo(()=>groups.filter(g=>data.subjects.some(s=>s.group_id===g.id&&subjectsWithLists.has(s.id))),[groups,data.subjects,subjectsWithLists]);
  const currentSubject=data.subjects.find(s=>s.id===selectedSubject);
  const currentList=data.lists.find(l=>l.id===selectedList);
- const listCards=useMemo(()=>data.cards.filter(c=>c.list_id===selectedList).filter(c=>(!markedOnly||c.marked)&&(!unlearnedOnly||c.success_count<3)).sort((a,b)=>sort==="alpha"?a.question.localeCompare(b.question):a.success_count-b.success_count||a.question.localeCompare(b.question)),[data.cards,selectedList,markedOnly,unlearnedOnly,sort]);
+ const listCards=useMemo(()=>data.cards.filter(c=>c.list_id===selectedList).filter(c=>(!markedOnly||c.marked)&&(!unlearnedOnly||c.success_count<3)).sort((a,b)=>sort==="alpha"?a.question.localeCompare(b.question):sort==="position"?a.position-b.position||a.question.localeCompare(b.question):a.success_count-b.success_count||a.question.localeCompare(b.question)),[data.cards,selectedList,markedOnly,unlearnedOnly,sort]);
  const run=async(fn:()=>Promise<void>)=>{setWorking(true);setError("");try{await fn();await refresh()}catch(e){setError(e instanceof Error?e.message:String(e))}finally{setWorking(false)}};
  const back=()=>{if(screen==="cardForm"){setSelectedCard(null);setScreen("list");}else if(screen==="listForm")setScreen(listEditing?"list":selectedSubject?"subject":"home");else if(screen==="list")setScreen("subject");else if(screen==="subject"||screen==="manage")setScreen("home");else setScreen("home")};
  const openList=(id:string)=>{setSelectedList(id);setShowAnswers(false);setMarkedOnly(false);setUnlearnedOnly(false);setSort("alpha");setSelectedCard(null);setScreen("list")};
@@ -126,8 +130,19 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const startManage=(type:"group"|"subject", item?:SubjectGroup|Subject, groupId?:string)=>{
   setManageType(type);setManageId(item?.id||null);setManageTitle(item?.title||"");
   setManageEmoji(item&&"emoji" in item?item.emoji:"📘");
+  setManageEmojiManual(Boolean(item&&"emoji" in item));
   setManageGroup(item&&"group_id" in item?item.group_id:groupId||data.groups[0]?.id||"");
   setError("");setManageModalOpen(true);
+ };
+ const suggestedEmoji=(title:string,groupId:string)=>
+   suggestSubjectEmoji(title,data.groups.find(g=>g.id===groupId)?.title||"");
+ const onManageTitleChange=(title:string)=>{
+   setManageTitle(title);
+   if(manageType==="subject"&&!manageEmojiManual)setManageEmoji(suggestedEmoji(title,manageGroup)||"📘");
+ };
+ const onManageGroupChange=(groupId:string)=>{
+   setManageGroup(groupId);
+   if(manageType==="subject"&&!manageEmojiManual)setManageEmoji(suggestedEmoji(manageTitle,groupId)||"📘");
  };
  const closeManageModal=()=>{if(!working)setManageModalOpen(false);};
  const runManage=async(task:()=>Promise<void>)=>{
@@ -154,8 +169,15 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
   void runManage(()=>manageType==="group"?deleteGroup(id):deleteSubject(id));
  };
  const listCount=(subjectId:string)=>data.lists.filter(l=>l.subject_id===subjectId).length;
- const selectedGroupCount=(groupId:string)=>data.subjects.filter(s=>s.group_id===groupId).length;
  const avatarColor=getUserAvatarColor(authManager.activeUser?.id||"");
+ const answerVisibilityLabel=currentList?(
+   language==="de"?currentList.answer_label+" anzeigen":
+   language==="en"?"Show "+currentList.answer_label:
+   language==="fr"?"Afficher "+currentList.answer_label:
+   language==="nl"?currentList.answer_label+" tonen":
+   language==="da"?"Vis "+currentList.answer_label:
+   "Mostra "+currentList.answer_label
+  ):t("showAnswers");
  const listTitle=currentList?<span className="v-heading-list-title"><span className="v-emoji" aria-hidden="true">{data.subjects.find(s=>s.id===currentList.subject_id)?.emoji||"📘"}</span><span className="v-heading-title-text">{currentList.title}</span></span>:null;
  const actions=<div className="v-floats">{screen==="cardForm"&&<button className="v-icon-button v-floating-star" type="button" title={t("marked")} aria-label={t("marked")} aria-pressed={draftCard.marked} onClick={()=>setDraftCard({...draftCard,marked:!draftCard.marked})}><Star size={19} fill={draftCard.marked?"#ff9b00":"none"} stroke={draftCard.marked?"#ff9b00":"currentColor"}/></button>}<IconButton label={t("notifications")} onClick={()=>{}}><Bell size={19}/></IconButton><IconButton label={t("profile")} className="v-user-float" style={{color:avatarColor,backgroundColor:avatarColor+"24",borderColor:avatarColor+"66"}} onClick={onProfile}><CircleUserRound size={23}/></IconButton></div>;
  const listOverview = <section className="v-page v-lists-pane"><div className="v-section-header"><h2>{wide?t("lists"):`${currentSubject?.emoji||""} ${currentSubject?.title||""} · ${t("lists")}`}</h2></div>
@@ -176,11 +198,11 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
    {screen==="home"&&<div className="v-home">
     {data.lists.length===0&&<section className="v-intro"><div className="v-illustration"><BookOpen size={74}/><span>?</span></div><h2>{t("empty")}</h2><p>{t("emptyInfo")}</p><button className="v-primary" onClick={()=>newList()}><Plus size={18}/>{t("createList")}</button></section>}
     <div className="v-section-tools"><h2 className="v-section-title">{t("mySubjects")}</h2><button className="v-manage-link" onClick={()=>{setManageModalOpen(false);setScreen("manage")}}>{t("manage")} <Settings size={16}/></button></div>
-    <div className="v-group-grid">{groups.map(g=>{
-     const subjects=[...data.subjects.filter(s=>s.group_id===g.id)].sort((a,b)=>subjectUsage(data,b.id)-subjectUsage(data,a.id)||a.title.localeCompare(b.title));
+    <div className="v-group-grid">{visibleGroups.map(g=>{
+     const subjects=[...data.subjects.filter(s=>s.group_id===g.id&&subjectsWithLists.has(s.id))].sort((a,b)=>subjectUsage(data,b.id)-subjectUsage(data,a.id)||a.title.localeCompare(b.title));
      return <section className="v-group" key={g.id}><div className="v-group-head"><strong>{g.title}</strong><small>{t("updated")}: {stamp(groupUsage(data,g.id),language)}</small><button aria-label={t("edit")+" "+g.title} onClick={()=>startManage("group",g)}><Pencil size={14}/></button></div>
       <div className="v-subject-scroll">{subjects.map(s=><button className="v-subject-row" key={s.id} onClick={()=>{setSelectedSubject(s.id);setScreen("subject")}}><span className="v-emoji">{s.emoji}</span><span className="v-subject-label"><b>{s.title}</b><small>{listCount(s.id)} {t("lists")}</small></span><ChevronRight size={18}/></button>)}</div>
-      {subjects.length>3&&<p className="v-scrollhint">{selectedGroupCount(g.id)-3} {t("moreSubjects")} · ↕</p>}
+      {subjects.length>3&&<p className="v-scrollhint">{subjects.length-3} {t("moreSubjects")} · ↕</p>}
      </section>
     })}</div>
     {data.lists.length>0&&<button className="v-primary v-create-home" onClick={()=>newList()}><Plus size={19}/>{t("createList")}</button>}
@@ -194,10 +216,10 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
      {currentList.tags.length>0&&<div className="v-list-summary"><div className="v-tag-row">{currentList.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div>}
       <div className="v-list-actions"><button className="v-primary" type="button" title={t("learn")} onClick={()=>{}}><span>▶</span> {t("learn")}</button><div className="v-progress"><BarChart3 size={21}/><span>{t("progress")}<b>{data.cards.filter(c=>c.list_id===selectedList).length?Math.round(data.cards.filter(c=>c.list_id===selectedList).reduce((sum,c)=>sum+c.success_count,0)/(data.cards.filter(c=>c.list_id===selectedList).length*3)*100):0} %</b></span></div></div>
      <div className="v-filter-area">
-       <Toggle label={t("showAnswers")} value={showAnswers} onChange={setShowAnswers}/>
+       <Toggle label={answerVisibilityLabel} value={showAnswers} onChange={setShowAnswers}/>
        <Toggle label={t("markedOnly")} value={markedOnly} onChange={setMarkedOnly}/>
        <Toggle label={t("unseen")} value={unlearnedOnly} onChange={setUnlearnedOnly}/>
-       <div className="v-sort"><label>{t("sorting")}:</label><div className="v-segments"><button className={sort==="alpha"?"active":""} onClick={()=>setSort("alpha")}>{t("alpha")}</button><button className={sort==="points"?"active":""} onClick={()=>setSort("points")}>{t("points")}</button></div></div>
+       <div className="v-sort"><label>{t("sorting")}:</label><div className="v-segments"><button className={sort==="alpha"?"active":""} onClick={()=>setSort("alpha")}>{t("alpha")}</button><button className={sort==="points"?"active":""} onClick={()=>setSort("points")}>{t("points")}</button><button className={sort==="position"?"active":""} onClick={()=>setSort("position")}>{t("position")}</button></div></div>
      </div>
      <div className="v-list-count">{listCards.length} {t("cards")}</div>
      <div className="v-card-list">{listCards.map(c=><div key={c.id} className={"v-card-row "+(selectedCard===c.id?"selected":"")}><button className="v-card-star" aria-label={t("marked")} onClick={()=>void run(()=>markCard(c.id,!c.marked))}><Star size={19} fill={c.marked?"#ff9b00":"none"} stroke={c.marked?"#ff9b00":"currentColor"}/></button><button className="v-card-open" onClick={()=>openCard(c)}><span className="v-card-question">{c.question}{showAnswers&&<span className="v-card-answer">{c.answer}</span>}</span><span className="v-dots">{[0,1,2].map(n=><i key={n} className={n<c.success_count?"filled":""}/>)}</span><b>{c.success_count} P</b></button></div>)}</div>
@@ -208,8 +230,8 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
     {screen==="cardForm"&&<aside className="v-card-editor">
       <h2>{selectedCard?t("editCard"):t("addCard")}</h2>
       <form className="v-form" onSubmit={saveCardForm}>
-       <label>{t("question")} *<textarea required rows={3} value={draftCard.question} onChange={e=>setDraftCard({...draftCard,question:e.target.value})}/></label>
-       <label>{t("answer")} *<textarea required rows={3} value={draftCard.answer} onChange={e=>setDraftCard({...draftCard,answer:e.target.value})}/></label>
+       <label>{currentList.question_label} *<textarea required rows={3} value={draftCard.question} onChange={e=>setDraftCard({...draftCard,question:e.target.value})}/></label>
+       <label>{currentList.answer_label} *<textarea required rows={3} value={draftCard.answer} onChange={e=>setDraftCard({...draftCard,answer:e.target.value})}/></label>
        <button className="v-primary" type="submit" disabled={working}>{t("saveCard")}</button>
        <button className="v-outline v-cancel-card" type="button" disabled={working} onClick={()=>{setSelectedCard(null);setScreen("list")}}>{t("cancel")}</button>
        {selectedCard&&<button type="button" className="v-danger" onClick={()=>confirmRemove(()=>deleteCard(selectedCard),"list")}><Trash2 size={16}/>{t("delete")}</button>}
@@ -251,10 +273,10 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
           <IconButton label={t("cancel")} onClick={closeManageModal}><X size={21}/></IconButton>
         </div>
         <form className="v-form v-manage-modal-form" onSubmit={saveManagement}>
-          <label>{manageType==="group"?t("groupName"):t("title")} *<input ref={manageInputRef} required maxLength={120} value={manageTitle} onChange={e=>setManageTitle(e.target.value)}/></label>
+          <label>{manageType==="group"?t("groupName"):t("title")} *<input ref={manageInputRef} required maxLength={120} value={manageTitle} onChange={e=>onManageTitleChange(e.target.value)}/></label>
           {manageType==="subject"&&<>
-            <label>{t("emoji")} *<input required maxLength={20} value={manageEmoji} onChange={e=>setManageEmoji(e.target.value)}/></label>
-            <label>{t("groups")} *<select required value={manageGroup} onChange={e=>setManageGroup(e.target.value)}>
+            <label>{t("emoji")} *<input required maxLength={20} value={manageEmoji} onChange={e=>{setManageEmojiManual(true);setManageEmoji(e.target.value)}}/></label>
+            <label>{t("groups")} *<select required value={manageGroup} onChange={e=>onManageGroupChange(e.target.value)}>
               {groups.map(g=><option key={g.id} value={g.id}>{g.title}</option>)}
             </select></label>
           </>}

@@ -236,3 +236,8 @@
  .v-manage-add-subject:hover{background:#28476c}
  .v-manage-modal{background:#192742;border-color:#425779;color:#e9f0ff}
 }
+
+
+/* Three sort options fit within a narrow list-detail column on iPad. */
+.v-sort .v-segments{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch}
+.v-sort .v-segments button{min-width:0;width:100%;white-space:normal;overflow-wrap:break-word;line-height:1.3}
