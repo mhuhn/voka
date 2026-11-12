@@ -176,7 +176,7 @@ When("I open the add-card form", async function(this:VokaWorld){
 
 Then("I can cancel a new card without saving it", async function(this:VokaWorld){
  const editor=this.page.locator(".v-card-editor");
- await editor.getByRole("textbox",{name:/Question/}).fill("never saved");
+ await editor.getByRole("textbox",{name:"Infinitiv"}).fill("never saved");
  await editor.getByRole("button",{name:"Cancel"}).click();
  await expect(editor).toHaveCount(0);
  await expect(this.page.locator(".v-card-list")).toBeVisible();
