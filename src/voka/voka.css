@@ -422,3 +422,42 @@
  .v-learning-transition strong{color:#eaf3ff}
 }
 @media(prefers-reduced-motion:reduce){.v-learning-transition{animation:none}}
+
+
+/* Primary learning actions share the orange accent and hand-drawn underline
+   of the Voka wordmark, while secondary actions remain blue. */
+.v-app .v-learn-cta{
+  position:relative;
+  isolation:isolate;
+  background:linear-gradient(155deg,#ffbb50 0%,var(--v-orange) 70%,#ef8d00 100%);
+  color:#142441;
+  font-weight:850;
+  box-shadow:0 7px 19px #e9900038;
+  overflow:visible;
+}
+.v-app .v-learn-cta::after{
+  content:"";
+  position:absolute;
+  left:17%;
+  bottom:-8px;
+  width:66%;
+  height:5px;
+  border-radius:99px;
+  background:var(--v-orange);
+  transform:rotate(-3deg);
+  pointer-events:none;
+}
+.v-app .v-learn-cta:hover:not(:disabled){
+  background:linear-gradient(155deg,#ffc666 0%,#ffad23 70%,#f69806 100%);
+  box-shadow:0 9px 20px #e9900050;
+}
+.v-app .v-learn-cta:focus-visible{outline:3px solid var(--v-blue);outline-offset:4px}
+.v-app .v-learn-cta:disabled{opacity:.56;box-shadow:none;cursor:not-allowed}
+.v-app .v-learn-cta:disabled::after{opacity:.55}
+.v-app .v-home-learn{width:auto;flex:0 0 auto}
+@media(min-width:700px) and (pointer:coarse){
+  .v-app .v-learn-cta::after{height:6px;bottom:-9px}
+}
+@media(prefers-color-scheme:dark){
+  .v-app .v-learn-cta{color:#17243c}
+}
