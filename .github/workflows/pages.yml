@@ -1,0 +1,78 @@
+name: Deploy both Voka versions to GitHub Pages
+
+on:
+  push:
+    branches: [main, react]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out existing static site
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main-site
+          persist-credentials: false
+
+      - name: Check out React application
+        uses: actions/checkout@v4
+        with:
+          ref: react
+          path: react-source
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Assemble existing main version
+        shell: bash
+        run: |
+          mkdir -p published
+          rsync -a --exclude='.git/' --exclude='.github/' main-site/ published/
+          touch published/.nojekyll
+
+      - name: Install React dependencies
+        working-directory: react-source
+        run: npm install --no-audit
+
+      - name: Build React for its GitHub Pages subdirectory
+        working-directory: react-source
+        env:
+          VITE_PAGES_BASE: /voka/react/
+        run: npm run build
+
+      - name: Add React site without replacing the original
+        shell: bash
+        run: |
+          mkdir -p published/react
+          cp -a react-source/dist/. published/react/
+          test -f published/index.html
+          test -f published/react/index.html
+          test -f published/react/sw.js
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload combined Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: published
+
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

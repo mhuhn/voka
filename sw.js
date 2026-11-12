@@ -22,7 +22,7 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(keys => Promise.all(keys.filter(k => k.startsWith('vokabelkarten-') && k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -69,6 +69,11 @@ async function assetResponse(req, e) {
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
-  if (new URL(req.url).origin !== self.location.origin) return;
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;
+  // The legacy root worker must not intercept the independently deployed React PWA.
+  // React has its own scoped worker at /voka/react/sw.js.
+  const reactPrefix = new URL('./react/', self.registration.scope).pathname;
+  if (url.pathname.startsWith(reactPrefix)) return;
   e.respondWith(isPage(req) ? pageResponse(req, e) : assetResponse(req, e));
 });
