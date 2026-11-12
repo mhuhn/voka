@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, ChevronRight, CircleUserRound, Home, Pencil, Plus, Search, Settings, Share2, Star, Trash2, X } from "lucide-react";
 import type { Language } from "../lib/i18n";
 import { emptyData, loadVoka, beginLearning, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type Subject, type SubjectGroup, type ListInput } from "./data";
 import "./voka.css";
 import LearningScreen from "./LearningScreen";
-import { learningProgress, effectiveLearningPause, calendarPauseDay } from "./learning";
+import { learningProgress, effectiveLearningPause, calendarPauseDay, formatLearningPause } from "./learning";
 import { getUserAvatarColor } from "../auth/userColors";
 import { authManager } from "../auth/manager";
 import { suggestSubjectEmoji } from "./subjectEmoji";
@@ -18,12 +18,12 @@ const translations: Record<Language, Words> = {
  fr:{},nl:{},da:{},it:{}
 };
 const learningButtonWords: Record<Language,Record<string,string>>={
- de:{paused:"Noch",minutesPause:"min Pause",pausedTomorrow:"bis morgen pausiert",pausedDayPrefix:"bis ",pausedDaySuffix:" pausiert",allLearned:"Alle Karten gelernt",starting:"Wird gestartet…"},
- en:{paused:"Pause:",minutesPause:"min left",pausedTomorrow:"Paused until tomorrow",pausedDayPrefix:"Paused until ",pausedDaySuffix:"",allLearned:"All cards learned",starting:"Starting…"},
- fr:{paused:"Pause :",minutesPause:"min restantes",pausedTomorrow:"En pause jusqu’à demain",pausedDayPrefix:"En pause jusqu’à ",pausedDaySuffix:"",allLearned:"Toutes les cartes apprises",starting:"Démarrage…"},
- nl:{paused:"Pauze:",minutesPause:"min over",pausedTomorrow:"Gepauzeerd tot morgen",pausedDayPrefix:"Gepauzeerd tot ",pausedDaySuffix:"",allLearned:"Alle kaarten geleerd",starting:"Starten…"},
- da:{paused:"Pause:",minutesPause:"min tilbage",pausedTomorrow:"Pause til i morgen",pausedDayPrefix:"Pause til ",pausedDaySuffix:"",allLearned:"Alle kort lært",starting:"Starter…"},
- it:{paused:"Pausa:",minutesPause:"min rimasti",pausedTomorrow:"In pausa fino a domani",pausedDayPrefix:"In pausa fino a ",pausedDaySuffix:"",allLearned:"Tutte le schede apprese",starting:"Avvio…"}
+ de:{paused:"Noch",minutesPause:"min Pause",hoursPause:"Pause",pausedTomorrow:"bis morgen pausiert",pausedDayPrefix:"bis ",pausedDaySuffix:" pausiert",allLearned:"Alle Karten gelernt",starting:"Wird gestartet…"},
+ en:{paused:"Pause:",minutesPause:"min left",hoursPause:"left",pausedTomorrow:"Paused until tomorrow",pausedDayPrefix:"Paused until ",pausedDaySuffix:"",allLearned:"All cards learned",starting:"Starting…"},
+ fr:{paused:"Pause :",minutesPause:"min restantes",hoursPause:"restantes",pausedTomorrow:"En pause jusqu’à demain",pausedDayPrefix:"En pause jusqu’à ",pausedDaySuffix:"",allLearned:"Toutes les cartes apprises",starting:"Démarrage…"},
+ nl:{paused:"Pauze:",minutesPause:"min over",hoursPause:"over",pausedTomorrow:"Gepauzeerd tot morgen",pausedDayPrefix:"Gepauzeerd tot ",pausedDaySuffix:"",allLearned:"Alle kaarten geleerd",starting:"Starten…"},
+ da:{paused:"Pause:",minutesPause:"min tilbage",hoursPause:"tilbage",pausedTomorrow:"Pause til i morgen",pausedDayPrefix:"Pause til ",pausedDaySuffix:"",allLearned:"Alle kort lært",starting:"Starter…"},
+ it:{paused:"Pausa:",minutesPause:"min rimasti",hoursPause:"rimasti",pausedTomorrow:"In pausa fino a domani",pausedDayPrefix:"In pausa fino a ",pausedDaySuffix:"",allLearned:"Tutte le schede apprese",starting:"Avvio…"}
 };
 
 const sharingWords: Record<Language,Record<string,string>> = {
@@ -152,6 +152,8 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const [draftList,setDraftList]=useState<ListInput>(newListValue(""));
  const [listEditing,setListEditing]=useState<string|null>(null);
  const [draftCard,setDraftCard]=useState({question:"",answer:"",marked:false});
+ const cardQuestionRef=useRef<HTMLTextAreaElement>(null);
+ const cardAnswerRef=useRef<HTMLTextAreaElement>(null);
  const [tagText,setTagText]=useState("");
  const [showAnswers,setShowAnswers]=useState(false),[markedOnly,setMarkedOnly]=useState(false),[unlearnedOnly,setUnlearnedOnly]=useState(false);
  const [sort,setSort]=useState<"alpha"|"points"|"position">("alpha");
@@ -276,7 +278,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
   finally{setStartingLearn(false);}
  };
  const finishLearningView=()=>{setLearningSession(null);setScreen("list")};
- const back=()=>{if(screen==="cardForm"){setSelectedCard(null);setScreen("list");}else if(screen==="listForm")setScreen(listEditing?"list":selectedSubject?"subject":"home");else if(screen==="list")setScreen("subject");else if(screen==="subject"||screen==="manage")setScreen("home");else setScreen("home")};
+ const back=()=>{if(screen==="cardForm"){setSelectedCard(null);setScreen(wide?"home":"list");}else if(screen==="listForm")setScreen(listEditing?"list":selectedSubject?"subject":"home");else if(screen==="list")setScreen("subject");else if(screen==="subject"||screen==="manage")setScreen("home");else setScreen("home")};
  const openList=(id:string)=>{setSelectedList(id);setShowAnswers(false);setMarkedOnly(false);setUnlearnedOnly(false);setSort("alpha");setSelectedCard(null);setScreen("list")};
  const listLabels=(subjectId:string)=>{const subject=languageSubject(data,subjectId);return subject?{question_label:"Deutsch",answer_label:subject.title}:{question_label:t("question"),answer_label:t("answer")};};
  const newList=(subjectId=selectedSubject||data.subjects.find(s=>s.title==="Englisch"&&languageSubject(data,s.id))?.id||data.subjects[0]?.id||"")=>{setListEditing(null);setDraftList({...newListValue(subjectId),...listLabels(subjectId)});setTagText("");setScreen("listForm")};
@@ -292,7 +294,25 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const editList=(l:VokaList)=>{setSelectedList(l.id);setListEditing(l.id);setDraftList({subject_id:l.subject_id,title:l.title,tags:[...l.tags],question_label:l.question_label,answer_label:languageSubject(data,l.subject_id)?.title||l.answer_label,learn_both_directions:l.learn_both_directions});setTagText("");setScreen("listForm")};
  const openCard=(card?:VokaCard)=>{setSelectedCard(card?.id||null);setDraftCard({question:card?.question||"",answer:card?.answer||"",marked:card?.marked||false});setScreen("cardForm")};
  const saveListForm=(e:FormEvent)=>{e.preventDefault();void run(async()=>{const id=await saveList({...draftList,answer_label:languageSubject(data,draftList.subject_id)?.title||draftList.answer_label,tags:[...new Set([...draftList.tags,...tagText.split(",").map(x=>x.trim()).filter(Boolean)])]},listEditing||undefined);setSelectedSubject(draftList.subject_id);setSelectedList(id);setScreen("list");setListEditing(null);})};
- const saveCardForm=(e:FormEvent)=>{e.preventDefault();if(!selectedList)return;void run(async()=>{await saveCard({...draftCard,list_id:selectedList},selectedCard||undefined);setSelectedCard(null);setScreen("list")})};
+ const saveCardForm=(e:FormEvent)=>{
+  e.preventDefault();
+  if(!selectedList||working||!draftCard.question.trim()||!draftCard.answer.trim())return;
+  const editing=Boolean(selectedCard);
+  void run(async()=>{
+    await saveCard({...draftCard,question:draftCard.question.trim(),answer:draftCard.answer.trim(),list_id:selectedList},selectedCard||undefined);
+    if(editing){setSelectedCard(null);setScreen("list");}
+    else{
+      setDraftCard({question:"",answer:"",marked:false});
+      window.requestAnimationFrame(()=>cardQuestionRef.current?.focus());
+    }
+  });
+ };
+ const cardEnter=(event:KeyboardEvent<HTMLTextAreaElement>,field:"question"|"answer")=>{
+   if(event.key!=="Enter"||event.shiftKey||event.nativeEvent.isComposing)return;
+   event.preventDefault();
+   if(field==="question")cardAnswerRef.current?.focus();
+   else event.currentTarget.form?.requestSubmit();
+ };
  const confirmRemove=(fn:()=>Promise<void>,destination:Screen)=>{if(!window.confirm(t("confirmDelete")))return;void run(async()=>{await fn();setScreen(destination)})};
  const startManage=(type:"group"|"subject", item?:SubjectGroup|Subject, groupId?:string)=>{
   setManageType(type);setManageId(item?.id||null);setManageTitle(item?.title||"");
@@ -366,7 +386,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  },[currentList?.learning_paused_until,calendarUntil,clock]);
  const pauseLabel=effectivePause?.kind==="calendar"?
    dayPause?.tomorrow?t("pausedTomorrow"):t("pausedDayPrefix")+dayPause?.weekday+t("pausedDaySuffix"):
-   effectivePause?.kind==="hours"?t("paused")+" "+effectivePause.minutes+" "+t("minutesPause"):"";
+   effectivePause?.kind==="hours"?t("paused")+" "+(effectivePause.minutes>60?formatLearningPause(effectivePause.minutes,"min","h")+" "+t("hoursPause"):effectivePause.minutes+" "+t("minutesPause")):"";
  const learningButtonLabel=startingLearn?t("starting"):effectivePause?pauseLabel:
    everyCardLearned?t("allLearned"):listCardsForProgress.length===0?t("noCards"):t("learn");
  const listTitle=currentList?<span className="v-heading-list-title"><span className="v-emoji" aria-hidden="true">{data.subjects.find(s=>s.id===currentList.subject_id)?.emoji||"📘"}</span><span className="v-heading-title-text">{currentList.title}</span></span>:null;
@@ -384,7 +404,10 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
    {screen!=="learn"&&<header className="v-heading">
     {screen!=="home"&&<IconButton onClick={back} label={t("cancel")}><ArrowLeft/></IconButton>}
     <h1>{screen==="home"?<span className="v-logo">Voka</span>:wide&&(screen==="subject"||screen==="list"||screen==="cardForm"||(screen==="listForm"&&Boolean(listEditing)))?<span>{currentSubject?.emoji} {currentSubject?.title}</span>:screen==="subject"?currentSubject?.title:screen==="list"?listTitle:screen==="listForm"?(listEditing?t("editList"):t("createList")):screen==="cardForm"?(selectedCard?t("editCard"):t("addCard")):t("manage")}</h1>
-    {!wide&&screen==="list"&&currentList&&<IconButton label={t("editList")} onClick={()=>editList(currentList)}><Pencil size={19}/></IconButton>}
+    {!wide&&(screen==="list"||screen==="cardForm")&&currentList&&<div className="v-detail-header-actions">
+       <IconButton label={t("share")} onClick={()=>void shareSelectedList()}><Share2 size={19}/></IconButton>
+       {screen==="list"&&<IconButton label={t("editList")} onClick={()=>editList(currentList)}><Pencil size={19}/></IconButton>}
+     </div>}
    </header>}
    {screen==="learn"&&learningSession&&currentList&&<LearningScreen language={language} list={currentList}
      cards={data.cards} session={learningSession} onRefresh={refresh} onExit={finishLearningView}/>}
@@ -404,11 +427,12 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
     {listOverview}
     {(screen==="list"||screen==="cardForm")&&currentList&&<div className={"v-list-page"+(screen==="cardForm"?" v-list-page-editing":"")}>
      <section className="v-list-detail-pane">
-     {wide&&<div className="v-pane-list-heading"><h2>{listTitle}</h2><IconButton label={t("editList")} onClick={()=>editList(currentList)}><Pencil size={18}/></IconButton></div>}
+     {wide&&<div className="v-pane-list-heading"><h2>{listTitle}</h2><div className="v-detail-header-actions">
+      <IconButton label={t("share")} onClick={()=>void shareSelectedList()}><Share2 size={18}/></IconButton>
+      <IconButton label={t("editList")} onClick={()=>editList(currentList)}><Pencil size={18}/></IconButton></div></div>}
     <div className="v-list-main">
      {currentList.tags.length>0&&<div className="v-list-summary"><div className="v-tag-row">{currentList.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div>}
       <div className="v-list-actions"><button className="v-primary" type="button" title={learningButtonLabel} aria-label={learningButtonLabel} disabled={learningUnavailable} onClick={()=>void startLearning()}><span>▶</span> {learningButtonLabel}</button><div className="v-progress"><BarChart3 size={21}/><span>{t("progress")}<b>{learningProgress(listCardsForProgress)} %</b></span></div>
-      <button type="button" className="v-outline v-share-button" onClick={()=>void shareSelectedList()}><Share2 size={19}/>{t("share")}</button>
      </div>
      {shareStatus&&<p className="v-share-status" role="status">{shareStatus}</p>}
      <div className="v-filter-area">
@@ -426,8 +450,8 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
     {screen==="cardForm"&&<aside className="v-card-editor">
       <h2>{selectedCard?t("editCard"):t("addCard")}</h2>
       <form className="v-form" onSubmit={saveCardForm}>
-       <label>{currentList.question_label} *<textarea required rows={3} value={draftCard.question} onChange={e=>setDraftCard({...draftCard,question:e.target.value})}/></label>
-       <label>{currentList.answer_label} *<textarea required rows={3} value={draftCard.answer} onChange={e=>setDraftCard({...draftCard,answer:e.target.value})}/></label>
+       <label>{currentList.question_label} *<textarea ref={cardQuestionRef} autoFocus enterKeyHint="next" required rows={3} value={draftCard.question} onChange={e=>setDraftCard({...draftCard,question:e.target.value})} onKeyDown={e=>cardEnter(e,"question")}/></label>
+       <label>{currentList.answer_label} *<textarea ref={cardAnswerRef} enterKeyHint="done" required rows={3} value={draftCard.answer} onChange={e=>setDraftCard({...draftCard,answer:e.target.value})} onKeyDown={e=>cardEnter(e,"answer")}/></label>
        <button className="v-primary" type="submit" disabled={working}>{t("saveCard")}</button>
        <button className="v-outline v-cancel-card" type="button" disabled={working} onClick={()=>{setSelectedCard(null);setScreen("list")}}>{t("cancel")}</button>
        {selectedCard&&<button type="button" className="v-danger" onClick={()=>confirmRemove(()=>deleteCard(selectedCard),"list")}><Trash2 size={16}/>{t("delete")}</button>}
