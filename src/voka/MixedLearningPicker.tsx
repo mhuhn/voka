@@ -111,7 +111,7 @@ export default function MixedLearningPicker({
       {checking&&<span className="v-mixed-checking">{t.loading}</span>}
       {previewError&&<p className="v-error" role="alert">{previewError}</p>}
       {subjects.length>0&&displayedCount===0&&<p className="v-mixed-empty">{t.none}</p>}
-      <button type="button" className="v-primary v-mixed-start"
+      <button type="button" className="v-primary v-mixed-start v-learn-cta"
         disabled={busy||subjects.length===0||displayedCount<=0}
         onClick={()=>onStart(subjects,validTags)}><Play size={19}/>{t.start}</button>
     </div>
