@@ -79,3 +79,31 @@ Feature: Vocabulary lists
     When I sign in as "alice@example.test" with password "correct-password"
     And I return to vocabulary home
     Then the iPad uses comfortably sized touch controls and typography
+
+  Scenario: Subject detail does not offer editing
+    Given I open the Voka app
+    When I sign in as "alice@example.test" with password "correct-password"
+    And I return to vocabulary home
+    And I open the English subject
+    Then the subject details offer no edit control
+
+  Scenario: Subject management opens a pure overview with local add actions
+    Given I open the Voka app
+    When I sign in as "alice@example.test" with password "correct-password"
+    And I return to vocabulary home
+    And I open subject management
+    Then the management overview shows add actions without an editor
+    When I add a subject to the language group
+    Then the subject editor opens in a cancelable dialog with the correct group
+    And the group create and edit dialogs can be canceled
+
+  Scenario: Cancel list editing on iPad without saving
+    Given I open the Voka app
+    When I sign in as "alice@example.test" with password "correct-password"
+    And I return to vocabulary home
+    And I switch to iPad landscape width
+    And I open the English subject
+    And I open the irregular verbs list
+    And I open list editing from its details
+    Then the list editor stays beside the list overview
+    And the list editor cancel button discards unsaved changes
