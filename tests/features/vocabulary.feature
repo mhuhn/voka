@@ -107,3 +107,17 @@ Feature: Vocabulary lists
     And I open list editing from its details
     Then the list editor stays beside the list overview
     And the list editor cancel button discards unsaved changes
+
+  Scenario: Add a subject to the selected group through the modal
+    Given I open the Voka app
+    When I sign in as "alice@example.test" with password "correct-password"
+    And I return to vocabulary home
+    And I open subject management
+    Then a new subject is saved through its group dialog
+
+  Scenario: Edit a subject group through the modal
+    Given I open the Voka app
+    When I sign in as "alice@example.test" with password "correct-password"
+    And I return to vocabulary home
+    And I open subject management
+    Then an existing group is updated through the dialog
