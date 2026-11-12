@@ -9,6 +9,7 @@ describe("subject emoji suggestions", () => {
     ["Japanisch","🇯🇵"]
   ])("suggests %s for a language", (title, emoji) => {
     expect(suggestSubjectEmoji(title, "Sprachen")).toBe(emoji);
+    expect(suggestSubjectEmoji(title, "Sonstige")).toBe(emoji);
     expect(suggestSubjectEmoji(title.toLocaleUpperCase("de-DE")," Sprachen ")).toBe(emoji);
   });
 
@@ -21,8 +22,7 @@ describe("subject emoji suggestions", () => {
     expect(suggestSubjectEmoji(title, "MINT")).toBe(emoji);
   });
 
-  it("does not infer a language flag outside Sprachen or for unknown names", () => {
-    expect(suggestSubjectEmoji("Spanisch", "MINT")).toBeNull();
+  it("does not suggest a special emoji for unknown names", () => {
     expect(suggestSubjectEmoji("Fantastik", "Sprachen")).toBeNull();
   });
 });
