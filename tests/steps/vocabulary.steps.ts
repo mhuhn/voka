@@ -317,7 +317,7 @@ Then("cards sort by increasing position", async function (this: VokaWorld) {
   const order=()=>this.page.locator(".v-card-list .v-card-question").allTextContents();
   await expect(this.page.getByRole("button",{name:"By position"})).toBeVisible();
   await this.page.getByRole("button",{name:"By position"}).click();
-  expect(await order()).toEqual(["be","choose","go"]);
+  expect(await order()).toEqual(["choose","go","be"]);
   await this.page.getByRole("button",{name:"Alphabetical"}).click();
   expect(await order()).toEqual(["be","choose","go"]);
   await this.page.getByRole("button",{name:"By points"}).click();
