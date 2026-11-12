@@ -88,6 +88,27 @@ A list detail screen offers **Share**. On browsers/devices supporting `navigator
 
 The public RPCs are `SECURITY INVOKER` wrappers; the privileged implementations reside under the non-exposed `app_private` schema, as installed by `supabase/migrations/20261112214500_voka_sharing_private_implementations.sql`. These implementations enforce `auth.uid() is not null` and `public.can_access_app('voka')`, and both the public RPCs and private helpers deny execution to `anon`. The privileged implementation can read a list through an otherwise unguessable UUID without relaxing existing owner-only table RLS. Anyone with a valid share link **and a permitted signed-in Voka account** may import that list (bearer-link sharing). The links do not expire, and a source owner can invalidate them by deleting the source list. Revocation or expiration controls are not provided in this version. Direct table access across users remains denied. Existing learning progress and assessment histories are never imported.
 
+## Learning sessions and the two-hour pause
+
+**Voka 0.6.0** provides a focused learning view opened from the list detail screen. The list overview, list detail panes and bottom navigation are hidden while studying. At the start, the server randomly orders all cards in that list with `position = 0` and `success_count < 4`, records a `voka_queries` row, and enrolls each card in `voka_query_cards`. The front shows only the question text and its list-specific label. **Reveal** flips the card with a 3D animation to show the answer and its label. For lists with `learn_both_directions = true`, an individual card may be tested in either direction, chosen at random. The answer is never shown before Reveal.
+
+After revealing, the user can toggle the card's star or correct its question/answer in a dialog without abandoning the learning round. An answer requires one of three evaluations, saved immediately by the transactional `voka_grade_learning` RPC:
+
+| Result | New points | Initial position |
+| --- | --- | --- |
+| Not known (`unknown`) | `0` | `1` |
+| Unsure (`unsure`) | unchanged | `1` |
+| Known (`known`), originally 0 | `1` | `2` |
+| Known, originally 1 | `2` | `6` |
+| Known, originally 2 | `3` | `19` |
+| Known, originally 3 | `4` | `19` |
+
+`4` points completes a card. The unlearned filter and progress percentage now use the `0..4` scale, and cards display four point indicators. Previously earned `3`-point cards are still eligible until they reach four.
+
+When the last due card (`position=0` and points under 4) has been graded, the server **decreases the position of every card in that list by one (minimum 0)**, closes the query and sets `voka_lists.learning_paused_until = now() + interval '2 hours'`. The list's Learn button is disabled with a live remaining-minute label, even after reloading or switching devices. After the pause, another round may start. If there are still no due cards, starting a round advances every position once more and begins another two-hour pause. The button is disabled for empty lists and for lists whose cards have all reached four points.
+
+**Finish learning** ends the current query without reverting any prior results; only still-due cards are offered at the next start. Database authorization is enforced by existing owner-only RLS and `public.can_access_app('voka')`, and new `SECURITY INVOKER` RPCs validate ownership of the list, query, and card while serializing changes. Results and timestamps remain in `voka_queries` and `voka_query_cards`. The schema changes live in `supabase/migrations/20261112230000_voka_learning.sql` and the production syntax correction is recorded in `20261112230500_voka_learning_callable_fix.sql`.
+
 ## Operations
 
 Deployments continue using the existing `react` branch workflow, with the public React application at <https://mhuhn.github.io/voka/react/>. Migrations are versioned under `supabase/migrations/`; they have already been applied to the existing `storage` project. App source edits trigger GitHub CI (TypeScript, unit, browser tests) before GitHub Pages deployment.
