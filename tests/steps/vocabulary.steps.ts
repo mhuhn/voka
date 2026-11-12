@@ -135,7 +135,7 @@ Then("the card editor occupies a third column", async function (this: VokaWorld)
 
 Then("the direction control is a full-width push button", async function (this: VokaWorld) {
   const button=this.page.getByRole("button",{name:"Learn in both directions"});
-  const input=this.page.getByRole("textbox",{name:/Question label/});
+  const input=this.page.getByRole("textbox",{name:/Title/});
   await expect(button).toBeVisible();
   await expect(button).toHaveAttribute("aria-pressed","false");
   await expect(this.page.getByRole("checkbox",{name:"Learn in both directions"})).toHaveCount(0);
