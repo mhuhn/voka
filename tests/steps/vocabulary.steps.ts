@@ -9,8 +9,8 @@ When("I return to vocabulary home", async function (this: VokaWorld) {
 Then("I see subjects grouped on the home screen", async function (this: VokaWorld) {
   await expect(this.page.getByRole("heading", { name: "My subjects" })).toBeVisible();
   await expect(this.page.getByText("Sprachen", { exact: true })).toBeVisible();
-  await expect(this.page.getByText("MINT", { exact: true })).toBeVisible();
-  await expect(this.page.getByText("Sonstige", { exact: true })).toBeVisible();
+  await expect(this.page.locator(".v-home").getByText("MINT", { exact: true })).toHaveCount(0);
+  await expect(this.page.locator(".v-home").getByText("Sonstige", { exact: true })).toHaveCount(0);
 });
 
 When("I open the English subject", async function (this: VokaWorld) {
@@ -27,7 +27,7 @@ Then("the list filters and sorting work", async function (this: VokaWorld) {
   await expect(unlearned).not.toBeChecked();
   await unlearned.check();
   await expect(this.page.getByText("2 Cards", { exact: true })).toBeVisible();
-  await this.page.getByRole("checkbox", { name: "Show answers" }).check();
+  await this.page.getByRole("checkbox", { name: "Show Englisch" }).check();
   await expect(this.page.getByText("went", { exact: true })).toBeVisible();
   await this.page.getByRole("checkbox", { name: "Only starred" }).check();
   await expect(this.page.getByText("1 Cards", { exact: true })).toBeVisible();
@@ -37,15 +37,17 @@ Then("the list filters and sorting work", async function (this: VokaWorld) {
 Then("I can open the card editor without editing progress", async function (this: VokaWorld) {
   await this.page.getByRole("button", { name: /go.*0 P/ }).click();
   await expect(this.page.getByRole("heading", { name: "Edit card", exact: true })).toBeVisible();
-  await expect(this.page.getByRole("textbox", { name: /Question/ })).toHaveValue("go");
-  await expect(this.page.getByRole("textbox", { name: /Answer/ })).toHaveValue("went");
+  await expect(this.page.getByRole("textbox", { name: "Infinitiv" })).toHaveValue("go");
+  await expect(this.page.getByRole("textbox", { name: "Englisch" })).toHaveValue("went");
   await expect(this.page.getByLabel(/Position/)).toHaveCount(0);
 });
 
 Then("the initial subject group order and tablet subjects are correct", async function (this: VokaWorld) {
-  await expect(this.page.locator(".v-home .v-group-head strong")).toHaveText(["Sprachen", "MINT", "Sonstige"]);
+  await expect(this.page.locator(".v-home .v-group-head strong")).toHaveText(["Sprachen"]);
   const languages = this.page.locator(".v-home .v-group").first().locator(".v-subject-scroll");
-  await expect(languages.getByText("Griechisch")).toBeVisible();
+  await expect(languages.getByText("Englisch")).toBeVisible();
+  await expect(languages.locator(".v-subject-row")).toHaveCount(1);
+  await expect(languages.getByText("Französisch")).toHaveCount(0);
   const sizes = await languages.evaluate(element => ({
     content: element.scrollHeight, visible: element.clientHeight
   }));
@@ -309,4 +311,65 @@ Then("an existing group is updated through the dialog", async function(this:Voka
  const request=await requestPromise;
  expect((request.postDataJSON() as {title:string}).title).toBe("Neue Sprachen");
  await expect(this.page.getByRole("dialog")).toHaveCount(0);
+});
+
+Then("cards sort by increasing position", async function (this: VokaWorld) {
+  const order=()=>this.page.locator(".v-card-list .v-card-question").allTextContents();
+  await expect(this.page.getByRole("button",{name:"By position"})).toBeVisible();
+  await this.page.getByRole("button",{name:"By position"}).click();
+  expect(await order()).toEqual(["be","choose","go"]);
+  await this.page.getByRole("button",{name:"Alphabetical"}).click();
+  expect(await order()).toEqual(["be","choose","go"]);
+  await this.page.getByRole("button",{name:"By points"}).click();
+  expect(await order()).toEqual(["go","choose","be"]);
+});
+
+Then("the card editor uses its list's question and answer labels", async function (this: VokaWorld) {
+  await this.page.getByRole("button",{name:/go.*0 P/}).click();
+  const editor=this.page.locator(".v-card-editor");
+  await expect(editor.getByRole("textbox",{name:"Infinitiv"})).toHaveValue("go");
+  await expect(editor.getByRole("textbox",{name:"Englisch"})).toHaveValue("went");
+  await editor.getByRole("button",{name:"Cancel"}).click();
+  await this.page.getByRole("button",{name:"Add card"}).click();
+  await expect(editor.getByRole("textbox",{name:"Infinitiv"})).toHaveValue("");
+  await expect(editor.getByRole("textbox",{name:"Englisch"})).toHaveValue("");
+});
+
+Then("the language subject name suggests the matching flag", async function (this: VokaWorld) {
+  const dlg=this.page.getByRole("dialog",{name:"Add subject"});
+  const title=dlg.getByRole("textbox",{name:/Title/});
+  const emoji=dlg.getByRole("textbox",{name:"Emoji"});
+  const suggestions:[string,string][]=[
+    ["Spanisch","🇪🇸"],["Italienisch","🇮🇹"],["Polnisch","🇵🇱"],
+    ["Dänisch","🇩🇰"],["Portugiesisch","🇵🇹"],["Tschechisch","🇨🇿"],
+    ["Schwedisch","🇸🇪"],["Russisch","🇷🇺"],["Chinesisch","🇨🇳"],
+    ["Japanisch","🇯🇵"]
+  ];
+  for(const [name,icon] of suggestions) {
+    await title.fill(name);
+    await expect(emoji).toHaveValue(icon);
+  }
+  await emoji.fill("🎲");
+  await title.fill("Spanisch");
+  await expect(emoji).toHaveValue("🎲");
+  await dlg.getByRole("button",{name:"Cancel",exact:true}).last().click();
+});
+
+Then("other school subjects suggest the matching emoji", async function (this: VokaWorld) {
+  const group=this.page.locator(".v-manage-group").filter({hasText:"MINT"});
+  await group.getByRole("button",{name:"Add subject"}).click();
+  const dlg=this.page.getByRole("dialog",{name:"Add subject"});
+  const title=dlg.getByRole("textbox",{name:/Title/});
+  const emoji=dlg.getByRole("textbox",{name:"Emoji"});
+  const suggestions:[string,string][]=[
+    ["Geographie","🌍"],["Schwimmen","🏊"],["Medien","📰"],
+    ["Sozialkunde","🏛️"],["Gesellschaftskunde","👥"],
+    ["Politik","🗳️"],["Wirtschaft","📈"],
+    ["Ethik","⚖️"],["Religion","🕊️"]
+  ];
+  for(const [name,icon] of suggestions){
+    await title.fill(name);
+    await expect(emoji).toHaveValue(icon);
+  }
+  await dlg.getByRole("button",{name:"Cancel",exact:true}).last().click();
 });
