@@ -232,14 +232,41 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
      {listEditing&&<button type="button" className="v-danger" onClick={()=>confirmRemove(()=>deleteList(listEditing),"subject")}><Trash2 size={16}/>{t("delete")}</button>}
      {!draftList.subject_id&&<p className="v-help">{t("noSubject")} <button type="button" className="v-text-button" onClick={()=>startManage("subject")}>{t("addSubject")}</button></p>}
    </form></section></div>}
-   {screen==="manage"&&<div className="v-page v-manage"><h2>{t("groups")}</h2><div className="v-group-grid">{groups.map(g=><div className="v-group" key={g.id}><div className="v-group-head"><b>{g.title}</b><IconButton label={t("edit")} onClick={()=>startManage("group",g)}><Pencil size={17}/></IconButton></div>{data.subjects.filter(s=>s.group_id===g.id).map(s=><button className="v-subject-row" key={s.id} onClick={()=>startManage("subject",s)}><span>{s.emoji}</span><strong>{s.title}</strong><Pencil size={15}/></button>)}</div>)}</div>
-     <form className="v-form v-manage-form" onSubmit={saveManagement}><div className="v-segments"><button type="button" className={manageType==="group"?"active":""} onClick={()=>startManage("group")}>{t("addGroup")}</button><button type="button" className={manageType==="subject"?"active":""} onClick={()=>startManage("subject")}>{t("addSubject")}</button></div>
-       <label>{manageType==="group"?t("groupName"):t("title")} *<input required value={manageTitle} onChange={e=>setManageTitle(e.target.value)}/></label>
-       {manageType==="subject"&&<><label>{t("emoji")}<input maxLength={20} value={manageEmoji} onChange={e=>setManageEmoji(e.target.value)}/></label><label>{t("groups")}<select required value={manageGroup} onChange={e=>setManageGroup(e.target.value)}>{groups.map(g=><option key={g.id} value={g.id}>{g.title}</option>)}</select></label></>}
-       <button className="v-primary" type="submit" disabled={working||(manageType==="subject"&&!manageGroup)}>{t("save")}</button>
-       {manageId&&<button className="v-danger" type="button" onClick={()=>confirmRemove(()=>manageType==="group"?deleteGroup(manageId):deleteSubject(manageId),"home")}><Trash2 size={16}/>{t("delete")}</button>}
-     </form>
-   </div>}
+   {screen==="manage"&&<div className="v-page v-manage">
+      <h2>{t("groups")}</h2>
+      <div className="v-group-grid">{groups.map(g=><section className="v-group v-manage-group" key={g.id}>
+        <div className="v-group-head"><b>{g.title}</b><IconButton label={t("edit")+" "+g.title} onClick={()=>startManage("group",g)}><Pencil size={17}/></IconButton></div>
+        {data.subjects.filter(s=>s.group_id===g.id).sort((a,b)=>subjectUsage(data,b.id)-subjectUsage(data,a.id)||a.title.localeCompare(b.title)).map(s=>
+          <button type="button" className="v-subject-row" aria-label={t("edit")+" "+s.title} key={s.id} onClick={()=>startManage("subject",s)}>
+            <span className="v-emoji">{s.emoji}</span><strong>{s.title}</strong><Pencil size={15}/>
+          </button>)}
+        <button type="button" className="v-manage-add-subject" onClick={()=>startManage("subject",undefined,g.id)}><Plus size={17}/>{t("addSubject")}</button>
+      </section>)}</div>
+      <button type="button" className="v-outline v-manage-add-group" onClick={()=>startManage("group")}><Plus size={18}/>{t("addGroup")}</button>
+    </div>}
+    {manageModalOpen&&<div className="v-modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)closeManageModal()}}>
+      <div className="v-manage-modal" ref={manageDialogRef} role="dialog" aria-modal="true" aria-labelledby="v-manage-dialog-title">
+        <div className="v-modal-header">
+          <h2 id="v-manage-dialog-title">{manageId?t("edit")+" "+(manageType==="group"?t("groupName"):t("subject")):manageType==="group"?t("addGroup"):t("addSubject")}</h2>
+          <IconButton label={t("cancel")} onClick={closeManageModal}><X size={21}/></IconButton>
+        </div>
+        <form className="v-form v-manage-modal-form" onSubmit={saveManagement}>
+          <label>{manageType==="group"?t("groupName"):t("title")} *<input ref={manageInputRef} required maxLength={120} value={manageTitle} onChange={e=>setManageTitle(e.target.value)}/></label>
+          {manageType==="subject"&&<>
+            <label>{t("emoji")} *<input required maxLength={20} value={manageEmoji} onChange={e=>setManageEmoji(e.target.value)}/></label>
+            <label>{t("groups")} *<select required value={manageGroup} onChange={e=>setManageGroup(e.target.value)}>
+              {groups.map(g=><option key={g.id} value={g.id}>{g.title}</option>)}
+            </select></label>
+          </>}
+          {error&&<p className="v-error" role="alert">{error}</p>}
+          <div className="v-modal-actions">
+            <button type="button" className="v-outline" disabled={working} onClick={closeManageModal}>{t("cancel")}</button>
+            <button type="submit" className="v-primary" disabled={working||(manageType==="subject"&&!manageGroup)}>{t("save")}</button>
+          </div>
+          {manageId&&<button type="button" className="v-danger" disabled={working} onClick={removeManagement}><Trash2 size={16}/>{t("delete")}</button>}
+        </form>
+      </div>
+    </div>}
    </>}
   </div>
   <nav className="v-bottom-nav" aria-label={t("navigation")}>
