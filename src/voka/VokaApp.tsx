@@ -77,7 +77,15 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const openList=(id:string)=>{setSelectedList(id);setShowAnswers(false);setMarkedOnly(false);setUnlearnedOnly(false);setSort("alpha");setSelectedCard(null);setScreen("list")};
  const listLabels=(subjectId:string)=>{const subject=languageSubject(data,subjectId);return subject?{question_label:"Deutsch",answer_label:subject.title}:{question_label:t("question"),answer_label:t("answer")};};
  const newList=(subjectId=selectedSubject||data.subjects.find(s=>s.title==="Englisch"&&languageSubject(data,s.id))?.id||data.subjects[0]?.id||"")=>{setListEditing(null);setDraftList({...newListValue(subjectId),...listLabels(subjectId)});setTagText("");setScreen("listForm")};
- const changeListSubject=(subjectId:string)=>{const wasLanguage=Boolean(languageSubject(data,draftList.subject_id));const nextLanguage=languageSubject(data,subjectId);setDraftList({...draftList,subject_id:subjectId,question_label:nextLanguage?"Deutsch":wasLanguage?t("question"):draftList.question_label,answer_label:nextLanguage?nextLanguage.title:wasLanguage?t("answer"):draftList.answer_label});};
+ const changeListSubject=(subjectId:string)=>{
+  const wasLanguage=Boolean(languageSubject(data,draftList.subject_id));
+  const nextLanguage=languageSubject(data,subjectId);
+  const defaultQuestion= draftList.question_label==="Deutsch"||draftList.question_label===t("question");
+  setDraftList({...draftList,subject_id:subjectId,
+    question_label:nextLanguage?(defaultQuestion?"Deutsch":draftList.question_label):wasLanguage&&draftList.question_label==="Deutsch"?t("question"):draftList.question_label,
+    answer_label:nextLanguage?nextLanguage.title:wasLanguage?t("answer"):draftList.answer_label
+  });
+ };
  const editList=(l:VokaList)=>{setSelectedList(l.id);setListEditing(l.id);setDraftList({subject_id:l.subject_id,title:l.title,tags:[...l.tags],question_label:l.question_label,answer_label:languageSubject(data,l.subject_id)?.title||l.answer_label,learn_both_directions:l.learn_both_directions});setTagText("");setScreen("listForm")};
  const openCard=(card?:VokaCard)=>{setSelectedCard(card?.id||null);setDraftCard({question:card?.question||"",answer:card?.answer||"",marked:card?.marked||false});setScreen("cardForm")};
  const saveListForm=(e:FormEvent)=>{e.preventDefault();void run(async()=>{const id=await saveList({...draftList,answer_label:languageSubject(data,draftList.subject_id)?.title||draftList.answer_label,tags:[...new Set([...draftList.tags,...tagText.split(",").map(x=>x.trim()).filter(Boolean)])]},listEditing||undefined);setSelectedSubject(draftList.subject_id);setSelectedList(id);setScreen("list");setListEditing(null);})};
