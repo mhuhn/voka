@@ -164,6 +164,74 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
   return ()=>{window.removeEventListener("keydown",onKeyDown);document.body.style.overflow=previousOverflow;previouslyFocused?.focus();};
  },[manageModalOpen]);
  const [working,setWorking]=useState(false);
+ const [shareStatus,setShareStatus]=useState("");
+ const [shareFallbackUrl,setShareFallbackUrl]=useState<string|null>(null);
+ const [incomingSharedId,setIncomingSharedId]=useState<string|null>(pendingSharedListId);
+ const [sharedPreview,setSharedPreview]=useState<SharedList|null>(null);
+ const [sharedLoading,setSharedLoading]=useState(false);
+ const [sharedError,setSharedError]=useState("");
+ const [importSubject,setImportSubject]=useState("");
+ const [importTitle,setImportTitle]=useState("");
+ const [importTagsText,setImportTagsText]=useState("");
+ const [importBusy,setImportBusy]=useState(false);
+ useEffect(()=>{
+  if(!incomingSharedId||loading)return;
+  let cancelled=false;
+  setSharedPreview(null);setSharedError("");setSharedLoading(true);
+  fetchSharedList(incomingSharedId)
+   .then(shared=>{
+    if(cancelled)return;
+    if(!shared){setSharedError(t("importUnavailable"));return;}
+    setSharedPreview(shared);
+    setImportTitle(shared.title);setImportTagsText(shared.tags.join(", "));
+    setImportSubject("");
+   })
+   .catch(err=>{if(!cancelled)setSharedError(err instanceof Error?err.message:t("importUnavailable"));})
+   .finally(()=>{if(!cancelled)setSharedLoading(false);});
+  return ()=>{cancelled=true;};
+ // The intent and active account are fixed for this mounted VokaApp.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[incomingSharedId,loading]);
+ const dismissSharedImport=()=>{
+  clearPendingSharedList();setIncomingSharedId(null);setSharedPreview(null);
+  setSharedError("");setImportTitle("");setImportTagsText("");
+ };
+ const submitSharedImport=(event:FormEvent)=>{
+  event.preventDefault();
+  if(!incomingSharedId||!sharedPreview||!importSubject||importBusy)return;
+  setImportBusy(true);setSharedError("");
+  void (async()=>{
+   try{
+    const id=await importSharedList(incomingSharedId,importSubject,importTitle.trim(),
+      [...new Set(importTagsText.split(",").map(tag=>tag.trim()).filter(Boolean))]);
+    const updated=await loadVoka();
+    setData(updated);
+    setSelectedSubject(importSubject);setSelectedList(id);setSelectedCard(null);
+    setSort("alpha");setShowAnswers(false);setMarkedOnly(false);setUnlearnedOnly(false);
+    setScreen("list");dismissSharedImport();
+   }catch(err){
+    setSharedError(err instanceof Error?err.message:t("importError"));
+   }finally{setImportBusy(false);}
+  })();
+ };
+ const shareSelectedList=async()=>{
+  if(!currentList)return;
+  const url=shareUrlForList(currentList.id);
+  setShareStatus("");
+  if(typeof navigator.share==="function"){
+   try{
+    await navigator.share({title:currentList.title,url});
+    return;
+   }catch(err){
+    if(err instanceof Error&&err.name==="AbortError")return;
+   }
+  }
+  try{
+   if(!navigator.clipboard?.writeText)throw new Error("Clipboard not supported");
+   await navigator.clipboard.writeText(url);setShareStatus(t("shareCopied"));
+  }catch{setShareFallbackUrl(url);}
+ };
+
  const refresh=useCallback(async()=>{try {setData(await loadVoka());setError("");}catch(e){setError(e instanceof Error?e.message:String(e));}},[]);
  useEffect(()=>{let alive=true;loadVoka().then(result=>{if(alive)setData(result)}).catch(e=>{if(alive)setError(String(e instanceof Error?e.message:e))}).finally(()=>{if(alive)setLoading(false)});return()=>{alive=false};},[]);
  const groups=useMemo(()=>[...data.groups].sort((a,b)=>groupUsage(data,b.id)-groupUsage(data,a.id)||defaultGroupRank(a.title)-defaultGroupRank(b.title)||a.title.localeCompare(b.title)),[data]);
