@@ -142,3 +142,11 @@ Cross-subject learning uses the existing `LearningScreen`; its list-specific que
 Deployments continue using the existing `react` branch workflow, with the public React application at <https://mhuhn.github.io/voka/react/>. Migrations are versioned under `supabase/migrations/`; they have already been applied to the existing `storage` project. App source edits trigger GitHub CI (TypeScript, unit, browser tests) before GitHub Pages deployment.
 
 The Supabase Security Advisor also reports pre-existing notices concerning `voka_profiles` missing a policy, certain admin/security-definer routines, and leaked-password protection. These are unrelated to the newly created feature tables. Review them independently before broad production access.
+
+
+## Learning UI and card labels (Voka 0.8.1)
+
+- The **Lernen / Learn** call to action on the home screen, a list's details, and the mixed learning picker uses the orange logo accent. The button carries a small rotated orange underline beneath it, matching the Voka wordmark's distinctive underline.
+- The filter formerly named `Ungelernte anzeigen` is now `Gelernte anzeigen` (`Show learned` in English). It is **off by default**: cards with four points are excluded from the visible card list. Turning it on **includes** four-point cards alongside cards with fewer than four points. This filter affects browsing only, not learning eligibility.
+- Counts of flashcards use localized singular and plural forms, including the list overview, list details, and shared-list import preview (e.g. `1 Karte`, `2 Karten`).
+- When the list overview and list details are side by side on a wide screen (e.g. iPad landscape), the top-left back arrow returns directly to **Meine Fächer**. Smaller screens continue to return to the current subject's list overview.
