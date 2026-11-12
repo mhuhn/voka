@@ -1,6 +1,6 @@
 # Voka — React / Capacitor
 
-Voka is a deliberately minimal, authentication-first application that shares one TypeScript/React codebase across browsers, installable PWA, iPhone/iPad and Android (Capacitor). The initial authenticated screen contains only the user's profile and an account switcher.
+Voka is a deliberately minimal, authentication-first application that shares one TypeScript/React codebase across browsers, installable PWA, iPhone/iPad and Android (Capacitor). The authenticated home now manages subjects, vocabulary lists and cards. Account management is accessible via the floating profile button.
 
 ## Stack
 
@@ -55,10 +55,10 @@ Before shipping, change the placeholder bundle identifier in `capacitor.config.t
 - `src/auth/registry.ts` stores **only** the account list and active account ID in `localStorage`.
 - `src/auth/manager.ts` creates a **distinct** Supabase Auth client, with a unique `storageKey`, for every signed-in account. Refresh token rotation is handled by each client. A temporary `voka:pending` client processes new email, OAuth and recovery flows; successful sessions are adopted by the appropriate account client. Switching active accounts does not invalidate other accounts.
 - `src/auth/config.ts` centralizes runtime keys and platform callback URLs.
-- `src/App.tsx` contains the only page: sign-in/registration/recovery when unauthenticated, profile and account management when authenticated.
+- `src/App.tsx` retains sign-in/registration/recovery and account management; authenticated users open `src/voka/VokaApp.tsx`, backed by Supabase `voka_*` data. See [docs/VOKA_DATA_MODEL.md](docs/VOKA_DATA_MODEL.md).
 - Sign-out only deletes the selected account's **local** session; other locally signed-in accounts remain intact. This differs from global session revocation.
 
-The existing shared Supabase project contains the `voka` app entry, `public.profiles` and the row-level security policies. This initial shell reads identity from Supabase Auth and does not require new tables or database migrations. It does not change any shared authorization roles, approval flow or other apps.
+The existing shared Supabase project contains the `voka` app entry, `public.profiles` and the row-level security policies. The new `voka_*` tables are private to eligible signed-in users and do not change shared authorization roles, approval flows or other apps. SQL migrations are versioned in `supabase/migrations/`.
 
 ### Session security and persistence limits
 
