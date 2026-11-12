@@ -105,9 +105,7 @@ the Pages workflow sets its base separately.
 
 ## Language, Google login, and code version
 
-The application displays German when the first preferred browser or WebView
-locale begins with `de` (for example `de-DE`, `de-AT`, `de-CH`).
-Otherwise English is displayed. Capacitor uses the same OS-backed WebView
+The app supports German (`de`), English (`en`), French (`fr`), Dutch (`nl`), Danish (`da`), and Italian (`it`). The first preferred browser or WebView locale determines the language, including regional variants. Unsupported languages fall back to English. Capacitor uses the same OS-backed WebView
 language preferences on iOS/iPadOS and Android. The UI listens to the
 `languagechange` event when the runtime provides it, and reads preferences
 again whenever the application starts. Authentication and account screens,
@@ -127,3 +125,5 @@ current calendar day it shows the time, and for earlier days it shows date and
 time, in the viewer's locale/timezone. A minute-based timer keeps the label
 current without rebuilding. CI and Pages fetch Git history to ensure that
 the source timestamp (not the deployment time) is embedded in the build.
+
+All profile actions, including sign-out, account switching, and adding accounts, use translated labels. Browser-based Gherkin tests verify each supported language.

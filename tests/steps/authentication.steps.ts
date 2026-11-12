@@ -93,3 +93,40 @@ Then("Google login is hidden", async function (this: VokaWorld) {
 Then("I see the version in the bottom-left corner", async function (this: VokaWorld) {
   await expect(this.page.getByRole("contentinfo", { name: "Letzte Code-Änderung" })).toContainText(/v\d+\.\d+\.\d+ · /);
 });
+
+Given("I open the Voka app in the current locale", async function (this: VokaWorld) {
+  await this.page.goto("http://127.0.0.1:5173/");
+});
+
+When("I sign in using the current locale as {string} with password {string}", async function (this: VokaWorld, email: string, password: string) {
+  const locale = await this.page.locator("html").getAttribute("lang");
+  const labels: Record<string, { email: string; password: string; signIn: string }> = {
+    de: { email: "E-Mail", password: "Passwort", signIn: "Anmelden" },
+    fr: { email: "E-mail", password: "Mot de passe", signIn: "Se connecter" },
+    nl: { email: "E-mail", password: "Wachtwoord", signIn: "Inloggen" },
+    da: { email: "E-mail", password: "Adgangskode", signIn: "Log ind" },
+    it: { email: "E-mail", password: "Password", signIn: "Accedi" }
+  };
+  const label = labels[locale || ""];
+  if (!label) throw new Error("Unexpected locale: " + locale);
+  await this.page.getByLabel(label.email).fill(email);
+  await this.page.getByLabel(label.password).fill(password);
+  await this.page.getByRole("button", { name: label.signIn, exact: true }).click();
+});
+
+Then("the profile heading is {string}", async function (this: VokaWorld, title: string) {
+  await expect(this.page.getByRole("heading", { name: title })).toBeVisible();
+});
+
+Then("the profile sign-out button is {string}", async function (this: VokaWorld, label: string) {
+  await expect(this.page.getByRole("button", { name: label, exact: true })).toBeVisible();
+  await expect(this.page.getByRole("button", { name: "Sign out", exact: true })).toHaveCount(0);
+});
+
+Then("the account section heading is {string}", async function (this: VokaWorld, title: string) {
+  await expect(this.page.getByRole("heading", { name: title })).toBeVisible();
+});
+
+Then("the add-account button is {string}", async function (this: VokaWorld, label: string) {
+  await expect(this.page.getByRole("button", { name: label, exact: true })).toBeVisible();
+});

@@ -45,3 +45,48 @@ Feature: Account authentication
     Then I see the German sign-in form
     And Google login is hidden
     And I see the version in the bottom-left corner
+
+  @de
+  Scenario: Profile actions in de
+    Given I open the Voka app in the current locale
+    When I sign in using the current locale as "alice@example.test" with password "correct-password"
+    Then the profile heading is "Mein Profil"
+    And the profile sign-out button is "Abmelden"
+    And the account section heading is "Konten"
+    And the add-account button is "Weiteren Benutzer hinzufügen"
+
+  @fr
+  Scenario: Profile actions in fr
+    Given I open the Voka app in the current locale
+    When I sign in using the current locale as "alice@example.test" with password "correct-password"
+    Then the profile heading is "Mon profil"
+    And the profile sign-out button is "Se déconnecter"
+    And the account section heading is "Comptes"
+    And the add-account button is "Ajouter un autre utilisateur"
+
+  @nl
+  Scenario: Profile actions in nl
+    Given I open the Voka app in the current locale
+    When I sign in using the current locale as "alice@example.test" with password "correct-password"
+    Then the profile heading is "Mijn profiel"
+    And the profile sign-out button is "Uitloggen"
+    And the account section heading is "Accounts"
+    And the add-account button is "Nog een gebruiker toevoegen"
+
+  @da
+  Scenario: Profile actions in da
+    Given I open the Voka app in the current locale
+    When I sign in using the current locale as "alice@example.test" with password "correct-password"
+    Then the profile heading is "Min profil"
+    And the profile sign-out button is "Log ud"
+    And the account section heading is "Konti"
+    And the add-account button is "Tilføj en anden bruger"
+
+  @it
+  Scenario: Profile actions in it
+    Given I open the Voka app in the current locale
+    When I sign in using the current locale as "alice@example.test" with password "correct-password"
+    Then the profile heading is "Il mio profilo"
+    And the profile sign-out button is "Esci"
+    And the account section heading is "Account"
+    And the add-account button is "Aggiungi un altro utente"

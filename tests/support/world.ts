@@ -42,7 +42,11 @@ export class VokaWorld extends World {
 
 Before(async function (this: VokaWorld, { pickle }) {
   this.browser = await chromium.launch({ headless: true });
-  const locale = pickle.tags.some(tag => tag.name === "@de") ? "de-DE" : "en-US";
+  const locales: Record<string, string> = {
+    "@de": "de-DE", "@fr": "fr-FR", "@nl": "nl-NL",
+    "@da": "da-DK", "@it": "it-IT"
+  };
+  const locale = pickle.tags.map(tag => locales[tag.name]).find(Boolean) ?? "en-US";
   this.context = await this.browser.newContext({ locale });
   this.page = await this.context.newPage();
 

@@ -79,11 +79,11 @@ function Profile({ language }: { language: Language }) {
         <div><p className="text-xs font-medium uppercase tracking-wide text-stone-500">{t.name}</p><p className="mt-1 font-medium">{account?.name || t.user}</p></div>
         <div><p className="text-xs font-medium uppercase tracking-wide text-stone-500">{t.email}</p><p className="mt-1 break-all font-medium">{user?.email || account?.email || ""}</p></div>
         <div><p className="text-xs font-medium uppercase tracking-wide text-stone-500">{t.userId}</p><p className="mt-1 break-all font-mono text-xs text-stone-600">{user?.id}</p></div>
-        <Button variant="outline" className="w-full" disabled={state.busy || !activeId} onClick={() => activeId && void authManager.logout(activeId)}><LogOut size={16}/> Sign out</Button>
+        <Button variant="outline" className="w-full" disabled={state.busy || !activeId} onClick={() => activeId && void authManager.logout(activeId)}><LogOut size={16}/> {t.signOut}</Button>
       </CardContent>
     </Card>
     <Card>
-      <CardHeader><CardTitle className="flex items-center gap-2"><Users size={18}/> Accounts</CardTitle><CardDescription>{t.switchDescription}</CardDescription></CardHeader>
+      <CardHeader><CardTitle className="flex items-center gap-2"><Users size={18}/> {t.accounts}</CardTitle><CardDescription>{t.switchDescription}</CardDescription></CardHeader>
       <CardContent className="space-y-2">
         {state.registry.accounts.map(a => <div key={a.id} className="flex items-center gap-2 rounded-lg border border-stone-200 p-2">
           <button className="flex min-w-0 flex-1 items-center gap-3 text-left" type="button" aria-label={t.switchTo + " " + a.email} onClick={() => void authManager.choose(a.id)}>
@@ -93,7 +93,7 @@ function Profile({ language }: { language: Language }) {
           </button>
           {!state.users[a.id] && <button className="text-xs text-red-700 underline" onClick={() => void authManager.forget(a.id)} aria-label={t.remove + " " + a.email}>{t.remove}</button>}
         </div>)}
-        <Button variant="outline" className="mt-3 w-full" onClick={() => authManager.startAdding()}><Plus size={16}/> Add another user</Button>
+        <Button variant="outline" className="mt-3 w-full" onClick={() => authManager.startAdding()}><Plus size={16}/> {t.add}</Button>
       </CardContent>
     </Card>
   </div>;
