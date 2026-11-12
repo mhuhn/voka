@@ -72,3 +72,10 @@ Feature: Vocabulary lists
     And I return to vocabulary home
     And I switch to a phone-sized viewport
     Then the small phone has larger floating icon targets
+
+  @touch
+  Scenario: iPad PWA provides larger touch controls
+    Given I open the Voka app
+    When I sign in as "alice@example.test" with password "correct-password"
+    And I return to vocabulary home
+    Then the iPad uses comfortably sized touch controls and typography
