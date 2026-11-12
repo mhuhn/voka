@@ -57,8 +57,8 @@ Then("the initial subject group order and tablet subjects are correct", async fu
 Then("the list header is compact without properties or learning notices", async function (this: VokaWorld) {
   await expect(this.page.getByRole("heading", { name: /Irregular Verbs/ })).toBeVisible();
   await expect(this.page.locator(".v-heading-list-title .v-emoji")).toHaveText("🇬🇧");
-  await expect(this.page.getByText("Irregular Verbs", { exact: true })).toHaveCount(1);
-  await expect(this.page.getByText("Englisch", { exact: true })).toHaveCount(0);
+  await expect(this.page.locator(".v-list-detail-pane").getByText("Irregular Verbs", { exact: true })).toHaveCount(1);
+  await expect(this.page.locator(".v-list-detail-pane").getByText("Englisch", { exact: true })).toHaveCount(0);
   await expect(this.page.getByRole("heading", { name: "List properties" })).toHaveCount(0);
   await expect(this.page.getByText(/Learning points are managed automatically/)).toHaveCount(0);
 });
@@ -106,4 +106,44 @@ Then("the phone card editor stands alone with a floating star", async function (
   await expect(this.page.locator(".v-card-editor")).toBeVisible();
   await expect(this.page.locator(".v-floating-star")).toBeVisible();
   await expect(this.page.getByText(/Learning points are managed automatically/)).toHaveCount(0);
+});
+
+Then("the list detail is beside the complete subject list overview", async function (this: VokaWorld) {
+  const overview=this.page.locator(".v-lists-pane");
+  const details=this.page.locator(".v-list-detail-pane");
+  await expect(overview).toBeVisible();
+  await expect(details).toBeVisible();
+  await expect(overview.getByRole("button",{name:/Irregular Verbs/})).toBeVisible();
+  const a=await overview.boundingBox(),b=await details.boundingBox();
+  expect(a).not.toBeNull();expect(b).not.toBeNull();
+  expect(b!.x).toBeGreaterThan(a!.x+a!.width-12);
+});
+
+Then("the card editor occupies a third column", async function (this: VokaWorld) {
+  const overview=this.page.locator(".v-lists-pane");
+  const list=this.page.locator(".v-list-detail-pane");
+  const editor=this.page.locator(".v-card-editor");
+  await expect(overview).toBeVisible();
+  await expect(list).toBeVisible();
+  await expect(editor).toBeVisible();
+  const a=await overview.boundingBox(),b=await list.boundingBox(),c=await editor.boundingBox();
+  expect(a).not.toBeNull();expect(b).not.toBeNull();expect(c).not.toBeNull();
+  expect(b!.x).toBeGreaterThan(a!.x+a!.width-12);
+  expect(c!.x).toBeGreaterThan(b!.x+b!.width-12);
+  await expect(this.page.getByRole("heading",{name:"Edit card",exact:true})).toBeVisible();
+});
+
+Then("the direction control is a full-width push button", async function (this: VokaWorld) {
+  const button=this.page.getByRole("button",{name:"Learn in both directions"});
+  const input=this.page.getByRole("textbox",{name:/Question label/});
+  await expect(button).toBeVisible();
+  await expect(button).toHaveAttribute("aria-pressed","false");
+  await expect(this.page.getByRole("checkbox",{name:"Learn in both directions"})).toHaveCount(0);
+  const b=await button.boundingBox(), i=await input.boundingBox();
+  expect(b).not.toBeNull();expect(i).not.toBeNull();
+  expect(Math.abs(b!.width-i!.width)).toBeLessThan(3);
+  await button.click();
+  await expect(button).toHaveAttribute("aria-pressed","true");
+  await button.click();
+  await expect(button).toHaveAttribute("aria-pressed","false");
 });
