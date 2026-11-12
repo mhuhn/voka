@@ -39,6 +39,12 @@ function Toggle({label,value,onChange}:{label:string;value:boolean;onChange:(nex
  return <label className="v-toggle"><span>{label}</span><input aria-label={label} type="checkbox" checked={value} onChange={e=>onChange(e.target.checked)}/><span className="v-slider"/></label>;
 }
 const newListValue=(subject_id:string):ListInput=>({subject_id,title:"",tags:[],question_label:"Frage",answer_label:"Antwort",learn_both_directions:false});
+const defaultGroupOrder=["Sprachen","MINT","Sonstige"];
+function defaultGroupRank(title:string):number { const i=defaultGroupOrder.indexOf(title); return i<0?defaultGroupOrder.length:i; }
+function languageSubject(data:VokaData,subjectId:string):Subject|undefined {
+ const subject=data.subjects.find(s=>s.id===subjectId);
+ return subject&&data.groups.some(g=>g.id===subject.group_id&&g.title==="Sprachen")?subject:undefined;
+}
 const stamp=(time:number,language:Language)=>time?new Date(time).toLocaleDateString(language==="de"?"de-DE":language,{day:"numeric",month:"short"}):"–";
 export default function VokaApp({language,onProfile}:{language:Language;onProfile:()=>void}) {
  const t=(key:string)=>globalLabels[language]?.[key]||supplemental[language]?.[key]||translations[language]?.[key]||translations.en[key]||key;
@@ -62,17 +68,19 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const [working,setWorking]=useState(false);
  const refresh=useCallback(async()=>{try {setData(await loadVoka());setError("");}catch(e){setError(e instanceof Error?e.message:String(e));}},[]);
  useEffect(()=>{let alive=true;loadVoka().then(result=>{if(alive)setData(result)}).catch(e=>{if(alive)setError(String(e instanceof Error?e.message:e))}).finally(()=>{if(alive)setLoading(false)});return()=>{alive=false};},[]);
- const groups=useMemo(()=>[...data.groups].sort((a,b)=>groupUsage(data,b.id)-groupUsage(data,a.id)||a.title.localeCompare(b.title)),[data]);
+ const groups=useMemo(()=>[...data.groups].sort((a,b)=>groupUsage(data,b.id)-groupUsage(data,a.id)||defaultGroupRank(a.title)-defaultGroupRank(b.title)||a.title.localeCompare(b.title)),[data]);
  const currentSubject=data.subjects.find(s=>s.id===selectedSubject);
  const currentList=data.lists.find(l=>l.id===selectedList);
  const listCards=useMemo(()=>data.cards.filter(c=>c.list_id===selectedList).filter(c=>(!markedOnly||c.marked)&&(!unlearnedOnly||c.success_count<3)).sort((a,b)=>sort==="alpha"?a.question.localeCompare(b.question):a.success_count-b.success_count||a.question.localeCompare(b.question)),[data.cards,selectedList,markedOnly,unlearnedOnly,sort]);
  const run=async(fn:()=>Promise<void>)=>{setWorking(true);setError("");try{await fn();await refresh()}catch(e){setError(e instanceof Error?e.message:String(e))}finally{setWorking(false)}};
  const back=()=>{if(screen==="cardForm"){setSelectedCard(null);setScreen("list");}else if(screen==="listForm")setScreen(listEditing?"list":selectedSubject?"subject":"home");else if(screen==="list")setScreen("subject");else if(screen==="subject"||screen==="manage")setScreen("home");else setScreen("home")};
  const openList=(id:string)=>{setSelectedList(id);setShowAnswers(false);setMarkedOnly(false);setUnlearnedOnly(false);setSort("alpha");setSelectedCard(null);setScreen("list")};
- const newList=(subjectId=selectedSubject||data.subjects[0]?.id||"")=>{setListEditing(null);setDraftList({...newListValue(subjectId),question_label:t("question"),answer_label:t("answer")});setTagText("");setScreen("listForm")};
- const editList=(l:VokaList)=>{setSelectedList(l.id);setListEditing(l.id);setDraftList({subject_id:l.subject_id,title:l.title,tags:[...l.tags],question_label:l.question_label,answer_label:l.answer_label,learn_both_directions:l.learn_both_directions});setTagText("");setScreen("listForm")};
+ const listLabels=(subjectId:string)=>{const subject=languageSubject(data,subjectId);return subject?{question_label:"Deutsch",answer_label:subject.title}:{question_label:t("question"),answer_label:t("answer")};};
+ const newList=(subjectId=selectedSubject||data.subjects.find(s=>s.title==="Englisch"&&languageSubject(data,s.id))?.id||data.subjects[0]?.id||"")=>{setListEditing(null);setDraftList({...newListValue(subjectId),...listLabels(subjectId)});setTagText("");setScreen("listForm")};
+ const changeListSubject=(subjectId:string)=>{const wasLanguage=Boolean(languageSubject(data,draftList.subject_id));const nextLanguage=languageSubject(data,subjectId);setDraftList({...draftList,subject_id:subjectId,question_label:nextLanguage?"Deutsch":wasLanguage?t("question"):draftList.question_label,answer_label:nextLanguage?nextLanguage.title:wasLanguage?t("answer"):draftList.answer_label});};
+ const editList=(l:VokaList)=>{setSelectedList(l.id);setListEditing(l.id);setDraftList({subject_id:l.subject_id,title:l.title,tags:[...l.tags],question_label:l.question_label,answer_label:languageSubject(data,l.subject_id)?.title||l.answer_label,learn_both_directions:l.learn_both_directions});setTagText("");setScreen("listForm")};
  const openCard=(card?:VokaCard)=>{setSelectedCard(card?.id||null);setDraftCard({question:card?.question||"",answer:card?.answer||"",marked:card?.marked||false});setScreen("cardForm")};
- const saveListForm=(e:FormEvent)=>{e.preventDefault();void run(async()=>{const id=await saveList({...draftList,tags:[...new Set([...draftList.tags,...tagText.split(",").map(x=>x.trim()).filter(Boolean)])]},listEditing||undefined);setSelectedSubject(draftList.subject_id);setSelectedList(id);setScreen("list");setListEditing(null);})};
+ const saveListForm=(e:FormEvent)=>{e.preventDefault();void run(async()=>{const id=await saveList({...draftList,answer_label:languageSubject(data,draftList.subject_id)?.title||draftList.answer_label,tags:[...new Set([...draftList.tags,...tagText.split(",").map(x=>x.trim()).filter(Boolean)])]},listEditing||undefined);setSelectedSubject(draftList.subject_id);setSelectedList(id);setScreen("list");setListEditing(null);})};
  const saveCardForm=(e:FormEvent)=>{e.preventDefault();if(!selectedList)return;void run(async()=>{await saveCard({...draftCard,list_id:selectedList},selectedCard||undefined);setSelectedCard(null);setScreen("list")})};
  const confirmRemove=(fn:()=>Promise<void>,destination:Screen)=>{if(!window.confirm(t("confirmDelete")))return;void run(async()=>{await fn();setScreen(destination)})};
  const startManage=(type:"group"|"subject", item?:SubjectGroup|Subject)=>{setManageType(type);setManageId(item?.id||null);setManageTitle(item?.title||"");setManageEmoji(item&&"emoji" in item?item.emoji:"📘");setManageGroup(item&&"group_id" in item?item.group_id:data.groups[0]?.id||"");setScreen("manage")};
@@ -128,9 +136,9 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
    </div>}
    {screen==="listForm"&&<form className="v-form" onSubmit={saveListForm}>
      <label>{t("title")} *<input required maxLength={200} value={draftList.title} onChange={e=>setDraftList({...draftList,title:e.target.value})}/></label>
-     <label>{t("subject")} *<select required value={draftList.subject_id} onChange={e=>setDraftList({...draftList,subject_id:e.target.value})}><option value="" disabled>{t("chooseSubject")}</option>{groups.flatMap(g=>data.subjects.filter(s=>s.group_id===g.id).map(s=><option key={s.id} value={s.id}>{s.emoji} {s.title}</option>))}</select></label>
+     <label>{t("subject")} *<select required value={draftList.subject_id} onChange={e=>changeListSubject(e.target.value)}><option value="" disabled>{t("chooseSubject")}</option>{groups.flatMap(g=>data.subjects.filter(s=>s.group_id===g.id).map(s=><option key={s.id} value={s.id}>{s.emoji} {s.title}</option>))}</select></label>
      <label>{t("tags")}<div className="v-tag-editor"><div className="v-tag-row">{draftList.tags.map(tag=><button className="v-tag" key={tag} type="button" onClick={()=>setDraftList({...draftList,tags:draftList.tags.filter(a=>a!==tag)})}>{tag} ×</button>)}</div><input placeholder={t("addTag")+" (,)"} value={tagText} onChange={e=>setTagText(e.target.value)} /></div></label>
-     <div className="v-form-columns"><label>{t("questionLabel")} *<input required value={draftList.question_label} onChange={e=>setDraftList({...draftList,question_label:e.target.value})}/></label><label>{t("answerLabel")} *<input required value={draftList.answer_label} onChange={e=>setDraftList({...draftList,answer_label:e.target.value})}/></label></div>
+     <div className="v-form-columns"><label>{t("questionLabel")} *<input required value={draftList.question_label} onChange={e=>setDraftList({...draftList,question_label:e.target.value})}/></label><label>{t("answerLabel")} *<input required readOnly={Boolean(languageSubject(data,draftList.subject_id))} value={languageSubject(data,draftList.subject_id)?.title||draftList.answer_label} onChange={e=>setDraftList({...draftList,answer_label:e.target.value})}/></label></div>
      <Toggle label={t("both")} value={draftList.learn_both_directions} onChange={value=>setDraftList({...draftList,learn_both_directions:value})}/>
      <p className="v-help">{t("bothInfo")}</p><button disabled={working||!draftList.subject_id} className="v-primary" type="submit">{listEditing?t("saveList"):t("createList")}</button>
      {listEditing&&<button type="button" className="v-danger" onClick={()=>confirmRemove(()=>deleteList(listEditing),"subject")}><Trash2 size={16}/>{t("delete")}</button>}
