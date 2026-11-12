@@ -11,6 +11,7 @@ When("I sign in as {string} with password {string}", async function (this: VokaW
   await this.page.getByLabel("Email").fill(email);
   await this.page.getByLabel("Password").fill(password);
   await this.page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await this.page.locator(".v-floats button").last().click();
   await expect(this.page.getByRole("heading", { name: "My profile" })).toBeVisible();
 });
 
@@ -64,6 +65,7 @@ When("I reload the app", async function (this: VokaWorld) {
 });
 
 Then("I see the profile for {string}", async function (this: VokaWorld, email: string) {
+  if (!(await this.page.getByRole("heading", { name: "My profile" }).isVisible())) await this.page.locator(".v-floats button").last().click();
   await expect(this.page.getByRole("heading", { name: "My profile" })).toBeVisible();
   await expect(this.page.locator('[data-slot="card"]').first()).toContainText(email);
 });
@@ -112,6 +114,7 @@ When("I sign in using the current locale as {string} with password {string}", as
   await this.page.getByLabel(label.email).fill(email);
   await this.page.getByLabel(label.password).fill(password);
   await this.page.getByRole("button", { name: label.signIn, exact: true }).click();
+  await this.page.locator(".v-floats button").last().click();
 });
 
 Then("the profile heading is {string}", async function (this: VokaWorld, title: string) {
