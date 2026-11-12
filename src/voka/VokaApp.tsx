@@ -87,7 +87,8 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const saveManagement=(e:FormEvent)=>{e.preventDefault();void run(async()=>{if(manageType==="group"){if(manageId)await updateGroup(manageId,manageTitle.trim());else await insertGroup(manageTitle.trim())}else{if(manageId)await updateSubject(manageId,manageTitle.trim(),manageEmoji,manageGroup);else await insertSubject(manageGroup,manageTitle.trim(),manageEmoji)}setScreen("home")})};
  const listCount=(subjectId:string)=>data.lists.filter(l=>l.subject_id===subjectId).length;
  const selectedGroupCount=(groupId:string)=>data.subjects.filter(s=>s.group_id===groupId).length;
- const actions=<div className="v-floats"><IconButton label={t("notifications")} onClick={()=>{}}><Bell size={19}/></IconButton><IconButton label={t("profile")} onClick={onProfile}><CircleUserRound size={20}/></IconButton></div>;
+ const listTitle=currentList?<span className="v-heading-list-title"><span className="v-emoji" aria-hidden="true">{data.subjects.find(s=>s.id===currentList.subject_id)?.emoji||"📘"}</span>{currentList.title}</span>:null;
+ const actions=<div className="v-floats">{screen==="cardForm"&&<button className="v-icon-button v-floating-star" type="button" title={t("marked")} aria-label={t("marked")} aria-pressed={draftCard.marked} onClick={()=>setDraftCard({...draftCard,marked:!draftCard.marked})}><Star size={19} fill={draftCard.marked?"#ff9b00":"none"} stroke={draftCard.marked?"#ff9b00":"currentColor"}/></button>}<IconButton label={t("notifications")} onClick={()=>{}}><Bell size={19}/></IconButton><IconButton label={t("profile")} onClick={onProfile}><CircleUserRound size={20}/></IconButton></div>;
  return <div className="v-app">
   {actions}
   <div className="v-content">
@@ -95,13 +96,12 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
    {loading?<div className="v-empty">{t("loading")}</div>:<>
    <header className="v-heading">
     {screen!=="home"&&<IconButton onClick={back} label={t("cancel")}><ArrowLeft/></IconButton>}
-    <h1>{screen==="home"?<span className="v-logo">Voka</span>:screen==="subject"?currentSubject?.title:screen==="list"?currentList?.title:screen==="listForm"?(listEditing?t("editList"):t("createList")):screen==="cardForm"?(selectedCard?t("editCard"):t("addCard")):t("manage")}</h1>
-    {screen==="home"&&<button className="v-head-manage" onClick={()=>startManage("subject")}>{t("manage")} <Settings size={16}/></button>}
+    <h1>{screen==="home"?<span className="v-logo">Voka</span>:screen==="subject"?currentSubject?.title:screen==="list"?listTitle:screen==="listForm"?(listEditing?t("editList"):t("createList")):screen==="cardForm"?<><span className="v-card-editor-mobile-title">{selectedCard?t("editCard"):t("addCard")}</span><span className="v-card-editor-tablet-title">{listTitle}</span></>:t("manage")}</h1>
     {screen==="list"&&currentList&&<IconButton label={t("editList")} onClick={()=>editList(currentList)}><Pencil size={19}/></IconButton>}
    </header>
    {screen==="home"&&<div className="v-home">
     {data.lists.length===0&&<section className="v-intro"><div className="v-illustration"><BookOpen size={74}/><span>?</span></div><h2>{t("empty")}</h2><p>{t("emptyInfo")}</p><button className="v-primary" onClick={()=>newList()}><Plus size={18}/>{t("createList")}</button></section>}
-    <h2 className="v-section-title">{t("mySubjects")}</h2>
+    <div className="v-section-tools"><h2 className="v-section-title">{t("mySubjects")}</h2><button className="v-manage-link" onClick={()=>startManage("subject")}>{t("manage")} <Settings size={16}/></button></div>
     <div className="v-group-grid">{groups.map(g=>{
      const subjects=[...data.subjects.filter(s=>s.group_id===g.id)].sort((a,b)=>subjectUsage(data,b.id)-subjectUsage(data,a.id)||a.title.localeCompare(b.title));
      return <section className="v-group" key={g.id}><div className="v-group-head"><strong>{g.title}</strong><small>{t("updated")}: {stamp(groupUsage(data,g.id),language)}</small><button aria-label={t("edit")+" "+g.title} onClick={()=>startManage("group",g)}><Pencil size={14}/></button></div>
@@ -109,7 +109,6 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
       {subjects.length>3&&<p className="v-scrollhint">{selectedGroupCount(g.id)-3} {t("moreSubjects")} · ↕</p>}
      </section>
     })}</div>
-    <button className="v-text-button" onClick={()=>startManage("group")}><Plus size={16}/>{t("addGroup")}</button>
     {data.lists.length>0&&<button className="v-primary v-create-home" onClick={()=>newList()}><Plus size={19}/>{t("createList")}</button>}
    </div>}
    {screen==="subject"&&<div className="v-page"><div className="v-section-header"><h2>{currentSubject?.emoji} {currentSubject?.title} · {t("lists")}</h2><IconButton label={t("edit")} onClick={()=>currentSubject&&startManage("subject",currentSubject)}><Pencil size={19}/></IconButton></div>
