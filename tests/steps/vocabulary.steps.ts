@@ -209,3 +209,74 @@ Then("the iPad uses comfortably sized touch controls and typography", async func
  expect(dims).not.toBeNull();
  expect(dims!.height).toBeGreaterThanOrEqual(50);
 });
+
+
+Then("the subject details offer no edit control", async function(this:VokaWorld){
+ await expect(this.page.locator(".v-lists-pane").getByRole("button",{name:"Edit",exact:true})).toHaveCount(0);
+ await expect(this.page.locator(".v-lists-pane .v-icon-button")).toHaveCount(0);
+});
+
+When("I open subject management", async function(this:VokaWorld){
+ await this.page.getByRole("button",{name:"Manage subjects"}).click();
+ await expect(this.page.getByRole("heading",{name:"Subject groups & subjects"})).toBeVisible();
+});
+
+Then("the management overview shows add actions without an editor", async function(this:VokaWorld){
+ await expect(this.page.getByRole("dialog")).toHaveCount(0);
+ await expect(this.page.locator(".v-manage-form")).toHaveCount(0);
+ const groups=this.page.locator(".v-manage-group");
+ await expect(groups).toHaveCount(3);
+ for(const group of await groups.all()){
+   await expect(group.getByRole("button",{name:"Add subject"})).toBeVisible();
+ }
+ await expect(this.page.locator(".v-manage").getByRole("button",{name:"Add group"})).toHaveCount(1);
+});
+
+When("I add a subject to the language group", async function(this:VokaWorld){
+ const languages=this.page.locator(".v-manage-group").filter({hasText:"Sprachen"});
+ await languages.getByRole("button",{name:"Add subject"}).click();
+});
+
+Then("the subject editor opens in a cancelable dialog with the correct group", async function(this:VokaWorld){
+ const dialog=this.page.getByRole("dialog",{name:"Add subject"});
+ await expect(dialog).toBeVisible();
+ await expect(dialog.getByRole("textbox",{name:/Title/})).toBeFocused();
+ await expect(dialog.getByRole("combobox",{name:"Subject groups & subjects"}).locator("option:checked")).toHaveText("Sprachen");
+ await dialog.getByRole("textbox",{name:/Title/}).fill("Temporary subject");
+ await dialog.locator(".v-modal-actions").getByRole("button",{name:"Cancel"}).click();
+ await expect(this.page.getByRole("dialog")).toHaveCount(0);
+ await expect(this.page.getByRole("heading",{name:"Subject groups & subjects"})).toBeVisible();
+ await this.page.locator(".v-manage-group").filter({hasText:"Sprachen"}).getByRole("button",{name:"Add subject"}).click();
+ await expect(this.page.getByRole("dialog").getByRole("textbox",{name:/Title/})).toHaveValue("");
+ await this.page.keyboard.press("Escape");
+ await expect(this.page.getByRole("dialog")).toHaveCount(0);
+});
+
+Then("the group create and edit dialogs can be canceled", async function(this:VokaWorld){
+ await this.page.locator(".v-manage").getByRole("button",{name:"Add group"}).click();
+ let dialog=this.page.getByRole("dialog",{name:"Add group"});
+ await expect(dialog).toBeVisible();
+ await dialog.getByRole("textbox",{name:"Group name"}).fill("Not saved");
+ await dialog.locator(".v-modal-actions").getByRole("button",{name:"Cancel"}).click();
+ await expect(this.page.getByRole("dialog")).toHaveCount(0);
+ await expect(this.page.getByText("Not saved",{exact:true})).toHaveCount(0);
+ await this.page.locator(".v-manage-group").filter({hasText:"Sprachen"}).getByRole("button",{name:"Edit Sprachen"}).click();
+ dialog=this.page.getByRole("dialog",{name:"Edit Group name"});
+ await expect(dialog.getByRole("textbox",{name:"Group name"})).toHaveValue("Sprachen");
+ await dialog.locator(".v-modal-actions").getByRole("button",{name:"Cancel"}).click();
+ await this.page.locator(".v-manage-group").filter({hasText:"Sprachen"}).getByRole("button",{name:"Edit Englisch"}).click();
+ dialog=this.page.getByRole("dialog",{name:"Edit Subject"});
+ await expect(dialog.getByRole("textbox",{name:/Title/})).toHaveValue("Englisch");
+ await dialog.locator(".v-modal-actions").getByRole("button",{name:"Cancel"}).click();
+ await expect(this.page.getByRole("dialog")).toHaveCount(0);
+});
+
+Then("the list editor cancel button discards unsaved changes", async function(this:VokaWorld){
+ const editor=this.page.locator(".v-list-edit-pane");
+ await expect(editor).toBeVisible();
+ await editor.getByRole("textbox",{name:/Title/}).fill("A title not saved");
+ await editor.getByRole("button",{name:"Cancel",exact:true}).click();
+ await expect(editor).toHaveCount(0);
+ await expect(this.page.locator(".v-pane-list-heading")).toContainText("Irregular Verbs");
+ await expect(this.page.getByText("A title not saved")).toHaveCount(0);
+});
