@@ -28,11 +28,10 @@ const otherSubjects: Record<string, string> = {
 const normalize = (text: string) => text.trim().replace(/\s+/g, " ").toLocaleLowerCase("de-DE");
 
 /**
- * Language flags apply only inside the Sprachen group.
- * Other school subjects also receive suggestions in any group.
+ * Suggestions are based on the subject name, regardless of its group.
  */
-export function suggestSubjectEmoji(title: string, groupTitle: string): string | null {
+export function suggestSubjectEmoji(title: string, _groupTitle: string): string | null {
   const key = normalize(title);
-  if (normalize(groupTitle) === "sprachen" && languages[key]) return languages[key];
+  if (languages[key]) return languages[key];
   return otherSubjects[key] || null;
 }
