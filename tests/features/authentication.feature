@@ -96,3 +96,17 @@ Feature: Account authentication
     Then the sign-in form uses the Voka visual theme
     When I open registration
     Then the registration form keeps that visual theme
+
+  Scenario: iOS PWA uses the original Voka home-screen icon
+    Given I open the Voka app
+    Then the Voka home-screen icon is explicitly linked on iOS
+
+  Scenario: Account color identifies the current user consistently
+    Given I open the Voka app
+    When I sign in as "alice@example.test" with password "correct-password"
+    Then the account profile has no green-themed controls
+    When I add another user
+    And I sign in as "bob@example.test" with password "correct-password"
+    Then each account has a different persistent profile color
+    When I switch to "alice@example.test"
+    Then the selected user's floating avatar retains their profile color
