@@ -10,6 +10,7 @@ import { detectLanguage, translations, translateError, type Language } from "./l
 import { changedAt, version, formatLastChange } from "./lib/buildInfo";
 import VokaApp from "./voka/VokaApp";
 import { getUserAvatarColor } from "./auth/userColors";
+import { pendingSharedListId } from "./voka/sharing";
 
 const googleEnabled = import.meta.env.VITE_GOOGLE_LOGIN_ENABLED === "true";
 
@@ -127,10 +128,20 @@ export default function App() {
   useEffect(() => { document.documentElement.lang = language; }, [language]);
   const user = authManager.activeUser;
   const showAuth = state.adding || !user || state.screen === "reset";
+  const sharedLinkWaiting = Boolean(pendingSharedListId());
+  const sharedLinkPrompt: Record<Language,string> = {
+    de:"Melde dich an, um die geteilte Vokabelliste zu importieren.",
+    en:"Sign in to import the shared vocabulary list.",
+    fr:"Connectez-vous pour importer la liste de vocabulaire partagée.",
+    nl:"Log in om de gedeelde woordenlijst te importeren.",
+    da:"Log ind for at importere den delte ordliste.",
+    it:"Accedi per importare la lista di vocaboli condivisa."
+  };
   useEffect(() => { setProfileOpen(false); }, [user?.id]);
   return <>{!state.loading && !showAuth && !profileOpen ? <VokaApp key={user.id} language={language} onProfile={() => setProfileOpen(true)}/> : <main className="v-auth-shell safe-top safe-bottom mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 sm:px-6">
     {profileOpen && !showAuth && <Button variant="ghost" className="v-profile-back mb-3 w-fit" onClick={() => setProfileOpen(false)}><ArrowLeft size={16}/> Voka</Button>}
     <Brand/>
+    {showAuth && sharedLinkWaiting && <div className="v-auth-import-hint" role="status">{sharedLinkPrompt[language]}</div>}
     {!isConfigured && <div role="alert" className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">{t.config}</div>}
     {state.error && <div role="alert" className="mb-4 rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800">{translateError(state.error, language)}</div>}
     {state.message && <div role="status" className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">{state.message === "Check your email to confirm your address, then sign in." ? t.emailConfirmation : state.message === "If an account exists for this email, a reset link has been sent." ? t.resetSent : state.message}</div>}
