@@ -363,7 +363,7 @@ Before(async function (this: VokaWorld, { pickle }) {
           {id:"20000000-0000-4000-8000-000000000002",user_id:users[0].id,group_id:"10000000-0000-4000-8000-000000000002",title:"Mathe",emoji:"➗"}
         ],
         voka_lists: [
-          {id:"30000000-0000-4000-8000-000000000001",user_id:users[0].id,subject_id:"20000000-0000-4000-8000-000000000001",title:"Irregular Verbs",tags:["Verben","Unit 3"],question_label:"Infinitiv",answer_label:"Englisch",learn_both_directions:!learningData,learning_paused_until:mixedData&&mixedPaused.has(englishListId)?new Date(Date.now()+120*60_000).toISOString():learningPausedUntil,last_learning_at:lastLearningAt,learning_timezone:learningTimezone,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
+          {id:"30000000-0000-4000-8000-000000000001",user_id:users[0].id,subject_id:"20000000-0000-4000-8000-000000000001",title:"Irregular Verbs",tags:["Verben","Unit 3"],question_label:"Infinitiv",answer_label:"Englisch",learn_both_directions:!learningData&&!mixedData,learning_paused_until:mixedData&&mixedPaused.has(englishListId)?new Date(Date.now()+120*60_000).toISOString():learningPausedUntil,last_learning_at:lastLearningAt,learning_timezone:learningTimezone,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
           ...(importedList?[importedList]:[]),
           ...(mixedData?mixedLists.map(l=>({...l,learning_paused_until:mixedPaused.has(l.id)?new Date(Date.now()+120*60_000).toISOString():null})):[])
         ],
