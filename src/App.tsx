@@ -9,6 +9,7 @@ import { isConfigured } from "./auth/config";
 import { detectLanguage, translations, translateError, type Language } from "./lib/i18n";
 import { changedAt, version, formatLastChange } from "./lib/buildInfo";
 import VokaApp from "./voka/VokaApp";
+import { getUserAvatarColor } from "./auth/userColors";
 
 const googleEnabled = import.meta.env.VITE_GOOGLE_LOGIN_ENABLED === "true";
 
@@ -68,10 +69,11 @@ function Profile({ language }: { language: Language }) {
   const activeId = state.registry.activeId;
   const user = authManager.activeUser;
   const account = state.registry.accounts.find(a => a.id === activeId);
-  return <div className="space-y-5">
-    <Card>
+  const activeAvatarColor = getUserAvatarColor(activeId || "");
+  return <div className="v-profile space-y-5">
+    <Card className="v-profile-card">
       <CardHeader>
-        <div className="mb-3 flex size-14 items-center justify-center rounded-full bg-green-50 text-green-900"><UserRound size={30}/></div>
+        <div className="v-profile-avatar mb-3 flex size-14 items-center justify-center rounded-full" style={{color:activeAvatarColor,backgroundColor:activeAvatarColor+"20",border:"1px solid "+activeAvatarColor+"55"}}><UserRound size={32}/></div>
         <CardTitle>{t.profile}</CardTitle>
         <CardDescription>{t.active}</CardDescription>
       </CardHeader>
@@ -79,21 +81,21 @@ function Profile({ language }: { language: Language }) {
         <div><p className="text-xs font-medium uppercase tracking-wide text-stone-500">{t.name}</p><p className="mt-1 font-medium">{account?.name || t.user}</p></div>
         <div><p className="text-xs font-medium uppercase tracking-wide text-stone-500">{t.email}</p><p className="mt-1 break-all font-medium">{user?.email || account?.email || ""}</p></div>
         <div><p className="text-xs font-medium uppercase tracking-wide text-stone-500">{t.userId}</p><p className="mt-1 break-all font-mono text-xs text-stone-600">{user?.id}</p></div>
-        <Button variant="outline" className="w-full" disabled={state.busy || !activeId} onClick={() => activeId && void authManager.logout(activeId)}><LogOut size={16}/> {t.signOut}</Button>
+        <Button variant="outline" className="v-profile-action w-full" disabled={state.busy || !activeId} onClick={() => activeId && void authManager.logout(activeId)}><LogOut size={16}/> {t.signOut}</Button>
       </CardContent>
     </Card>
-    <Card>
+    <Card className="v-profile-card">
       <CardHeader><CardTitle className="flex items-center gap-2"><Users size={18}/> {t.accounts}</CardTitle><CardDescription>{t.switchDescription}</CardDescription></CardHeader>
       <CardContent className="space-y-2">
         {state.registry.accounts.map(a => <div key={a.id} className="flex items-center gap-2 rounded-lg border border-stone-200 p-2">
           <button className="flex min-w-0 flex-1 items-center gap-3 text-left" type="button" aria-label={t.switchTo + " " + a.email} onClick={() => void authManager.choose(a.id)}>
-            <CircleUserRound size={26} className="shrink-0 text-green-800"/>
+            <CircleUserRound size={26} className="shrink-0" style={{color:getUserAvatarColor(a.id)}}/>
             <span className="min-w-0"><span className="block truncate text-sm font-semibold">{a.name}</span><span className="block truncate text-xs text-stone-500">{a.email}</span></span>
-            {a.id === activeId && <Check size={18} className="ml-auto shrink-0 text-green-800"/>}
+            {a.id === activeId && <Check size={18} className="ml-auto shrink-0" style={{color:getUserAvatarColor(a.id)}}/>}
           </button>
           {!state.users[a.id] && <button className="text-xs text-red-700 underline" onClick={() => void authManager.forget(a.id)} aria-label={t.remove + " " + a.email}>{t.remove}</button>}
         </div>)}
-        <Button variant="outline" className="mt-3 w-full" onClick={() => authManager.startAdding()}><Plus size={16}/> {t.add}</Button>
+        <Button variant="outline" className="v-profile-action mt-3 w-full" onClick={() => authManager.startAdding()}><Plus size={16}/> {t.add}</Button>
       </CardContent>
     </Card>
   </div>;
@@ -127,11 +129,11 @@ export default function App() {
   const showAuth = state.adding || !user || state.screen === "reset";
   useEffect(() => { setProfileOpen(false); }, [user?.id]);
   return <>{!state.loading && !showAuth && !profileOpen ? <VokaApp key={user.id} language={language} onProfile={() => setProfileOpen(true)}/> : <main className="v-auth-shell safe-top safe-bottom mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 sm:px-6">
-    {profileOpen && !showAuth && <Button variant="ghost" className="mb-3 w-fit" onClick={() => setProfileOpen(false)}><ArrowLeft size={16}/> Voka</Button>}
+    {profileOpen && !showAuth && <Button variant="ghost" className="v-profile-back mb-3 w-fit" onClick={() => setProfileOpen(false)}><ArrowLeft size={16}/> Voka</Button>}
     <Brand/>
     {!isConfigured && <div role="alert" className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">{t.config}</div>}
     {state.error && <div role="alert" className="mb-4 rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800">{translateError(state.error, language)}</div>}
-    {state.message && <div role="status" className="mb-4 rounded-lg border border-green-300 bg-green-50 p-4 text-sm text-green-900">{state.message === "Check your email to confirm your address, then sign in." ? t.emailConfirmation : state.message === "If an account exists for this email, a reset link has been sent." ? t.resetSent : state.message}</div>}
+    {state.message && <div role="status" className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">{state.message === "Check your email to confirm your address, then sign in." ? t.emailConfirmation : state.message === "If an account exists for this email, a reset link has been sent." ? t.resetSent : state.message}</div>}
     {state.loading ? <Card><CardContent className="p-8 text-center">{t.loading}</CardContent></Card> : showAuth ? <>
       {state.registry.accounts.length > 0 && !state.adding && !user && <Card className="mb-4"><CardHeader><CardTitle>{t.saved}</CardTitle></CardHeader><CardContent className="space-y-2">{state.registry.accounts.map(a => <div key={a.id} className="flex items-center justify-between gap-2"><button className="truncate text-sm underline" onClick={() => void authManager.choose(a.id)}>{a.email}</button><button className="text-xs text-red-700 underline" onClick={() => void authManager.forget(a.id)}>{t.remove}</button></div>)}</CardContent></Card>}
       <AuthForm language={language}/>
