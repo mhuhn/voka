@@ -40,9 +40,10 @@ export class VokaWorld extends World {
   page!: Page;
 }
 
-Before(async function (this: VokaWorld) {
+Before(async function (this: VokaWorld, { pickle }) {
   this.browser = await chromium.launch({ headless: true });
-  this.context = await this.browser.newContext();
+  const locale = pickle.tags.some(tag => tag.name === "@de") ? "de-DE" : "en-US";
+  this.context = await this.browser.newContext({ locale });
   this.page = await this.context.newPage();
 
   await this.page.route("http://127.0.0.1:54321/**", async (route: Route) => {

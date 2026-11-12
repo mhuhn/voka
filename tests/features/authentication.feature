@@ -38,6 +38,7 @@ Feature: Account authentication
     When I switch to "bob@example.test"
     Then I see the profile for "bob@example.test"
 
+  @de
   Scenario: German interface and unobtrusive version label
     Given my browser prefers German
     When I open the Voka app in German
