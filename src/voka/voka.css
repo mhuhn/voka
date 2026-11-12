@@ -149,7 +149,7 @@
 }
 /* iPad Air and other touch tablets have more screen area but need larger
    touch targets and type than a mouse/keyboard desktop. */
-@media(min-width:900px) and (pointer:coarse){
+@media(min-width:700px) and (pointer:coarse){
  .v-app{font-size:18px}
  .v-app .v-content{padding:30px 30px 126px;max-width:none}
  .v-heading h1{font-size:29px}
