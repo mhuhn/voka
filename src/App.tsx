@@ -13,9 +13,8 @@ import VokaApp from "./voka/VokaApp";
 const googleEnabled = import.meta.env.VITE_GOOGLE_LOGIN_ENABLED === "true";
 
 function Brand() {
-  return <div className="mb-8 flex items-center justify-center gap-3">
-    <div className="flex size-11 items-center justify-center rounded-xl bg-[#19452d] text-xl font-extrabold text-white">V</div>
-    <span className="text-2xl font-bold tracking-tight">Voka</span>
+  return <div className="v-auth-brand">
+    <span className="v-auth-wordmark">Voka</span>
   </div>;
 }
 
@@ -34,7 +33,7 @@ function AuthForm({ language }: { language: Language }) {
     if (screen === "reset") void authManager.resetPassword(password);
   };
   return (
-    <Card>
+    <Card className="v-auth-card">
       <CardHeader>
         {state.adding && <Button variant="ghost" className="mb-2 w-fit" onClick={() => authManager.cancelAdding()}><ArrowLeft size={16}/> {t.back}</Button>}
         <CardTitle>{screen === "login" ? t.signIn : screen === "register" ? t.createTitle : screen === "forgot" ? t.forgotTitle : t.resetTitle}</CardTitle>
@@ -45,18 +44,18 @@ function AuthForm({ language }: { language: Language }) {
           {screen === "register" && <div className="space-y-1.5"><Label htmlFor="name">{t.name}</Label><Input id="name" autoComplete="name" required value={name} onChange={e => setName(e.target.value)}/></div>}
           {screen !== "reset" && <div className="space-y-1.5"><Label htmlFor="email">{t.email}</Label><Input id="email" type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)}/></div>}
           {screen !== "forgot" && <div className="space-y-1.5"><Label htmlFor="password">{screen === "reset" ? t.newPassword : t.password}</Label><Input id="password" type="password" autoComplete={screen === "login" ? "current-password" : "new-password"} minLength={6} required value={password} onChange={e => setPassword(e.target.value)}/></div>}
-          <Button className="w-full" disabled={state.busy || !isConfigured} type="submit">{state.busy ? t.waiting : screen === "login" ? t.signIn : screen === "register" ? t.create : screen === "forgot" ? t.sendReset : t.savePassword}</Button>
+          <Button className="v-auth-primary w-full" disabled={state.busy || !isConfigured} type="submit">{state.busy ? t.waiting : screen === "login" ? t.signIn : screen === "register" ? t.create : screen === "forgot" ? t.sendReset : t.savePassword}</Button>
         </form>
         {(screen === "login" || screen === "register") && <>
           <div className="relative my-6 text-center text-xs text-stone-400 before:absolute before:inset-x-0 before:top-1/2 before:border-t before:border-stone-200"><span className="relative bg-white px-3">{t.continueWith}</span></div>
           <div className={googleEnabled ? "grid grid-cols-2 gap-3" : "grid grid-cols-1 gap-3"}>
-            <Button variant="outline" disabled={state.busy || !isConfigured} onClick={() => void authManager.oauth("apple")}>Apple</Button>
-            {googleEnabled && <Button variant="outline" disabled={state.busy || !isConfigured} onClick={() => void authManager.oauth("google")}>Google</Button>}
+            <Button className="v-auth-provider" variant="outline" disabled={state.busy || !isConfigured} onClick={() => void authManager.oauth("apple")}>Apple</Button>
+            {googleEnabled && <Button className="v-auth-provider" variant="outline" disabled={state.busy || !isConfigured} onClick={() => void authManager.oauth("google")}>Google</Button>}
           </div>
         </>}
         <div className="mt-6 flex flex-wrap justify-center gap-3 text-sm">
-          {screen === "login" && <><button type="button" className="font-medium text-green-800 underline" onClick={() => authManager.setScreen("register")}>{t.register}</button><button type="button" className="font-medium text-green-800 underline" onClick={() => authManager.setScreen("forgot")}>{t.forgot}</button></>}
-          {(screen === "register" || screen === "forgot") && <button type="button" className="font-medium text-green-800 underline" onClick={() => authManager.setScreen("login")}>{t.backSignIn}</button>}
+          {screen === "login" && <><button type="button" className="v-auth-text-link" onClick={() => authManager.setScreen("register")}>{t.register}</button><button type="button" className="v-auth-text-link" onClick={() => authManager.setScreen("forgot")}>{t.forgot}</button></>}
+          {(screen === "register" || screen === "forgot") && <button type="button" className="v-auth-text-link" onClick={() => authManager.setScreen("login")}>{t.backSignIn}</button>}
         </div>
       </CardContent>
     </Card>
@@ -127,7 +126,7 @@ export default function App() {
   const user = authManager.activeUser;
   const showAuth = state.adding || !user || state.screen === "reset";
   useEffect(() => { setProfileOpen(false); }, [user?.id]);
-  return <>{!state.loading && !showAuth && !profileOpen ? <VokaApp key={user.id} language={language} onProfile={() => setProfileOpen(true)}/> : <main className="safe-top safe-bottom mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 sm:px-6">
+  return <>{!state.loading && !showAuth && !profileOpen ? <VokaApp key={user.id} language={language} onProfile={() => setProfileOpen(true)}/> : <main className="v-auth-shell safe-top safe-bottom mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 sm:px-6">
     {profileOpen && !showAuth && <Button variant="ghost" className="mb-3 w-fit" onClick={() => setProfileOpen(false)}><ArrowLeft size={16}/> Voka</Button>}
     <Brand/>
     {!isConfigured && <div role="alert" className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">{t.config}</div>}
