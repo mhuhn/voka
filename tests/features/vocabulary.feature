@@ -34,3 +34,14 @@ Feature: Vocabulary lists
     And I open the irregular verbs list
     Then I can open the card editor without editing progress
     And the phone card editor stands alone with a floating star
+
+  Scenario: iPad landscape shows subject lists, cards and editor in three columns
+    Given I open the Voka app
+    When I sign in as "alice@example.test" with password "correct-password"
+    And I return to vocabulary home
+    And I switch to iPad landscape width
+    And I open the English subject
+    And I open the irregular verbs list
+    Then the list detail is beside the complete subject list overview
+    When I can open the card editor without editing progress
+    Then the card editor occupies a third column
