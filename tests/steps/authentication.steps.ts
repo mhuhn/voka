@@ -61,6 +61,7 @@ When("I switch to {string}", async function (this: VokaWorld, email: string) {
 
 When("I reload the app", async function (this: VokaWorld) {
   await this.page.reload();
+  await this.page.locator(".v-floats button").last().click();
   await expect(this.page.getByRole("heading", { name: "My profile" })).toBeVisible();
 });
 
