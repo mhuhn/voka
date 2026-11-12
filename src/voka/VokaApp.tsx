@@ -17,6 +17,21 @@ const supplemental: Partial<Record<Language,Words>> = {
  da:{mySubjects:"Mine fag",createList:"Opret liste",addCard:"Tilføj kort",saveCard:"Gem kort",saveList:"Gem liste",empty:"Ingen lister endnu",lists:"Lister",learn:"Lær",question:"Spørgsmål",answer:"Svar",marked:"Markeret",markedOnly:"Kun markerede",unseen:"Vis ikke-lærte",showAnswers:"Vis svar",alpha:"Alfabetisk",points:"Efter point",settings:"Indstillinger",search:"Søg",statistics:"Statistik",manage:"Administrer fag",cancel:"Annuller",save:"Gem",delete:"Slet",edit:"Rediger",title:"Titel",subject:"Fag",tags:"Tags",groupName:"Gruppenavn",addGroup:"Tilføj gruppe",addSubject:"Tilføj fag"},
  it:{mySubjects:"Le mie materie",createList:"Crea lista",addCard:"Aggiungi scheda",saveCard:"Salva scheda",saveList:"Salva lista",empty:"Nessuna lista",lists:"Liste",learn:"Impara",question:"Domanda",answer:"Risposta",marked:"Preferita",markedOnly:"Solo preferite",unseen:"Mostra non apprese",showAnswers:"Mostra risposte",alpha:"Alfabetico",points:"Per punti",settings:"Impostazioni",search:"Cerca",statistics:"Statistiche",manage:"Gestisci materie",cancel:"Annulla",save:"Salva",delete:"Elimina",edit:"Modifica",title:"Titolo",subject:"Materia",tags:"Tag",groupName:"Nome gruppo",addGroup:"Aggiungi gruppo",addSubject:"Aggiungi materia"}
 };
+
+Object.assign(supplemental.fr!,{
+ emptyInfo:"Créez votre première liste de vocabulaire et apprenez avec des fiches numériques.",groups:"Groupes et matières",addTag:"Ajouter un tag",questionLabel:"Intitulé de la question",answerLabel:"Intitulé de la réponse",both:"Apprendre dans les deux sens",bothInfo:"Les cartes seront interrogées dans les deux sens.",sorting:"Trier",progress:"Progression",cards:"Cartes",noCards:"Aucune carte",noMatching:"Aucune carte ne correspond aux filtres",listInfo:"Propriétés de la liste",learning:"Apprendre",groupName:"Nom du groupe",emoji:"Émoji",confirmDelete:"Supprimer également le contenu associé ?",noSubject:"Ajoutez d'abord une matière.",editCard:"Modifier la carte",editList:"Modifier la liste",updated:"Dernière utilisation",total:"Listes",automatic:"Les points (0–3) sont gérés automatiquement pendant l'apprentissage.",profile:"Profil",loading:"Chargement des listes…",chooseSubject:"Choisir une matière",newList:"Nouvelle liste",newCard:"Nouvelle carte",create:"Créer",starred:"Favoris",none:"Aucune liste dans cette matière",markedOnly:"Seulement les favorites",unseen:"Afficher les non apprises",showAnswers:"Afficher les réponses",addGroup:"Ajouter un groupe",addSubject:"Ajouter une matière",marked:"Favorite",saveList:"Enregistrer la liste",saveCard:"Enregistrer la carte"
+});
+Object.assign(supplemental.nl!,{
+ emptyInfo:"Maak je eerste woordenlijst en leer met digitale flashcards.",groups:"Vakgroepen en vakken",addTag:"Tag toevoegen",questionLabel:"Vraaglabel",answerLabel:"Antwoordlabel",both:"In beide richtingen leren",bothInfo:"Kaarten worden in beide richtingen gevraagd.",sorting:"Sorteren",progress:"Voortgang",cards:"Kaarten",noCards:"Nog geen kaarten",noMatching:"Geen kaarten voldoen aan de filters",listInfo:"Lijsteigenschappen",learning:"Leren",emoji:"Emoji",confirmDelete:"Ook alle bijbehorende inhoud verwijderen?",noSubject:"Voeg eerst een vak toe.",editCard:"Kaart bewerken",editList:"Lijst bewerken",updated:"Laatst gebruikt",total:"Lijsten",automatic:"Leerpunten (0–3) worden automatisch bijgewerkt tijdens het leren.",profile:"Profiel",loading:"Lijsten laden…",chooseSubject:"Kies een vak",newList:"Nieuwe lijst",newCard:"Nieuwe kaart",create:"Aanmaken",starred:"Gemarkeerd",none:"Geen lijsten in dit vak"
+});
+Object.assign(supplemental.da!,{
+ emptyInfo:"Opret din første ordliste, og lær med digitale kort.",groups:"Faggrupper og fag",addTag:"Tilføj tag",questionLabel:"Spørgsmålslabel",answerLabel:"Svarlabel",both:"Lær i begge retninger",bothInfo:"Kortene spørges i begge retninger.",sorting:"Sortér",progress:"Fremskridt",cards:"Kort",noCards:"Ingen kort endnu",noMatching:"Ingen kort matcher filtrene",listInfo:"Listeegenskaber",learning:"Lær",emoji:"Emoji",confirmDelete:"Slet også alt tilhørende indhold?",noSubject:"Tilføj et fag først.",editCard:"Rediger kort",editList:"Rediger liste",updated:"Sidst brugt",total:"Lister",automatic:"Læringspoint (0–3) opdateres automatisk under læring.",profile:"Profil",loading:"Indlæser lister…",chooseSubject:"Vælg fag",newList:"Ny liste",newCard:"Nyt kort",create:"Opret",starred:"Markerede",none:"Ingen lister i dette fag"
+});
+Object.assign(supplemental.it!,{
+ emptyInfo:"Crea il tuo primo elenco di vocaboli e studia con le schede digitali.",groups:"Gruppi e materie",addTag:"Aggiungi tag",questionLabel:"Etichetta domanda",answerLabel:"Etichetta risposta",both:"Studia in entrambe le direzioni",bothInfo:"Le schede vengono proposte in entrambe le direzioni.",sorting:"Ordina",progress:"Progresso",cards:"Schede",noCards:"Nessuna scheda",noMatching:"Nessuna scheda corrisponde ai filtri",listInfo:"Proprietà della lista",learning:"Impara",emoji:"Emoji",confirmDelete:"Eliminare anche tutti i contenuti associati?",noSubject:"Aggiungi prima una materia.",editCard:"Modifica scheda",editList:"Modifica lista",updated:"Ultimo utilizzo",total:"Liste",automatic:"I punti (0–3) vengono aggiornati automaticamente durante lo studio.",profile:"Profilo",loading:"Caricamento liste…",chooseSubject:"Scegli materia",newList:"Nuova lista",newCard:"Nuova scheda",create:"Crea",starred:"Preferite",none:"Nessuna lista in questa materia"
+});
+
+const globalLabels: Partial<Record<Language,Words>> = {de:{moreSubjects:"weitere Fächer",notifications:"Benachrichtigungen",navigation:"Navigation"},en:{moreSubjects:"more subjects",notifications:"Notifications",navigation:"Navigation"},fr:{moreSubjects:"autres matières",notifications:"Notifications",navigation:"Navigation"},nl:{moreSubjects:"andere vakken",notifications:"Meldingen",navigation:"Navigatie"},da:{moreSubjects:"flere fag",notifications:"Notifikationer",navigation:"Navigation"},it:{moreSubjects:"altre materie",notifications:"Notifiche",navigation:"Navigazione"}};
 function IconButton({onClick,children,label}:{onClick:()=>void;children:React.ReactNode;label:string}) {
  return <button className="v-icon-button" type="button" aria-label={label} title={label} onClick={onClick}>{children}</button>;
 }
@@ -26,7 +41,7 @@ function Toggle({label,value,onChange}:{label:string;value:boolean;onChange:(nex
 const newListValue=(subject_id:string):ListInput=>({subject_id,title:"",tags:[],question_label:"Frage",answer_label:"Antwort",learn_both_directions:false});
 const stamp=(time:number,language:Language)=>time?new Date(time).toLocaleDateString(language==="de"?"de-DE":language,{day:"numeric",month:"short"}):"–";
 export default function VokaApp({language,onProfile}:{language:Language;onProfile:()=>void}) {
- const t=(key:string)=>supplemental[language]?.[key]||translations[language]?.[key]||translations.en[key]||key;
+ const t=(key:string)=>globalLabels[language]?.[key]||supplemental[language]?.[key]||translations[language]?.[key]||translations.en[key]||key;
  const [data,setData]=useState<VokaData>(emptyData);
  const [loading,setLoading]=useState(true),[error,setError]=useState("");
  const [screen,setScreen]=useState<Screen>("home");
@@ -54,7 +69,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const run=async(fn:()=>Promise<void>)=>{setWorking(true);setError("");try{await fn();await refresh()}catch(e){setError(e instanceof Error?e.message:String(e))}finally{setWorking(false)}};
  const back=()=>{if(screen==="cardForm"){setSelectedCard(null);setScreen("list");}else if(screen==="listForm")setScreen(listEditing?"list":selectedSubject?"subject":"home");else if(screen==="list")setScreen("subject");else if(screen==="subject"||screen==="manage")setScreen("home");else setScreen("home")};
  const openList=(id:string)=>{setSelectedList(id);setShowAnswers(false);setMarkedOnly(false);setUnlearnedOnly(false);setSort("alpha");setSelectedCard(null);setScreen("list")};
- const newList=(subjectId=selectedSubject||data.subjects[0]?.id||"")=>{setListEditing(null);setDraftList(newListValue(subjectId));setTagText("");setScreen("listForm")};
+ const newList=(subjectId=selectedSubject||data.subjects[0]?.id||"")=>{setListEditing(null);setDraftList({...newListValue(subjectId),question_label:t("question"),answer_label:t("answer")});setTagText("");setScreen("listForm")};
  const editList=(l:VokaList)=>{setSelectedList(l.id);setListEditing(l.id);setDraftList({subject_id:l.subject_id,title:l.title,tags:[...l.tags],question_label:l.question_label,answer_label:l.answer_label,learn_both_directions:l.learn_both_directions});setTagText("");setScreen("listForm")};
  const openCard=(card?:VokaCard)=>{setSelectedCard(card?.id||null);setDraftCard({question:card?.question||"",answer:card?.answer||"",marked:card?.marked||false});setScreen("cardForm")};
  const saveListForm=(e:FormEvent)=>{e.preventDefault();void run(async()=>{const id=await saveList({...draftList,tags:[...new Set([...draftList.tags,...tagText.split(",").map(x=>x.trim()).filter(Boolean)])]},listEditing||undefined);setSelectedSubject(draftList.subject_id);setSelectedList(id);setScreen("list");setListEditing(null);})};
@@ -64,7 +79,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const saveManagement=(e:FormEvent)=>{e.preventDefault();void run(async()=>{if(manageType==="group"){if(manageId)await updateGroup(manageId,manageTitle.trim());else await insertGroup(manageTitle.trim())}else{if(manageId)await updateSubject(manageId,manageTitle.trim(),manageEmoji,manageGroup);else await insertSubject(manageGroup,manageTitle.trim(),manageEmoji)}setScreen("home")})};
  const listCount=(subjectId:string)=>data.lists.filter(l=>l.subject_id===subjectId).length;
  const selectedGroupCount=(groupId:string)=>data.subjects.filter(s=>s.group_id===groupId).length;
- const actions=<div className="v-floats"><IconButton label="Benachrichtigungen" onClick={()=>{}}><Bell size={19}/></IconButton><IconButton label={t("profile")} onClick={onProfile}><CircleUserRound size={20}/></IconButton></div>;
+ const actions=<div className="v-floats"><IconButton label={t("notifications")} onClick={()=>{}}><Bell size={19}/></IconButton><IconButton label={t("profile")} onClick={onProfile}><CircleUserRound size={20}/></IconButton></div>;
  return <div className="v-app">
   {actions}
   <div className="v-content">
@@ -83,7 +98,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
      const subjects=[...data.subjects.filter(s=>s.group_id===g.id)].sort((a,b)=>subjectUsage(data,b.id)-subjectUsage(data,a.id)||a.title.localeCompare(b.title));
      return <section className="v-group" key={g.id}><div className="v-group-head"><strong>{g.title}</strong><small>{t("updated")}: {stamp(groupUsage(data,g.id),language)}</small><button aria-label={t("edit")+" "+g.title} onClick={()=>startManage("group",g)}><Pencil size={14}/></button></div>
       <div className="v-subject-scroll">{subjects.map(s=><button className="v-subject-row" key={s.id} onClick={()=>{setSelectedSubject(s.id);setScreen("subject")}}><span className="v-emoji">{s.emoji}</span><span className="v-subject-label"><b>{s.title}</b><small>{listCount(s.id)} {t("lists")}</small></span><ChevronRight size={18}/></button>)}</div>
-      {subjects.length>3&&<p className="v-scrollhint">{selectedGroupCount(g.id)-3} weitere Fächer · ↕</p>}
+      {subjects.length>3&&<p className="v-scrollhint">{selectedGroupCount(g.id)-3} {t("moreSubjects")} · ↕</p>}
      </section>
     })}</div>
     <button className="v-text-button" onClick={()=>startManage("group")}><Plus size={16}/>{t("addGroup")}</button>
@@ -140,7 +155,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
    </div>}
    </>}
   </div>
-  <nav className="v-bottom-nav" aria-label="Navigation">
+  <nav className="v-bottom-nav" aria-label={t("navigation")}>
    <button className="active" type="button" onClick={()=>setScreen("home")}><Home size={21} fill="currentColor"/><span>Voka</span></button>
    <button type="button" onClick={()=>{}}><Search size={21}/><span>{t("search")}</span></button>
    <button type="button" onClick={()=>{}}><BarChart3 size={21}/><span>{t("statistics")}</span></button>
