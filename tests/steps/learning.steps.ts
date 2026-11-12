@@ -14,7 +14,7 @@ When("I start learning the open list",async function(this:VokaWorld){
     new URL(req.url()).pathname==="/rest/v1/rpc/voka_begin_learning"
     && req.method()==="POST");
   await this.page.getByRole("button",{name:"Learn",exact:true}).click();
-  expect((await request).postDataJSON()).toEqual({p_list_id:listId});
+  expect((await request).postDataJSON()).toMatchObject({p_list_id:listId,p_timezone:expect.any(String)});
   await expect(this.page.locator(".v-learning")).toBeVisible();
 });
 
@@ -105,4 +105,26 @@ Then("stopping early retains the last result and leaves other cards due",async f
   await expect(this.page.getByRole("button",{name:"Learn",exact:true})).toBeEnabled();
   await this.page.getByRole("button",{name:"Learn",exact:true}).click();
   await expect(this.page.locator(".v-learning-front")).toContainText("be");
+});
+
+Then("the list waits until tomorrow after a one-position delay",async function(this:VokaWorld){
+  const button=this.page.getByRole("button",{name:"Paused until tomorrow"});
+  await expect(button).toBeDisabled();
+  await expect(this.page.locator(".v-list-detail-pane .v-progress")).toContainText("42 %");
+});
+
+When("I start the next permitted calendar-spaced round",async function(this:VokaWorld){
+  const start=this.page.waitForRequest(req=>new URL(req.url()).pathname==="/rest/v1/rpc/voka_begin_learning");
+  await this.page.getByRole("button",{name:"Learn",exact:true}).click();
+  const payload=(await start).postDataJSON() as {p_list_id:string;p_timezone:string};
+  expect(payload.p_list_id).toBe(listId);
+  expect(payload.p_timezone).toBe("UTC");
+  await expect(this.page.locator(".v-learning")).toBeVisible();
+});
+
+Then("the smallest active card position has been normalized to zero",async function(this:VokaWorld){
+  await expect(this.page.locator(".v-learning-front")).toContainText("go");
+  await expect(this.page.locator(".v-learning-session-name")).toContainText("1 of 1");
+  await this.page.getByRole("button",{name:"Finish learning"}).click();
+  await expect(this.page.locator(".v-learning")).toHaveCount(0);
 });
