@@ -130,8 +130,19 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const startManage=(type:"group"|"subject", item?:SubjectGroup|Subject, groupId?:string)=>{
   setManageType(type);setManageId(item?.id||null);setManageTitle(item?.title||"");
   setManageEmoji(item&&"emoji" in item?item.emoji:"📘");
+  setManageEmojiManual(Boolean(item&&"emoji" in item));
   setManageGroup(item&&"group_id" in item?item.group_id:groupId||data.groups[0]?.id||"");
   setError("");setManageModalOpen(true);
+ };
+ const suggestedEmoji=(title:string,groupId:string)=>
+   suggestSubjectEmoji(title,data.groups.find(g=>g.id===groupId)?.title||"");
+ const onManageTitleChange=(title:string)=>{
+   setManageTitle(title);
+   if(manageType==="subject"&&!manageEmojiManual)setManageEmoji(suggestedEmoji(title,manageGroup)||"📘");
+ };
+ const onManageGroupChange=(groupId:string)=>{
+   setManageGroup(groupId);
+   if(manageType==="subject"&&!manageEmojiManual)setManageEmoji(suggestedEmoji(manageTitle,groupId)||"📘");
  };
  const closeManageModal=()=>{if(!working)setManageModalOpen(false);};
  const runManage=async(task:()=>Promise<void>)=>{
@@ -262,10 +273,10 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
           <IconButton label={t("cancel")} onClick={closeManageModal}><X size={21}/></IconButton>
         </div>
         <form className="v-form v-manage-modal-form" onSubmit={saveManagement}>
-          <label>{manageType==="group"?t("groupName"):t("title")} *<input ref={manageInputRef} required maxLength={120} value={manageTitle} onChange={e=>setManageTitle(e.target.value)}/></label>
+          <label>{manageType==="group"?t("groupName"):t("title")} *<input ref={manageInputRef} required maxLength={120} value={manageTitle} onChange={e=>onManageTitleChange(e.target.value)}/></label>
           {manageType==="subject"&&<>
-            <label>{t("emoji")} *<input required maxLength={20} value={manageEmoji} onChange={e=>setManageEmoji(e.target.value)}/></label>
-            <label>{t("groups")} *<select required value={manageGroup} onChange={e=>setManageGroup(e.target.value)}>
+            <label>{t("emoji")} *<input required maxLength={20} value={manageEmoji} onChange={e=>{setManageEmojiManual(true);setManageEmoji(e.target.value)}}/></label>
+            <label>{t("groups")} *<select required value={manageGroup} onChange={e=>onManageGroupChange(e.target.value)}>
               {groups.map(g=><option key={g.id} value={g.id}>{g.title}</option>)}
             </select></label>
           </>}
