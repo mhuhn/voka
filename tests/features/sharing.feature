@@ -23,19 +23,19 @@ Feature: Share and import vocabulary lists
     Given I open the Voka app
     When I open a shared-list invitation
     Then the app requires sign-in before importing the shared list
-    When I sign in as "alice@example.test" with password "correct-password"
+    When I sign in to import as "alice@example.test" with password "correct-password"
     Then the shared-list import dialog appears with the source details
     And I can import the shared list with my chosen subject title and tags
 
   Scenario: Cancel a shared-list import
     Given I open the Voka app
     When I open a shared-list invitation
-    And I sign in as "alice@example.test" with password "correct-password"
+    And I sign in to import as "alice@example.test" with password "correct-password"
     Then the shared-list import dialog appears with the source details
     And canceling the shared-list import leaves my lists untouched
 
   Scenario: An invalid or deleted source list cannot be imported
     Given I open the Voka app
     When I open a link to a missing shared list
-    And I sign in as "alice@example.test" with password "correct-password"
+    And I sign in to import as "alice@example.test" with password "correct-password"
     Then an unknown list cannot be imported
