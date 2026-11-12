@@ -75,3 +75,53 @@
  .v-card-editor{background:transparent}
  .v-manage-link{color:#88bcff}
 }
+
+
+/* A subject workspace progressively reveals its list and then its card editor.
+   iPad landscape and desktop use three simultaneous panes; phones retain one screen. */
+.v-subject-workspace{min-width:0}
+.v-lists-pane,.v-list-detail-pane{min-width:0}
+.v-lists-pane .v-list-grid{display:grid;grid-template-columns:1fr;gap:9px}
+.v-lists-pane .v-list-row.selected{border-color:var(--v-blue);background:var(--v-soft)}
+.v-pane-list-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 16px}
+.v-pane-list-heading h2{font-size:19px;font-weight:800;min-width:0;overflow-wrap:anywhere}
+.v-pane-list-heading .v-heading-list-title{gap:7px}
+.v-direction-button{width:100%;min-height:44px;border:1px solid #bdcfe9;background:#fff;color:var(--v-navy);border-radius:10px;display:flex;align-items:center;gap:11px;padding:10px 12px;text-align:left;font-size:14px;font-weight:650;transition:background .18s,border-color .18s}
+.v-direction-button>span:nth-child(2){flex:1}
+.v-direction-button svg{flex-shrink:0}
+.v-direction-button.is-active{background:var(--v-soft);border-color:var(--v-blue);color:var(--v-blue)}
+.v-direction-check{display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1px solid #afbed9;color:white;background:transparent}
+.v-direction-button.is-active .v-direction-check{background:var(--v-blue);border-color:var(--v-blue)}
+@media(min-width:900px){
+ .v-subject-workspace{display:grid;align-items:start;gap:16px}
+ .v-subject-workspace.is-subject{grid-template-columns:minmax(240px,390px) minmax(0,1fr)}
+ .v-subject-workspace.is-list{grid-template-columns:minmax(220px,.8fr) minmax(0,1.8fr)}
+ .v-subject-workspace.is-card{grid-template-columns:minmax(185px,.65fr) minmax(280px,1.1fr) minmax(250px,1fr)}
+ .v-subject-workspace>.v-list-page{display:contents}
+ .v-lists-pane{padding:0 12px 12px 0;border-right:1px solid var(--v-line)}
+ .v-lists-pane .v-section-header h2{font-size:18px;margin:0}
+ .v-lists-pane .v-list-row{padding:11px;align-items:flex-start}
+ .v-lists-pane .v-list-row strong{overflow-wrap:anywhere;font-size:14px}
+ .v-lists-pane .v-list-row small{font-size:11px}
+ .v-list-detail-pane{padding:0 1px}
+ .v-subject-workspace .v-card-editor{position:static;padding:0 0 16px 16px;border-left:1px solid var(--v-line);background:transparent}
+ .v-subject-workspace .v-card-editor h2{display:block}
+ .v-subject-workspace .v-list-main{display:block}
+ .v-subject-workspace.is-card .v-card-editor .v-form{gap:14px}
+ .v-subject-workspace.is-card .v-card-editor textarea{min-height:90px}
+}
+@media(max-width:899px){
+ .v-subject-workspace{display:block}
+ .v-subject-workspace.is-list .v-lists-pane,
+ .v-subject-workspace.is-card .v-lists-pane{display:none}
+ .v-subject-workspace.is-card .v-list-detail-pane{display:none}
+ .v-subject-workspace.is-card .v-list-page{display:block}
+ .v-subject-workspace.is-card .v-card-editor{padding:0;border:0}
+ .v-subject-workspace.is-card .v-card-editor h2{display:none}
+ .v-subject-workspace .v-list-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr))}
+}
+@media(prefers-color-scheme:dark){
+ .v-direction-button{background:#15243b;border-color:var(--v-line)}
+ .v-direction-button.is-active{background:#203b60;color:#b7d9ff;border-color:#76a8ff}
+ .v-direction-button.is-active .v-direction-check{background:#1d67c8;border-color:#1d67c8}
+}
