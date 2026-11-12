@@ -59,3 +59,37 @@ body:has(.v-auth-shell){background:radial-gradient(ellipse at 4% 0%,#dbe9ff 0,tr
  .v-auth-card .relative.my-6>span{background:#192742;color:#a7b8d6}
  .v-auth-text-link{color:#8abaff}
 }
+
+
+/* Profile uses the same navy/blue vocabulary design, preserving user colors. */
+.v-profile-card{background:#fff;border:1px solid #dbe4f2;border-radius:20px;box-shadow:0 5px 21px #1a366114;color:#0b1d46}
+.v-profile-card [data-slot="card-title"]{color:#0b1d46;font-size:21px;font-weight:800}
+.v-profile-card [data-slot="card-description"]{color:#60718f}
+.v-profile-card [data-slot="card-content"]>div p:first-child{color:#677998}
+.v-profile-card [data-slot="card-content"]>div p:last-child{color:#0b1d46}
+.v-profile-card .v-profile-action{border:1px solid #c3d5ef;background:#f8fbff;color:#1053b1;border-radius:11px}
+.v-profile-card .v-profile-action:hover{background:#e7f1ff}
+.v-profile-card button:focus-visible{outline:2px solid #0864f6;outline-offset:3px}
+.v-profile-card [data-slot="card-content"]>div.rounded-lg{border-color:#dbe4f2;border-radius:12px}
+.v-profile-card [data-slot="card-content"]>div.rounded-lg:has(button[aria-label^="Switch to"]):hover{background:#f2f7ff}
+.v-profile-back{color:#1355b3;border-radius:10px}
+.v-profile-back:hover{background:#e7f1ff}
+@media(min-width:900px) and (pointer:coarse){
+ .v-auth-shell{max-width:660px}
+ .v-profile-card [data-slot="card-title"]{font-size:25px}
+ .v-profile-card [data-slot="card-description"]{font-size:16px}
+ .v-profile-card [data-slot="card-content"]{font-size:17px}
+ .v-profile-card [data-slot="card-content"] p.text-xs{font-size:14px}
+ .v-profile-card button[data-slot="button"]{min-height:52px;font-size:16px}
+ .v-profile-avatar{width:70px;height:70px}
+}
+@media(prefers-color-scheme:dark){
+ .v-profile-card{background:#192742;border-color:#34466c;color:#e9f1ff}
+ .v-profile-card [data-slot="card-title"],.v-profile-card [data-slot="card-content"]>div p:last-child{color:#e9f1ff}
+ .v-profile-card [data-slot="card-description"],.v-profile-card [data-slot="card-content"]>div p:first-child{color:#adbfda}
+ .v-profile-card .v-profile-action{background:#213658;color:#b9d8ff;border-color:#48638d}
+ .v-profile-card .v-profile-action:hover{background:#284574}
+ .v-profile-card [data-slot="card-content"]>div.rounded-lg{border-color:#34466c}
+ .v-profile-back{color:#9dc8ff}
+ .v-profile-back:hover{background:#253d61}
+}
