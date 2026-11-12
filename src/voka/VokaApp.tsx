@@ -135,6 +135,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
     <button className="v-primary" onClick={()=>newList(selectedSubject||"")}><Plus size={18}/>{t("createList")}</button>
     </section>
     {(screen==="list"||screen==="cardForm")&&currentList&&<div className={"v-list-page"+(screen==="cardForm"?" v-list-page-editing":"")}>
+     <section className="v-list-detail-pane">
      {wide&&<div className="v-pane-list-heading"><h2>{listTitle}</h2><IconButton label={t("editList")} onClick={()=>editList(currentList)}><Pencil size={18}/></IconButton></div>}
     <div className="v-list-main">
      {currentList.tags.length>0&&<div className="v-list-summary"><div className="v-tag-row">{currentList.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div>}
@@ -150,6 +151,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
      {listCards.length===0&&<p className="v-empty">{data.cards.some(c=>c.list_id===selectedList)?t("noMatching"):t("noCards")}</p>}
      <button className="v-primary v-add-card" onClick={()=>openCard()}><Plus size={18}/>{t("addCard")}</button>
     </div>
+     </section>
     {screen==="cardForm"&&<aside className="v-card-editor">
       <h2>{selectedCard?t("editCard"):t("addCard")}</h2>
       <form className="v-form" onSubmit={saveCardForm}>
