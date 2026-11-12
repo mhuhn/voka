@@ -24,5 +24,5 @@ Feature: Voka card entry and compact sharing controls
     And I switch to iPad landscape width
     And I open the English subject
     And I open the irregular verbs list
-    And I open the first card
+    And I open the first card for tablet navigation
     Then the tablet overview back arrow returns straight to My subjects
