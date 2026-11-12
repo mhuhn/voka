@@ -346,7 +346,10 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
      {wide&&<div className="v-pane-list-heading"><h2>{listTitle}</h2><IconButton label={t("editList")} onClick={()=>editList(currentList)}><Pencil size={18}/></IconButton></div>}
     <div className="v-list-main">
      {currentList.tags.length>0&&<div className="v-list-summary"><div className="v-tag-row">{currentList.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div>}
-      <div className="v-list-actions"><button className="v-primary" type="button" title={t("learn")} onClick={()=>{}}><span>▶</span> {t("learn")}</button><div className="v-progress"><BarChart3 size={21}/><span>{t("progress")}<b>{data.cards.filter(c=>c.list_id===selectedList).length?Math.round(data.cards.filter(c=>c.list_id===selectedList).reduce((sum,c)=>sum+c.success_count,0)/(data.cards.filter(c=>c.list_id===selectedList).length*3)*100):0} %</b></span></div></div>
+      <div className="v-list-actions"><button className="v-primary" type="button" title={t("learn")} onClick={()=>{}}><span>▶</span> {t("learn")}</button><div className="v-progress"><BarChart3 size={21}/><span>{t("progress")}<b>{data.cards.filter(c=>c.list_id===selectedList).length?Math.round(data.cards.filter(c=>c.list_id===selectedList).reduce((sum,c)=>sum+c.success_count,0)/(data.cards.filter(c=>c.list_id===selectedList).length*3)*100):0} %</b></span></div>
+      <button type="button" className="v-outline v-share-button" onClick={()=>void shareSelectedList()}><Share2 size={19}/>{t("share")}</button>
+     </div>
+     {shareStatus&&<p className="v-share-status" role="status">{shareStatus}</p>}
      <div className="v-filter-area">
        <Toggle label={answerVisibilityLabel} value={showAnswers} onChange={setShowAnswers}/>
        <Toggle label={t("markedOnly")} value={markedOnly} onChange={setMarkedOnly}/>
@@ -422,6 +425,41 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
       </div>
     </div>}
    </>}
+   {incomingSharedId&&<div className="v-import-backdrop">
+      <section className="v-import-modal" role="dialog" aria-modal="true" aria-labelledby="v-import-heading">
+       <div className="v-modal-header">
+        <h2 id="v-import-heading">{t("importHeading")}</h2>
+        <button type="button" className="v-icon-button" aria-label={t("cancel")} onClick={dismissSharedImport} disabled={importBusy}><X size={22}/></button>
+       </div>
+       {sharedLoading&&<p role="status">{t("importLoading")}</p>}
+       {sharedError&&<p role="alert" className="v-error">{sharedError}</p>}
+       {!sharedLoading&&sharedPreview&&<form className="v-form" onSubmit={submitSharedImport}>
+        <p className="v-share-intro">{t("importDetails")}</p>
+        <div className="v-import-source"><strong>{sharedPreview.title}</strong><span>{sharedPreview.cards.length} {t("importCards")}</span></div>
+        <label>{t("importSubject")} *
+         <select required value={importSubject} onChange={e=>setImportSubject(e.target.value)}>
+          <option value="" disabled>{t("chooseSubject")}</option>
+          {groups.map(g=><optgroup key={g.id} label={g.title}>
+           {data.subjects.filter(sub=>sub.group_id===g.id).map(sub=><option key={sub.id} value={sub.id}>{sub.emoji} {sub.title}</option>)}
+          </optgroup>)}
+         </select>
+        </label>
+        <label>{t("importTitle")} *<input required maxLength={200} value={importTitle} onChange={e=>setImportTitle(e.target.value)}/></label>
+        <label>{t("importTags")}<input value={importTagsText} onChange={e=>setImportTagsText(e.target.value)}/></label>
+        <p className="v-import-reset">{t("importReset")}</p>
+        <button type="submit" className="v-primary" disabled={importBusy||!importSubject||!importTitle.trim()}>{importBusy?t("importLoading"):t("importNow")}</button>
+       </form>}
+       <button type="button" className="v-outline v-import-cancel" disabled={importBusy} onClick={dismissSharedImport}>{t("cancel")}</button>
+      </section>
+     </div>}
+     {shareFallbackUrl&&<div className="v-import-backdrop">
+      <section className="v-import-modal v-share-fallback" role="dialog" aria-modal="true" aria-label={t("share")}>
+       <h2>{t("shareFallback")}</h2>
+       <input aria-label={t("shareFallback")} readOnly value={shareFallbackUrl} onFocus={e=>e.currentTarget.select()}/>
+       <button className="v-primary" type="button" onClick={()=>{void navigator.clipboard?.writeText(shareFallbackUrl).then(()=>{setShareStatus(t("shareCopied"));setShareFallbackUrl(null)}).catch(()=>{})}}>{t("shareCopy")}</button>
+       <button className="v-outline" type="button" onClick={()=>setShareFallbackUrl(null)}>{t("cancel")}</button>
+      </section>
+     </div>}
   </div>
   <nav className="v-bottom-nav" aria-label={t("navigation")}>
    <button className="active" type="button" onClick={()=>setScreen("home")}><Home size={21} fill="currentColor"/><span>Voka</span></button>
