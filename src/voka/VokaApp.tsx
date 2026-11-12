@@ -116,10 +116,10 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
     {!data.lists.some(l=>l.subject_id===selectedSubject)&&<div className="v-empty">{t("none")}</div>}
     <button className="v-primary" onClick={()=>newList(selectedSubject||"")}><Plus size={18}/>{t("createList")}</button>
    </div>}
-   {screen==="list"&&currentList&&<div className="v-list-page">
+   {(screen==="list"||screen==="cardForm")&&currentList&&<div className={"v-list-page"+(screen==="cardForm"?" v-list-page-editing":"")}>
     <div className="v-list-main">
-     <div className="v-list-summary"><div className="v-list-identity"><span className="v-emoji big">{data.subjects.find(s=>s.id===currentList.subject_id)?.emoji||"📘"}</span><div><h2>{currentList.title}</h2><small>{data.subjects.find(s=>s.id===currentList.subject_id)?.title}</small></div></div><div className="v-tag-row">{currentList.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div>
-     <div className="v-list-actions"><button className="v-primary" type="button" title={t("learn")} onClick={()=>{}}><span>▶</span> {t("learn")}</button><div className="v-progress"><BarChart3 size={21}/><span>{t("progress")}<b>{data.cards.filter(c=>c.list_id===selectedList).length?Math.round(data.cards.filter(c=>c.list_id===selectedList).reduce((sum,c)=>sum+c.success_count,0)/(data.cards.filter(c=>c.list_id===selectedList).length*3)*100):0} %</b></span></div></div>
+     {currentList.tags.length>0&&<div className="v-list-summary"><div className="v-tag-row">{currentList.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div>}
+      <div className="v-list-actions"><button className="v-primary" type="button" title={t("learn")} onClick={()=>{}}><span>▶</span> {t("learn")}</button><div className="v-progress"><BarChart3 size={21}/><span>{t("progress")}<b>{data.cards.filter(c=>c.list_id===selectedList).length?Math.round(data.cards.filter(c=>c.list_id===selectedList).reduce((sum,c)=>sum+c.success_count,0)/(data.cards.filter(c=>c.list_id===selectedList).length*3)*100):0} %</b></span></div></div>
      <div className="v-filter-area">
        <Toggle label={t("showAnswers")} value={showAnswers} onChange={setShowAnswers}/>
        <Toggle label={t("markedOnly")} value={markedOnly} onChange={setMarkedOnly}/>
@@ -131,7 +131,15 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
      {listCards.length===0&&<p className="v-empty">{data.cards.some(c=>c.list_id===selectedList)?t("noMatching"):t("noCards")}</p>}
      <button className="v-primary v-add-card" onClick={()=>openCard()}><Plus size={18}/>{t("addCard")}</button>
     </div>
-    <aside className="v-side-info"><div className="v-side-panel"><h2>{t("listInfo")}</h2><p><b>{t("questionLabel")}:</b> {currentList.question_label}</p><p><b>{t("answerLabel")}:</b> {currentList.answer_label}</p><p><b>{t("both")}:</b> {currentList.learn_both_directions?"✓":"–"}</p><button className="v-outline" onClick={()=>editList(currentList)}><Pencil size={15}/>{t("editList")}</button></div><div className="v-info"><BarChart3 size={21}/><p>{t("automatic")}</p></div></aside>
+    {screen==="cardForm"&&<aside className="v-card-editor">
+      <h2>{selectedCard?t("editCard"):t("addCard")}</h2>
+      <form className="v-form" onSubmit={saveCardForm}>
+       <label>{t("question")} *<textarea required rows={3} value={draftCard.question} onChange={e=>setDraftCard({...draftCard,question:e.target.value})}/></label>
+       <label>{t("answer")} *<textarea required rows={3} value={draftCard.answer} onChange={e=>setDraftCard({...draftCard,answer:e.target.value})}/></label>
+       <button className="v-primary" type="submit" disabled={working}>{t("saveCard")}</button>
+       {selectedCard&&<button type="button" className="v-danger" onClick={()=>confirmRemove(()=>deleteCard(selectedCard),"list")}><Trash2 size={16}/>{t("delete")}</button>}
+      </form>
+     </aside>}
    </div>}
    {screen==="listForm"&&<form className="v-form" onSubmit={saveListForm}>
      <label>{t("title")} *<input required maxLength={200} value={draftList.title} onChange={e=>setDraftList({...draftList,title:e.target.value})}/></label>
@@ -143,15 +151,6 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
      {listEditing&&<button type="button" className="v-danger" onClick={()=>confirmRemove(()=>deleteList(listEditing),"subject")}><Trash2 size={16}/>{t("delete")}</button>}
      {!draftList.subject_id&&<p className="v-help">{t("noSubject")} <button type="button" className="v-text-button" onClick={()=>startManage("subject")}>{t("addSubject")}</button></p>}
    </form>}
-   {screen==="cardForm"&&<div className="v-edit-layout"><form className="v-form" onSubmit={saveCardForm}>
-     <label>{t("question")} *<textarea required rows={3} value={draftCard.question} onChange={e=>setDraftCard({...draftCard,question:e.target.value})}/></label>
-     <label>{t("answer")} *<textarea required rows={3} value={draftCard.answer} onChange={e=>setDraftCard({...draftCard,answer:e.target.value})}/></label>
-     <Toggle label={t("marked")} value={draftCard.marked} onChange={v=>setDraftCard({...draftCard,marked:v})}/>
-     <div className="v-info"><BarChart3 size={21}/><p>{t("automatic")}</p></div><button className="v-primary" type="submit" disabled={working}>{t("saveCard")}</button>
-     {selectedCard&&<button type="button" className="v-danger" onClick={()=>confirmRemove(()=>deleteCard(selectedCard),"list")}><Trash2 size={16}/>{t("delete")}</button>}
-    </form>
-    <aside className="v-side-cards"><h2>{currentList?.title}</h2>{data.cards.filter(c=>c.list_id===selectedList).sort((a,b)=>a.question.localeCompare(b.question)).map(c=><button className={"v-list-row "+(selectedCard===c.id?"selected":"")} key={c.id} onClick={()=>openCard(c)}>{c.question}<ChevronRight size={17}/></button>)}<button className="v-outline" onClick={()=>openCard()}><Plus size={15}/>{t("newCard")}</button></aside>
-   </div>}
    {screen==="manage"&&<div className="v-page v-manage"><h2>{t("groups")}</h2><div className="v-group-grid">{groups.map(g=><div className="v-group" key={g.id}><div className="v-group-head"><b>{g.title}</b><IconButton label={t("edit")} onClick={()=>startManage("group",g)}><Pencil size={17}/></IconButton></div>{data.subjects.filter(s=>s.group_id===g.id).map(s=><button className="v-subject-row" key={s.id} onClick={()=>startManage("subject",s)}><span>{s.emoji}</span><strong>{s.title}</strong><Pencil size={15}/></button>)}</div>)}</div>
      <form className="v-form v-manage-form" onSubmit={saveManagement}><div className="v-segments"><button type="button" className={manageType==="group"?"active":""} onClick={()=>startManage("group")}>{t("addGroup")}</button><button type="button" className={manageType==="subject"?"active":""} onClick={()=>startManage("subject")}>{t("addSubject")}</button></div>
        <label>{manageType==="group"?t("groupName"):t("title")} *<input required value={manageTitle} onChange={e=>setManageTitle(e.target.value)}/></label>
