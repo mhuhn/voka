@@ -356,3 +356,14 @@
 }
 @media(prefers-reduced-motion:reduce){.v-list-progress-track>span{transition:none}}
 @media(prefers-color-scheme:dark){.v-list-progress-track{background:#334a6c}}
+
+
+/* Share now lives in the list heading as a small circular action. */
+.v-detail-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-shrink:0}
+.v-detail-header-actions .v-icon-button{width:42px;height:42px;min-width:42px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;padding:0}
+.v-pane-list-heading{gap:12px}
+.v-pane-list-heading h2{min-width:0;flex:1;overflow-wrap:anywhere}
+@media(max-width:600px){.v-detail-header-actions .v-icon-button{width:43px;height:43px;min-width:43px}}
+@media(min-width:700px) and (pointer:coarse){
+ .v-detail-header-actions .v-icon-button{width:48px;height:48px;min-width:48px}
+}
