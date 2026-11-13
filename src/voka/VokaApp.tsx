@@ -111,6 +111,14 @@ Object.assign(supplemental.it!,{
  emptyInfo:"Crea il tuo primo elenco di vocaboli e studia con le schede digitali.",groups:"Gruppi e materie",addTag:"Aggiungi tag",questionLabel:"Etichetta domanda",answerLabel:"Etichetta risposta",both:"Studia in entrambe le direzioni",bothInfo:"Le schede vengono proposte in entrambe le direzioni.",sorting:"Ordina",progress:"Progresso",cards:"Schede",noCards:"Nessuna scheda",noMatching:"Nessuna scheda corrisponde ai filtri",listInfo:"Proprietà della lista",learning:"Impara",emoji:"Emoji",confirmDelete:"Eliminare anche tutti i contenuti associati?",noSubject:"Aggiungi prima una materia.",editCard:"Modifica scheda",editList:"Modifica lista",updated:"Ultimo utilizzo",total:"Liste",automatic:"I punti (0–4) vengono aggiornati automaticamente durante lo studio.",profile:"Profilo",loading:"Caricamento liste…",chooseSubject:"Scegli materia",newList:"Nuova lista",newCard:"Nuova scheda",create:"Crea",starred:"Preferite",none:"Nessuna lista in questa materia"
 });
 
+const directionWords: Record<Language,Record<string,string>>={
+ de:{reverseLevel:"Umgedrehte Abfragen",reverseInfo:"0 % = nur normale Abfragen. Höhere Stufen aktivieren eine eigene Rückwärts-Lernspur mit 1 bis 4 möglichen Punkten."},
+ en:{reverseLevel:"Reverse questions",reverseInfo:"0% = normal questions only. Higher levels add independent reverse learning with 1 to 4 possible points."},
+ fr:{reverseLevel:"Questions inversées",reverseInfo:"0 % = questions normales. Les autres niveaux ajoutent un apprentissage inverse distinct avec 1 à 4 points."},
+ nl:{reverseLevel:"Omgekeerde vragen",reverseInfo:"0% = alleen gewone vragen. Hogere standen activeren een apart leerspoor met 1 tot 4 punten."},
+ da:{reverseLevel:"Omvendte spørgsmål",reverseInfo:"0 % = kun almindelige spørgsmål. Højere trin tilføjer særskilt omvendt læring med 1 til 4 point."},
+ it:{reverseLevel:"Domande inverse",reverseInfo:"0% = solo domande normali. I livelli superiori aggiungono un percorso inverso con 1–4 punti."}
+};
 const globalLabels: Partial<Record<Language,Words>> = {de:{moreSubjects:"weitere Fächer",notifications:"Benachrichtigungen",navigation:"Navigation"},en:{moreSubjects:"more subjects",notifications:"Notifications",navigation:"Navigation"},fr:{moreSubjects:"autres matières",notifications:"Notifications",navigation:"Navigation"},nl:{moreSubjects:"andere vakken",notifications:"Meldingen",navigation:"Navigatie"},da:{moreSubjects:"flere fag",notifications:"Notifikationer",navigation:"Navigation"},it:{moreSubjects:"altre materie",notifications:"Notifiche",navigation:"Navigazione"}};
 function IconButton({onClick,children,label,style,className}:{onClick:()=>void;children:React.ReactNode;label:string;style?:React.CSSProperties;className?:string}) {
  return <button className={"v-icon-button"+(className?" "+className:"")} type="button" aria-label={label} title={label} style={style} onClick={onClick}>{children}</button>;
@@ -127,7 +135,7 @@ function languageSubject(data:VokaData,subjectId:string):Subject|undefined {
 }
 const stamp=(time:number,language:Language)=>time?new Date(time).toLocaleDateString(language==="de"?"de-DE":language,{day:"numeric",month:"short"}):"–";
 export default function VokaApp({language,onProfile}:{language:Language;onProfile:()=>void}) {
- const t=(key:string)=>learningButtonWords[language]?.[key]||sharingWords[language]?.[key]||globalLabels[language]?.[key]||supplemental[language]?.[key]||translations[language]?.[key]||translations.en[key]||key;
+ const t=(key:string)=>directionWords[language]?.[key]||learningButtonWords[language]?.[key]||sharingWords[language]?.[key]||globalLabels[language]?.[key]||supplemental[language]?.[key]||translations[language]?.[key]||translations.en[key]||key;
  const [data,setData]=useState<VokaData>(emptyData);
  const [loading,setLoading]=useState(true),[error,setError]=useState("");
  const [screen,setScreen]=useState<Screen>("home");
@@ -492,7 +500,8 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
        <div className="v-sort"><label>{t("sorting")}:</label><div className="v-segments"><button className={sort==="alpha"?"active":""} onClick={()=>setSort("alpha")}>{t("alpha")}</button><button className={sort==="points"?"active":""} onClick={()=>setSort("points")}>{t("points")}</button><button className={sort==="position"?"active":""} onClick={()=>setSort("position")}>{t("position")}</button></div></div>
      </div>
      <div className="v-list-count">{cardCount(listCards.length)}</div>
-     <div className="v-card-list">{listCards.map(c=><div key={c.id} className={"v-card-row "+(selectedCard===c.id?"selected":"")}><button className="v-card-star" aria-label={t("marked")} onClick={()=>void run(()=>markCard(c.id,!c.marked))}><Star size={19} fill={c.marked?"#ff9b00":"none"} stroke={c.marked?"#ff9b00":"currentColor"}/></button><button className="v-card-open" onClick={()=>openCard(c)}><span className="v-card-question">{c.question}{showAnswers&&<span className="v-card-answer">{c.answer}</span>}</span><span className="v-dots">{[0,1,2,3].map(n=><i key={n} className={n<c.success_count?"filled":""}/>)}</span><b>{c.success_count} P</b></button></div>)}</div>
+     <div className="v-card-list">{listCards.map(c=><div key={c.id} className={"v-card-row "+(selectedCard===c.id?"selected":"")}><button className="v-card-star" aria-label={t("marked")} onClick={()=>void run(()=>markCard(c.id,!c.marked))}><Star size={19} fill={c.marked?"#ff9b00":"none"} stroke={c.marked?"#ff9b00":"currentColor"}/></button><button className="v-card-open" onClick={()=>openCard(c)}><span className="v-card-question">{c.question}{showAnswers&&<span className="v-card-answer">{c.answer}</span>}</span><span className="v-score-pair"><span className="v-dots">{[0,1,2,3].map(n=><i key={n} className={n<c.success_count?"filled":""}/>)}</span><b>{c.success_count} P</b>
+      {(currentList.reverse_share??0)>0&&<span className="v-reverse-score" aria-label={t("reverseLevel")}><span className="v-reverse-dots">{Array.from({length:reverseMaxPoints(currentList.reverse_share)},(_,n)=><i key={n} className={n<(c.reverse_success_count??0)?"filled":""}/>)}</span><b>↔ {Math.min(reverseMaxPoints(currentList.reverse_share),c.reverse_success_count??0)} P</b></span>}</span></button></div>)}</div>
      {listCards.length===0&&<p className="v-empty">{data.cards.some(c=>c.list_id===selectedList)?t("noMatching"):t("noCards")}</p>}
      <button className="v-primary v-add-card" onClick={()=>openCard()}><Plus size={18}/>{t("addCard")}</button>
     </div>
@@ -518,8 +527,17 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
      <label>{t("subject")} *<select required value={draftList.subject_id} onChange={e=>changeListSubject(e.target.value)}><option value="" disabled>{t("chooseSubject")}</option>{groups.flatMap(g=>data.subjects.filter(s=>s.group_id===g.id).map(s=><option key={s.id} value={s.id}>{s.emoji} {s.title}</option>))}</select></label>
      <label>{t("tags")}<div className="v-tag-editor"><div className="v-tag-row">{draftList.tags.map(tag=><button className="v-tag" key={tag} type="button" onClick={()=>setDraftList({...draftList,tags:draftList.tags.filter(a=>a!==tag)})}>{tag} ×</button>)}</div><input placeholder={t("addTag")+" (,)"} value={tagText} onChange={e=>setTagText(e.target.value)} /></div></label>
      <div className="v-form-columns"><label>{t("questionLabel")} *<input required value={draftList.question_label} onChange={e=>setDraftList({...draftList,question_label:e.target.value})}/></label><label>{t("answerLabel")} *<input required readOnly={Boolean(languageSubject(data,draftList.subject_id))} value={languageSubject(data,draftList.subject_id)?.title||draftList.answer_label} onChange={e=>setDraftList({...draftList,answer_label:e.target.value})}/></label></div>
-     <button className={"v-direction-button"+(draftList.learn_both_directions?" is-active":"")} type="button" aria-pressed={draftList.learn_both_directions} onClick={()=>setDraftList({...draftList,learn_both_directions:!draftList.learn_both_directions})}><ArrowLeftRight size={21}/><span>{t("both")}</span><span className="v-direction-check" aria-hidden="true">{draftList.learn_both_directions&&<Check size={16}/>}</span></button>
-     <p className="v-help">{t("bothInfo")}</p><button disabled={working||!draftList.subject_id} className="v-primary" type="submit">{listEditing?t("saveList"):t("createList")}</button>
+     <div className="v-reverse-selector">
+       <label htmlFor="v-reverse-share"><span><ArrowLeftRight size={20}/>{t("reverseLevel")}</span><strong>{draftList.reverse_share} %</strong></label>
+       <input id="v-reverse-share" type="range" min={0} max={100} step={25} value={draftList.reverse_share}
+         onChange={e=>setDraftList({...draftList,reverse_share:Number(e.target.value)})}
+         aria-valuetext={draftList.reverse_share+" %"}/>
+       <div className="v-reverse-ticks">{REVERSE_LEVELS.map(level=><button key={level} type="button"
+         aria-label={level+" %"} aria-pressed={draftList.reverse_share===level}
+         className={draftList.reverse_share===level?"is-selected":""}
+         onClick={()=>setDraftList({...draftList,reverse_share:level})}>{level} %</button>)}</div>
+       <p className="v-help">{t("reverseInfo")}</p>
+     </div><button disabled={working||!draftList.subject_id} className="v-primary" type="submit">{listEditing?t("saveList"):t("createList")}</button>
       <button type="button" className="v-outline v-cancel-list" disabled={working} onClick={()=>{back();setListEditing(null);setTagText("");}}>{t("cancel")}</button>
      {listEditing&&<button type="button" className="v-danger" onClick={()=>confirmRemove(()=>deleteList(listEditing),"subject")}><Trash2 size={16}/>{t("delete")}</button>}
      {!draftList.subject_id&&<p className="v-help">{t("noSubject")} <button type="button" className="v-text-button" onClick={()=>startManage("subject")}>{t("addSubject")}</button></p>}
