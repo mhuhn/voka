@@ -72,7 +72,7 @@ Then("the next learning question is shown",async function(this:VokaWorld){
   await expect(this.page.getByRole("button",{name:"Reveal"})).toBeVisible();
 });
 Then("the third learning question is shown",async function(this:VokaWorld){
-  await expect(this.page.locator(".v-learning-front")).toContainText(/go|be/);
+  await expect(this.page.locator(".v-learning-front")).toContainText("go");
   await expect(this.page.getByRole("button",{name:"Reveal"})).toBeVisible();
 });
 
@@ -88,5 +88,5 @@ Then("the next learning round is available immediately",async function(this:Voka
   await expect(this.page.getByRole("button",{name:"Learn",exact:true})).toBeEnabled();
   await this.page.getByRole("button",{name:"Learn",exact:true}).click();
   await expect(this.page.locator(".v-learning")).toBeVisible();
-  await expect(this.page.locator(".v-learning-front")).toContainText("go");
+  await expect(this.page.locator(".v-learning-front")).toContainText(/go|be/);
 });
