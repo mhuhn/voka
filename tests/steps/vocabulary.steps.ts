@@ -3,12 +3,18 @@ import { readFile } from "node:fs/promises";
 import { expect } from "@playwright/test";
 import type { VokaWorld } from "../support/world";
 
+async function showListActions(page:VokaWorld["page"]) {
+  const button=page.getByRole("button",{name:"More actions"});
+  if(await button.getAttribute("aria-expanded")!=="true") await button.click();
+}
+
 Then("no bottom navigation or notification button is shown",async function(this:VokaWorld) {
   await expect(this.page.locator(".v-bottom-nav")).toHaveCount(0);
   await expect(this.page.getByRole("button",{name:"Notifications"})).toHaveCount(0);
 });
 
 Then("the list CSV download includes card IDs and both progress directions",async function(this:VokaWorld){
+  await showListActions(this.page);
   const [download]=await Promise.all([
     this.page.waitForEvent("download"),
     this.page.getByRole("button",{name:"Export list as CSV"}).last().click()
@@ -56,7 +62,8 @@ Then("the CSV importer updates one card and adds one card",async function(this:V
 });
 
 Then("CSV export and import buttons are visible in the phone list header",async function(this:VokaWorld){
-  const header=this.page.locator(".v-heading .v-detail-header-actions");
+  await showListActions(this.page);
+   const header=this.page.locator(".v-heading .v-detail-header-actions");
   await expect(header.getByRole("button",{name:"Export list as CSV"})).toBeVisible();
   await expect(header.getByRole("button",{name:"Import CSV into list"})).toBeVisible();
   const bounds=await header.boundingBox();
@@ -73,7 +80,8 @@ When("the card API has no cards",async function(this:VokaWorld){
 });
 
 Then("the list export button is disabled",async function(this:VokaWorld){
-  await expect(this.page.getByRole("button",{name:"Export list as CSV"}).last()).toBeDisabled();
+  await showListActions(this.page);
+   await expect(this.page.getByRole("button",{name:"Export list as CSV"}).last()).toBeDisabled();
 });
 
 Then("the new list form suggests recent English tags and completes typed tags",async function(this:VokaWorld){
@@ -90,7 +98,13 @@ Then("the new list form suggests recent English tags and completes typed tags",a
 });
 
 When("I return to vocabulary home", async function (this: VokaWorld) {
-  await this.page.getByRole("button", { name: "Voka", exact: true }).click();
+  for(let i=0;i<5;i++) {
+    if(await this.page.locator(".v-home").isVisible())break;
+    const profileBack=this.page.locator(".v-profile-heading .v-profile-back");
+    if(await profileBack.isVisible())await profileBack.click();
+    else await this.page.locator(".v-heading > .v-icon-button").first().click();
+  }
+  await expect(this.page.locator(".v-home")).toBeVisible();
 });
 
 Then("I see subjects grouped on the home screen", async function (this: VokaWorld) {
