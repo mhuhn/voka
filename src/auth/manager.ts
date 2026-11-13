@@ -88,7 +88,7 @@ export class AuthManager {
     let result = this.profileClients.get(key);
     if (!result) {
       result = createClient(supabaseUrl,supabaseKey,{
-        global:{headers:{'x-voka-profile-id':profileId}},
+        global:{headers:{'x-client-info':'voka-profile='+profileId}},
         accessToken: async () => {
           const {data,error}=await this.activeClient!.auth.getSession();
           if(error)throw error;
