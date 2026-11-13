@@ -215,8 +215,9 @@ h2{font:700 1.1875rem/1.2 var(--display)}
 
 .toast{position:fixed;left:50%;bottom:calc(24px + var(--sab));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:22px;font-size:.95rem;z-index:80;max-width:88%;text-align:center}
 
-.progress{flex:none;height:4px;margin:0 20px;background:var(--line);border-radius:2px;overflow:hidden}
-.progress i{display:block;height:100%;background:var(--orange);transition:width .3s}
+.progress{flex:none;height:9px;margin:0 20px;background:var(--line);border-radius:6px;overflow:hidden}
+.progress i{display:block;height:100%;background:var(--orange);border-radius:6px;transition:width .3s}
+.quiz-progress-label{display:flex;align-items:center;justify-content:space-between;margin:8px 20px 5px;font-size:.76rem;color:var(--muted);font-variant-numeric:tabular-nums}
 .stage{flex:1;min-height:0;display:flex;padding:14px 20px 12px;overflow:hidden;touch-action:none}
 .actions,.progress{touch-action:none}
 .flip{position:relative;flex:1;perspective:1400px;cursor:pointer}
@@ -250,12 +251,13 @@ h2{font:700 1.1875rem/1.2 var(--display)}
   .flip-in,.sheet,.sheet-bg,.progress i{transition:none}
 }
 
-.card-controls{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:8px 0 12px}
-.card-controls label{display:flex;align-items:center;gap:5px;font-size:.8rem;color:var(--muted)}
-.card-controls select{min-height:34px;max-width:145px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);padding:5px}
-.card-filters{display:flex;gap:5px;flex-wrap:wrap}
-.filter-toggle{border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--muted);min-height:34px;padding:5px 8px;font-size:.78rem}
-.filter-toggle[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.card-controls{display:flex;align-items:center;justify-content:space-between;flex-wrap:nowrap;gap:4px;margin:8px 0 12px;width:100%}
+.control-group{display:flex;align-items:center;justify-content:space-around;gap:4px;min-width:0;flex:1}
+.icon-filter{display:flex;align-items:center;justify-content:center;flex:0 1 42px;min-width:36px;height:36px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--muted);padding:6px;cursor:pointer}
+.icon-filter svg{width:19px;height:19px;flex:none}
+.icon-filter[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.controls-separator{height:24px;width:1px;background:var(--line);flex:none;margin:0 2px}
+@media(max-width:360px){.card-controls{gap:2px}.control-group{gap:2px}.icon-filter{min-width:32px;height:34px;padding:5px}.controls-separator{margin:0 1px}}
 .position-heading{font-size:.82rem;font-weight:700;color:var(--muted);padding:15px 5px 6px}
 .position-dots{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:3px;max-width:72px}
 .position-dots i{width:5px;height:5px;border-radius:50%;background:var(--accent)}
@@ -263,7 +265,6 @@ h2{font:700 1.1875rem/1.2 var(--display)}
 .quiz-bottom .actions{padding-bottom:6px}
 .quiz-utilities{display:flex;justify-content:center;gap:10px;padding:0 20px 10px}
 .quiz-utilities .btn{min-height:38px;font-size:.85rem}
-@media(max-width:420px){.filter-toggle{padding:5px;font-size:.72rem}.card-controls select{max-width:125px}}
 </style>
 </head>
 <body>
@@ -593,8 +594,8 @@ function parseListImport(text) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '2.25';
-const BUILD_TIME = '2026-11-13T08:19:00Z';   // Zeitpunkt des Commits dieser Version (wird beim Commit gesetzt)
+const VERSION = '2.26';
+const BUILD_TIME = '2026-11-13T08:30:00Z';   // Zeitpunkt des Commits dieser Version (wird beim Commit gesetzt)
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -896,14 +897,16 @@ function viewList() {
     advFields(advMemory || { streak: 0, due: 0 }, l, !!advMemory) +
     '<button class="btn primary" type="submit">Karte hinzufügen</button></form>' +
     '<div class="sec-head cards"><h2>Karten ('+s.total+')</h2></div>'+
-    '<div class="card-controls"><label>Sortierung <select data-a="sort-cards" aria-label="Karten sortieren">'+
-    '<option value="position"'+(cardSort==='position'?' selected':'')+'>Nach Position</option>'+
-    '<option value="alphabet"'+(cardSort==='alphabet'?' selected':'')+'>Alphabetisch</option>'+
-    '<option value="points"'+(cardSort==='points'?' selected':'')+'>Nach Punkten</option></select></label>'+
-    '<div class="card-filters">'+
-    '<button class="filter-toggle" data-a="toggle-answers" aria-pressed="'+showAnswers+'">'+esc(l.labelA)+'</button>'+
-    '<button class="filter-toggle" data-a="toggle-done" aria-pressed="'+showDone+'">Gelernte</button>'+
-    '<button class="filter-toggle" data-a="toggle-card-marked" aria-pressed="'+onlyMarkedCards+'">Markierte</button></div></div>'+
+    '<div class="card-controls" role="group" aria-label="Karten sortieren und filtern">' +
+    '<div class="control-group" role="group" aria-label="Sortierung">' +
+    '<button type="button" class="icon-filter" data-a="sort-cards" data-v="position" title="Nach Position sortieren" aria-label="Nach Position sortieren" aria-pressed="' + (cardSort==='position') + '">' + svg('<circle cx="5" cy="6" r="1.5"/><circle cx="5" cy="12" r="1.5"/><circle cx="5" cy="18" r="1.5"/><path d="M10 6h10M10 12h10M10 18h10"/>') + '</button>' +
+    '<button type="button" class="icon-filter" data-a="sort-cards" data-v="alphabet" title="Alphabetisch sortieren" aria-label="Alphabetisch sortieren" aria-pressed="' + (cardSort==='alphabet') + '">' + svg('<path d="M4 17l4-11 4 11M5.5 13h5M15 7h6l-6 10h6"/>') + '</button>' +
+    '<button type="button" class="icon-filter" data-a="sort-cards" data-v="points" title="Nach Punkten sortieren" aria-label="Nach Punkten sortieren" aria-pressed="' + (cardSort==='points') + '">' + svg('<circle cx="5" cy="17" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="7" r="1.8"/><path d="M6.5 15.7l4-2.7M13.5 10.8l4-2.7"/>') + '</button></div>' +
+    '<span class="controls-separator" aria-hidden="true"></span>' +
+    '<div class="control-group" role="group" aria-label="Filter">' +
+    '<button type="button" class="icon-filter" data-a="toggle-answers" aria-pressed="' + showAnswers + '" title="' + esc(l.labelA) + ' anzeigen" aria-label="' + esc(l.labelA) + ' anzeigen">' + svg('<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>') + '</button>' +
+    '<button type="button" class="icon-filter" data-a="toggle-done" aria-pressed="' + showDone + '" title="Gelernte Karten anzeigen" aria-label="Gelernte Karten anzeigen">' + svg('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>') + '</button>' +
+    '<button type="button" class="icon-filter" data-a="toggle-card-marked" aria-pressed="' + onlyMarkedCards + '" title="Nur markierte Karten" aria-label="Nur markierte Karten">' + svg(STAR) + '</button></div></div>' +
     (cards ? '<ul class="rows">' + cards + '</ul>' : '<div class="empty">' + (s.total ? 'Alle Karten sind gelernt und verborgen.' : 'Hier erscheinen deine Karten.') + '</div>') +
     '<div style="margin-top:30px"><button class="btn danger" data-a="del-list">Liste löschen</button></div>' +
     '</main></div>';
@@ -965,7 +968,8 @@ function viewQuiz() {
     '<span>' + nr + ' von ' + s.total + '</span>' +
     '<button class="icon-btn" data-a="quiz-next" aria-label="Nächste Karte"' + (browse ? '' : ' disabled') + '>' + I.chev + '</button></div>' +
     '<button class="icon-btn" data-a="quiz-undo" aria-label="Letzte Antwort zurücknehmen"' + (s.undo && !browse ? '' : ' disabled') + '>' + I.undo + '</button></header>' +
-    '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="' + s.total + '" aria-valuenow="' + asked + '"><i style="width:' + pct + '%"></i></div>' +
+    '<div class="quiz-progress-label"><span>Lernfortschritt</span><span>' + asked + ' / ' + s.total + ' · ' + pct + '%</span></div>' +
+    '<div class="progress" role="progressbar" aria-label="Lernfortschritt" aria-valuemin="0" aria-valuemax="' + s.total + '" aria-valuenow="' + asked + '"><i style="width:' + pct + '%"></i></div>' +
     '<main class="stage"><div class="flip' + (open ? ' on' : '') + '" data-a="quiz-flip" role="button" tabindex="0" aria-label="Karte umdrehen"><div class="flip-in">' +
     '<div class="face front"><div class="face-head"><span>' + mix + esc(lst.labelQ) + '</span><span class="hd">' + dots(c) + '</span></div>' +
     '<div class="face-body">' + w(c.de) + '<span class="hint">' + (browse ? 'Schon abgefragt · tippen zum Umdrehen' : 'Tippen zum Umdrehen') + '</span></div></div>' +
@@ -1442,7 +1446,7 @@ const actions = {
   'toggle-answers'() { showAnswers = !showAnswers; render(); },
   'toggle-done'() { showDone = !showDone; render(); },
   'toggle-card-marked'() { onlyMarkedCards = !onlyMarkedCards; render(); },
-  'sort-cards'(el) { cardSort = el.value; render(); },
+  'sort-cards'(el) { cardSort = el.dataset.v; render(); },
   'skip-pause'() { const l = L(); if (!l) return; l.lastEnd = 0; save(); startQuiz([l], countCards([l]).open === 0, { name: 'list', id: l.id }); },
   'edit-list'() { sheetList(route.id); },
   'add-tag-text'(el) {
