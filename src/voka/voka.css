@@ -586,3 +586,29 @@
  .v-position-heading{background:#25395a;color:#bfd9fc}
  .v-filter-area .v-filter-switches .v-toggle{background:#192742}
 }
+
+/* Six compact controls always fit in one row, including narrow phone widths. */
+.v-list-detail-pane .v-filter-area.v-icon-filter-toolbar{
+ display:flex;align-items:center;justify-content:space-between;gap:4px;
+ flex-wrap:nowrap;overflow:visible;padding:7px 5px;margin-bottom:11px;
+}
+.v-icon-filter-group{display:flex;flex:1 1 0;min-width:0;align-items:center;justify-content:space-around;gap:3px}
+.v-icon-filter-button{
+ display:inline-flex;align-items:center;justify-content:center;
+ flex:0 1 44px;min-width:30px;max-width:44px;width:100%;height:38px;
+ border:1px solid var(--v-line);border-radius:9px;
+ color:var(--v-navy);background:var(--v-card);cursor:pointer;padding:5px;
+}
+.v-icon-filter-button svg{width:19px;height:19px;flex-shrink:0}
+.v-icon-filter-button[aria-pressed="true"]{color:white;background:var(--v-blue);border-color:var(--v-blue)}
+.v-icon-filter-button:focus-visible{outline:2px solid var(--v-blue);outline-offset:2px}
+.v-icon-filter-separator{width:1px;height:25px;background:var(--v-line);flex:0 0 1px;margin:0 2px}
+@media(max-width:360px){
+ .v-list-detail-pane .v-filter-area.v-icon-filter-toolbar{gap:2px;padding:6px 2px}
+ .v-icon-filter-group{gap:2px}
+ .v-icon-filter-button{height:36px;min-width:28px;padding:4px}
+ .v-icon-filter-separator{margin:0 1px}
+}
+.v-learning-progress-block{display:flex;flex-direction:column;gap:6px}
+.v-learning-progress-label{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--v-muted);font-size:12px;font-variant-numeric:tabular-nums}
+.v-learning-progress{height:10px}

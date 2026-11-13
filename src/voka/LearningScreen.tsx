@@ -204,9 +204,15 @@ export default function LearningScreen({
         {reverse?(currentCard?.reverse_success_count??0):(currentCard?.success_count??0)} / {reverse?reverseMaxPoints(activeList.reverse_share):4}
       </div>
     </header>
-    <div className="v-learning-progress" role="progressbar" aria-label={t.stage}
-      aria-valuemin={0} aria-valuemax={total} aria-valuenow={index}>
-      <span style={{width:(total?(index/total*100):0)+"%"}}/>
+    <div className="v-learning-progress-block">
+      <div className="v-learning-progress-label">
+        <span>{t.stage}</span>
+        <span>{index} / {total} · {total?Math.round(index/total*100):0}%</span>
+      </div>
+      <div className="v-learning-progress" role="progressbar" aria-label={t.stage}
+        aria-valuemin={0} aria-valuemax={total} aria-valuenow={index}>
+        <span style={{width:(total?(index/total*100):0)+"%"}}/>
+      </div>
     </div>
     {error&&<p className="v-error" role="alert">{error}</p>}
     {currentCard?<div className="v-learning-workspace">
