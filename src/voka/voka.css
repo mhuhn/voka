@@ -639,3 +639,20 @@
 .v-tag-autocomplete{position:absolute;z-index:45;top:100%;left:0;right:0;display:flex;flex-direction:column;gap:0;max-height:200px;overflow:auto;background:var(--v-card);border:1px solid var(--v-line);border-radius:10px;box-shadow:0 9px 20px #0002}
 .v-tag-autocomplete button{text-align:left;padding:10px 12px;color:var(--v-navy);background:transparent;border:0;cursor:pointer}
 .v-tag-autocomplete button:hover,.v-tag-autocomplete button:focus-visible{background:var(--v-bg)}
+
+/* Profile streak card and original 40x52 SVG medals */
+.v-streak-wrap{margin:0 0 16px}
+.v-streak-card{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:18px;background:var(--v-soft);border:1px solid var(--v-line)}
+.v-streak-medals{display:flex;align-items:center;gap:1px;flex:none}
+.v-streak-medal{width:34px;height:44px;flex:none}
+.v-streak-multiplier{font-size:16px;font-weight:800;margin-left:2px}
+.v-streak-count{min-width:0;display:flex;flex-direction:column}
+.v-streak-count>b{font-size:40px;font-weight:800;line-height:1}
+.v-streak-count>span{font-size:13px;color:var(--v-muted)}
+.v-streak-help{margin-left:auto;flex:none;width:32px;height:32px;border-radius:50%;border:1.5px solid var(--v-muted);background:none;color:var(--v-muted);font-weight:700}
+.v-streak-notice{display:flex;align-items:center;gap:10px;margin:8px 0 0;padding:10px 12px;border-radius:14px;background:#fdecc8;color:#7a4b00;font-size:14px}
+.v-streak-notice span{flex:1}.v-streak-notice button{border:0;background:none;color:inherit;font-weight:700;padding:6px 8px}
+.v-streak-awarded{margin:5px 0 12px;color:var(--v-blue);font-weight:750}
+.v-streak-dialog{width:min(calc(100% - 32px),500px);max-height:90dvh;overflow:auto;background:var(--v-card,#fff);border-radius:18px;padding:24px;box-shadow:0 18px 60px #0004;color:var(--v-navy)}
+.v-streak-dialog h2{font-size:21px;margin:0 0 16px}.v-streak-dialog p{margin:0 0 14px;line-height:1.5}.v-streak-dialog button{margin-top:12px}
+@media(prefers-color-scheme:dark){.v-streak-notice{background:#3b2f17;color:#ffcf80}}

@@ -266,6 +266,13 @@ Before(async function (this: VokaWorld, { pickle }) {
       if(removed.is_default)records[0].is_default=true;
       await route.fulfill(json(null));return;
     }
+    // Profile streak RPCs (Supabase is the only source of truth in production).
+    if(path==="/rest/v1/rpc/voka_get_profile_streak"&&method==="POST"){
+      await route.fulfill(json({n:0,day:"",note:null,last_awarded_query_id:null}));return;
+    }
+    if(path==="/rest/v1/rpc/voka_dismiss_streak_notice"&&method==="POST"){
+      await route.fulfill(json(null));return;
+    }
     if (path === "/rest/v1/rpc/voka_initialize_defaults" && method === "POST") {
       await route.fulfill(json(null));
       return;

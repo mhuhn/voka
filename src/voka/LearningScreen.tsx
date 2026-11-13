@@ -64,7 +64,7 @@ export default function LearningScreen({
   session: LearningSession;
   mixed?: {lists:VokaList[];subjects:Subject[]};
   onRefresh: () => Promise<void>;
-  onExit: () => void;
+  onExit: (completed?:boolean) => void;
 }){
   const t=texts[language];
   const [index,setIndex]=useState(0);
@@ -125,7 +125,7 @@ export default function LearningScreen({
       if(isLast){
         if(!gradeResult.finished)await finishLearning(session.queryId);
         playLearningSound("complete");
-        onExit();
+        onExit(true);
       }else{
         playLearningSound(result);
         setIndex(value=>value+1);

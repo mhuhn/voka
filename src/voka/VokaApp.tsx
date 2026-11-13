@@ -1,11 +1,12 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, CheckCircle2, ChevronRight, Download, Upload, Eye, Home, ListOrdered, ArrowDownAZ, Pencil, Plus, Search, Settings, Share2, SkipForward, Star, Trash2, X, Play } from "lucide-react";
 import type { Language } from "../lib/i18n";
-import { emptyData, loadVoka, beginLearning, beginMixedLearning, skipLearningPause, importCsvCards, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type LearningEntry, type Subject, type SubjectGroup, type ListInput } from "./data";
+import { emptyData, loadVoka, loadProfileStreak, dismissStreakNotice, type ProfileStreak, beginLearning, beginMixedLearning, skipLearningPause, importCsvCards, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type LearningEntry, type Subject, type SubjectGroup, type ListInput } from "./data";
 import "./voka.css";
 import { recentSubjectTags, matchingSubjectTags } from "./tagSuggestions";
 import { exportCardsCsv, parseCardsCsv } from "./cardCsv";
 import LearningScreen from "./LearningScreen";
+import StreakCard from "./StreakCard";
 import MixedLearningPicker from "./MixedLearningPicker";
 import { learningProgress, effectiveLearningPause, calendarPauseDay, formatLearningPause, reverseMaxPoints, cardTotalPoints, cardNextPosition, isCardLearned, REVERSE_LEVELS } from "./learning";
 import { getUserAvatarColor } from "../auth/userColors";
@@ -156,6 +157,8 @@ const stamp=(time:number,language:Language)=>time?new Date(time).toLocaleDateStr
 export default function VokaApp({language,onProfile}:{language:Language;onProfile:()=>void}) {
  const t=(key:string)=>directionWords[language]?.[key]||learningButtonWords[language]?.[key]||sharingWords[language]?.[key]||globalLabels[language]?.[key]||supplemental[language]?.[key]||translations[language]?.[key]||translations.en[key]||key;
  const [data,setData]=useState<VokaData>(emptyData);
+ const [streak,setStreak]=useState<ProfileStreak|null>(null);
+ const [completedQueryId,setCompletedQueryId]=useState<string|null>(null);
  const [loading,setLoading]=useState(true),[error,setError]=useState("");
  const [screen,setScreen]=useState<Screen>("home");
  const [learningSession,setLearningSession]=useState<{queryId:string;cards:LearningEntry[];mixed?:boolean}|null>(null);
@@ -318,8 +321,19 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
      title={csvWords[language].import} aria-label={csvWords[language].import}
      onClick={()=>csvFileRef.current?.click()}><Upload size={size}/></button>
  </>;
- const refresh=useCallback(async()=>{try {setData(await loadVoka());setError("");}catch(e){setError(e instanceof Error?e.message:String(e));}},[]);
- useEffect(()=>{let alive=true;loadVoka().then(result=>{if(alive)setData(result)}).catch(e=>{if(alive)setError(String(e instanceof Error?e.message:e))}).finally(()=>{if(alive)setLoading(false)});return()=>{alive=false};},[]);
+ const refresh=useCallback(async()=>{
+   try {const [nextData,nextStreak]=await Promise.all([loadVoka(),loadProfileStreak()]);
+     setData(nextData);setStreak(nextStreak);setError("");
+   }catch(e){setError(e instanceof Error?e.message:String(e));}
+ },[]);
+ const dismissNotice=async()=>{await dismissStreakNotice();setStreak(await loadProfileStreak());};
+ useEffect(()=>{
+   const check=()=>{if(!document.hidden)void loadProfileStreak().then(setStreak).catch(e=>setError(String(e)));};
+   document.addEventListener("visibilitychange",check);
+   return ()=>document.removeEventListener("visibilitychange",check);
+ },[]);
+
+ useEffect(()=>{let alive=true;Promise.all([loadVoka(),loadProfileStreak()]).then(([nextData,nextStreak])=>{if(alive){setData(nextData);setStreak(nextStreak)}}).catch(e=>{if(alive)setError(String(e instanceof Error?e.message:e))}).finally(()=>{if(alive)setLoading(false)});return()=>{alive=false};},[]);
  const groups=useMemo(()=>[...data.groups].sort((a,b)=>groupUsage(data,b.id)-groupUsage(data,a.id)||defaultGroupRank(a.title)-defaultGroupRank(b.title)||a.title.localeCompare(b.title)),[data]);
  const subjectsWithLists=useMemo(()=>new Set(data.lists.map(l=>l.subject_id)),[data.lists]);
  const visibleGroups=useMemo(()=>groups.filter(g=>data.subjects.some(s=>s.group_id===g.id&&subjectsWithLists.has(s.id))),[groups,data.subjects,subjectsWithLists]);
@@ -372,7 +386,8 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
    }catch(e){setError(e instanceof Error?e.message:String(e))}
    finally{setStartingLearn(false);}
  };
- const finishLearningView=()=>{
+ const finishLearningView=(completed=false)=>{
+   setCompletedQueryId(completed?learningSession?.queryId||null:null);
    const destination=learningSession?.mixed?"home":"list";
    setLearningSession(null);setScreen(destination);
  };
@@ -548,6 +563,8 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
      busy={startingLearn} onCancel={()=>setScreen("home")}
      onStart={(subjects,tags)=>void startMixedLearning(subjects,tags)}/>} 
    {screen==="home"&&<div className="v-home">
+    {streak&&<StreakCard streak={streak} language={language} onDismiss={dismissNotice}/>}
+    {completedQueryId&&streak?.last_awarded_query_id===completedQueryId&&<p className="v-streak-awarded" role="status">Streak: {streak.n} {streak.n===1?"Tag":"Tage"} in Folge.</p>}
     {data.lists.length===0&&<section className="v-intro"><div className="v-illustration"><BookOpen size={74}/><span>?</span></div><h2>{t("empty")}</h2><p>{t("emptyInfo")}</p><button className="v-primary" onClick={()=>newList()}><Plus size={18}/>{t("createList")}</button></section>}
     <div className="v-section-tools"><h2 className="v-section-title">{t("mySubjects")}</h2>
       <div className="v-home-actions">
@@ -575,6 +592,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
         disabled={!effectivePause||everyCardLearned||working} onClick={skipSelectedListPause}><SkipForward size={18}/></button>
       <IconButton label={t("editList")} onClick={()=>editList(currentList)}><Pencil size={18}/></IconButton></div></div>}
     <div className="v-list-main">
+    {completedQueryId&&streak?.last_awarded_query_id===completedQueryId&&<p className="v-streak-awarded" role="status">Streak: {streak.n} {streak.n===1?"Tag":"Tage"} in Folge.</p>}
      {currentList.tags.length>0&&<div className="v-list-summary"><div className="v-tag-row">{currentList.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div>}
       <div className="v-list-actions"><button className="v-primary v-learn-cta" type="button" title={learningButtonLabel} aria-label={learningButtonLabel} disabled={learningUnavailable} onClick={()=>void startLearning()}><Play size={19} fill="currentColor"/><span className="v-learn-cta-label">{learningButtonLabel}</span></button><div className="v-progress"><BarChart3 size={21}/><span>{t("progress")}<b>{learningProgress(listCardsForProgress,currentList.reverse_share??0)} %</b></span></div>
      </div>
