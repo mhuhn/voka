@@ -25,14 +25,14 @@ export const reverseMaxPoints = (share:number):number =>
   Math.max(0,Math.min(4,Math.round(share/25)));
 
 export function isCardLearned(
-  card: Pick<VokaCard,"success_count"|"reverse_success_count">, share:number
+  card: Pick<VokaCard,"success_count"> & Partial<Pick<VokaCard,"reverse_success_count">>, share:number
 ):boolean {
   const max=reverseMaxPoints(share);
   return card.success_count>=4&&(max===0||(card.reverse_success_count??0)>=max);
 }
 
 export function cardTotalPoints(
-  card: Pick<VokaCard,"success_count"|"reverse_success_count">,share:number
+  card: Pick<VokaCard,"success_count"> & Partial<Pick<VokaCard,"reverse_success_count">>,share:number
 ):number {
   return Math.min(4,card.success_count)+Math.min(reverseMaxPoints(share),card.reverse_success_count??0);
 }
@@ -49,7 +49,7 @@ export function cardNextPosition(
 
 /** Every attainable point weighs equally: 25% reverse = 4/5 normal + 1/5 reverse. */
 export function learningProgress(
-  cards: Pick<VokaCard,"success_count"|"reverse_success_count">[],share=0
+  cards: (Pick<VokaCard,"success_count"> & Partial<Pick<VokaCard,"reverse_success_count">>)[],share=0
 ): number {
   if (cards.length === 0) return 0;
   const capacity=4+reverseMaxPoints(share);
