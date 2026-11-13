@@ -1,5 +1,5 @@
 import type { VokaData } from "./data";
-import { effectiveLearningPause } from "./learning";
+import { effectiveLearningPause, reverseMaxPoints, cardNextPosition } from "./learning";
 
 export interface MixedListCount {
   list_id:string;
@@ -20,10 +20,14 @@ export function dueMixedLists(
     if(!ids.has(list.subject_id)||!tags.every(tag=>list.tags.includes(tag)))return [];
     const state=data.learningStates.find(item=>item.list_id===list.id);
     if(effectiveLearningPause(list.learning_paused_until,state?.calendar_pause_until,now))return [];
-    const incomplete=data.cards.filter(card=>card.list_id===list.id&&card.success_count<4);
-    if(!incomplete.length)return [];
-    const min=Math.min(...incomplete.map(card=>card.position));
-    return [{list_id:list.id,subject_id:list.subject_id,
-      count:incomplete.filter(card=>card.position===min).length}];
+    const cards=data.cards.filter(card=>card.list_id===list.id);
+    const share=list.reverse_share??0;
+    const min=Math.min(...cards.map(card=>cardNextPosition(card,share)));
+    if(!Number.isFinite(min))return [];
+    const reverseMax=reverseMaxPoints(share);
+    const count=cards.reduce((sum,card)=>sum+
+      Number(card.success_count<4&&card.position===min)+
+      Number(reverseMax>0&&(card.reverse_success_count??0)<reverseMax&&(card.reverse_position??0)===min),0);
+    return [{list_id:list.id,subject_id:list.subject_id,count}];
   });
 }
