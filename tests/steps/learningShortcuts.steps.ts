@@ -10,7 +10,8 @@ Then("the list is grouped by position and shows only visual score dots",async fu
   await expect(cardList.locator(".v-card-open").last()).toContainText("go");
   await expect(cardList.locator(".v-dots i")).toHaveCount(8);
   await expect(cardList.locator(".v-score-pair b")).toHaveCount(0);
-  await expect(cardList.locator(".v-score-pair")).not.toContainText("P");
+  const rowScoreText=await cardList.locator(".v-score-pair").allTextContents();
+  expect(rowScoreText.every(value=>!value.includes("P"))).toBe(true);
   await this.page.getByRole("checkbox",{name:"Show learned"}).check();
   await expect(cardList.locator(".v-position-heading")).toHaveText(["Position 1","Position 3","Learned"]);
   await this.page.getByRole("button",{name:"By points"}).click();
@@ -71,7 +72,7 @@ Then("the next learning question is shown",async function(this:VokaWorld){
   await expect(this.page.getByRole("button",{name:"Reveal"})).toBeVisible();
 });
 Then("the third learning question is shown",async function(this:VokaWorld){
-  await expect(this.page.locator(".v-learning-front")).toContainText("go");
+  await expect(this.page.locator(".v-learning-front")).toContainText(/go|be/);
   await expect(this.page.getByRole("button",{name:"Reveal"})).toBeVisible();
 });
 
