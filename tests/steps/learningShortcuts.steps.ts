@@ -4,7 +4,7 @@ import type { VokaWorld } from "../support/world";
 
 Then("the list is grouped by position and shows only visual score dots",async function(this:VokaWorld){
   const cardList=this.page.locator(".v-card-list");
-  await expect(this.page.locator(".v-sort .active")).toHaveText("By position");
+  await expect(this.page.getByRole("button",{name:"By position"})).toHaveAttribute("aria-pressed","true");
   await expect(cardList.locator(".v-position-heading")).toHaveText(["Position 1","Position 3"]);
   await expect(cardList.locator(".v-card-open").first()).toContainText("choose");
   await expect(cardList.locator(".v-card-open").last()).toContainText("go");
@@ -12,7 +12,7 @@ Then("the list is grouped by position and shows only visual score dots",async fu
   await expect(cardList.locator(".v-score-pair b")).toHaveCount(0);
   const rowScoreText=await cardList.locator(".v-score-pair").allTextContents();
   expect(rowScoreText.every(value=>!value.includes("P"))).toBe(true);
-  await this.page.getByRole("checkbox",{name:"Show learned"}).check();
+  await this.page.getByRole("button",{name:"Show learned"}).click();
   await expect(cardList.locator(".v-position-heading")).toHaveText(["Position 1","Position 3","Learned"]);
   await this.page.getByRole("button",{name:"By points"}).click();
   await expect(cardList.locator(".v-position-heading")).toHaveCount(0);
@@ -21,13 +21,13 @@ Then("the list is grouped by position and shows only visual score dots",async fu
 });
 
 Then("the filter switches and sorting controls share a compact row",async function(this:VokaWorld){
-  const toolbar=this.page.locator(".v-filter-area");
-  await expect(toolbar.locator(".v-filter-switches .v-toggle")).toHaveCount(3);
-  const toggle=await toolbar.locator(".v-filter-switches").boundingBox();
-  const sorting=await toolbar.locator(".v-sort").boundingBox();
-  expect(toggle).not.toBeNull();
-  expect(sorting).not.toBeNull();
-  expect(Math.abs((toggle!.y+toggle!.height/2)-(sorting!.y+sorting!.height/2))).toBeLessThan(15);
+  const toolbar=this.page.locator(".v-icon-filter-toolbar");
+  const buttons=toolbar.locator(".v-icon-filter-button");
+  await expect(buttons).toHaveCount(6);
+  const bounds=await buttons.evaluateAll(elements=>elements.map(el=>el.getBoundingClientRect().toJSON()));
+  expect(bounds.length).toBe(6);
+  expect(Math.max(...bounds.map(box=>box.y))-Math.min(...bounds.map(box=>box.y))).toBeLessThan(3);
+  expect(Math.max(...bounds.map(box=>box.right))).toBeLessThanOrEqual((await toolbar.boundingBox())!.x+(await toolbar.boundingBox())!.width+1);
 });
 
 Then("the grade controls are shown above marking and editing",async function(this:VokaWorld){
