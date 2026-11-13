@@ -64,8 +64,7 @@ Then("I can switch to the profile named {string}", async function(this:VokaWorld
 
 When("I switch to the profile named {string}", async function(this:VokaWorld,name:string) {
   await this.page.getByRole("button",{name:"Switch profile: "+name}).click();
-  await this.page.locator(".v-floats button").last().click();
-  await expect(this.page.getByRole("heading",{name:"My profile"})).toBeVisible();
+  await expect(this.page.locator(".v-home")).toBeVisible();
 });
 
 Then("I can delete the profile named {string}", async function(this:VokaWorld,name:string) {
@@ -92,13 +91,7 @@ Then("no lists from the default profile are visible", async function(this:VokaWo
 });
 
 Then("the original lists are visible again", async function(this:VokaWorld) {
-  const subject=this.page.getByRole("button",{name:/Englisch/});
-  try{await expect(subject).toBeVisible();}catch(error){
-    const content=(await this.page.locator("body").innerText()).slice(0,2500);
-    const selected=await this.page.evaluate(()=>localStorage.getItem("voka:selected-profile:00000000-0000-4000-8000-000000000001"));
-    throw new Error("Profile isolation diagnostic: selected="+selected+" page="+content+"; "+String(error));
-  }
-});
+  await expect(this.page.getByRole("button",{name:/Englisch/})).toBeVisible();
 
 When("I reload the app", async function (this: VokaWorld) {
   await this.page.reload();
