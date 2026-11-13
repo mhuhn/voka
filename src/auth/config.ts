@@ -4,7 +4,7 @@ export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
 export const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
 export const isConfigured = Boolean(supabaseUrl && supabaseKey);
 export const isNative = Capacitor.isNativePlatform();
-export const nativeRedirect = import.meta.env.VITE_NATIVE_REDIRECT_URL || "com.example.voka://auth/callback";
+export const nativeRedirect = import.meta.env.VITE_NATIVE_REDIRECT_URL || "de.mhuhn.voka://auth/callback";
 
 // GitHub Pages cannot rewrite /auth/callback to index.html.
 // Use the actual published index URL as the redirect target on subpath builds.
