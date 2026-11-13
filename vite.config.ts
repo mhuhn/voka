@@ -35,7 +35,7 @@ export default defineConfig({
         name: "Voka",
         short_name: "Voka",
         description: "Voka – digitale Lernkarten",
-        theme_color: "#0b1d46",
+        theme_color: "#f8faff",
         background_color: "#f8faff",
         display: "standalone",
         start_url: base,

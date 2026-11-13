@@ -1,4 +1,4 @@
-.v-app{--v-navy:#091b42;--v-blue:#0864f6;--v-soft:#e8f1ff;--v-line:#dbe4f2;--v-muted:#5c6b8b;--v-orange:#ff9e00;color:var(--v-navy);background:linear-gradient(155deg,#f7faff,#fff 48%);font-size:15px;min-height:100dvh;display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
+.v-app{--v-navy:#091b42;--v-blue:#0864f6;--v-soft:#e8f1ff;--v-line:#dbe4f2;--v-muted:#5c6b8b;--v-orange:#ff9e00;color:var(--v-navy);background:#f8faff;font-size:15px;min-height:100%;display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
 .v-app button{cursor:pointer}.v-app button:disabled{opacity:.5;cursor:default}.v-app button:focus-visible,.v-app input:focus-visible,.v-app select:focus-visible,.v-app textarea:focus-visible{outline:2px solid var(--v-blue);outline-offset:2px}
 .v-content{flex:1;width:100%;margin:0 auto;max-width:1320px;padding:calc(12px + env(safe-area-inset-top)) 22px 105px}
 .v-heading{min-height:63px;display:flex;align-items:center;gap:10px;position:relative;margin-bottom:20px;padding-right:104px}
@@ -6,8 +6,7 @@
 .v-logo{font-size:38px;font-weight:900;letter-spacing:-2px;position:relative;display:inline-block;padding-bottom:8px}.v-logo:after{content:"";position:absolute;left:4px;bottom:1px;transform:rotate(-6deg);height:6px;width:80%;background:var(--v-orange);border-radius:9px}
 .v-head-manage{display:flex;align-items:center;gap:6px;color:var(--v-blue);font-size:13px;margin-left:auto;background:none;border:none}
 .v-icon-button{width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:#fff;border:1px solid var(--v-line);color:#0d367b;box-shadow:0 2px 9px #102c501a;flex-shrink:0}
-.v-floats{position:fixed;z-index:60;top:calc(env(safe-area-inset-top) + 16px);right:18px;display:flex;gap:8px;opacity:.62}.v-floats:hover,.v-floats:focus-within{opacity:1}
-.v-floats .v-icon-button{background:#fffffff0;backdrop-filter:blur(8px)}
+.v-floats{position:fixed;z-index:60;top:calc(env(safe-area-inset-top) + 16px);right:18px;display:flex;gap:8px}
 .v-section-title,.v-section-header h2,.v-side-panel h2,.v-manage>h2{font-size:20px;font-weight:800;margin:0 0 15px}
 .v-group-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:16px}
 .v-group{background:#fbfcff;border:1px solid var(--v-line);border-radius:17px;overflow:hidden;padding:10px 11px;box-shadow:0 4px 15px #162e5510;align-self:start}
