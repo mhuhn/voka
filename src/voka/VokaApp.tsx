@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { ArrowLeft, ArrowLeftRight, BarChart3, BookOpen, Check, CheckCircle2, ChevronRight, Download, Upload, Eye, ListOrdered, ArrowDownAZ, Pencil, Plus, Settings, Share2, SkipForward, Star, Trash2, X, Play } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, BarChart3, BookOpen, Check, CheckCircle2, ChevronRight, Download, Upload, Eye, ListOrdered, ArrowDownAZ, Pencil, Plus, Ellipsis, Share2, SkipForward, Star, Trash2, X, Play } from "lucide-react";
 import type { Language } from "../lib/i18n";
 import { emptyData, loadVoka, loadProfileStreak, dismissStreakNotice, type ProfileStreak, beginLearning, beginMixedLearning, skipLearningPause, importCsvCards, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type LearningEntry, type Subject, type SubjectGroup, type ListInput } from "./data";
 import "./voka.css";
@@ -180,6 +180,10 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
 
  const [selectedSubject,setSelectedSubject]=useState<string|null>(null);
  const [selectedList,setSelectedList]=useState<string|null>(null);
+ const [detailMenuOpen,setDetailMenuOpen]=useState(false);
+ const detailMenuRef=useRef<HTMLDivElement>(null);
+ useEffect(()=>{setDetailMenuOpen(false)},[screen,selectedList]);
+ useEffect(()=>{if(!detailMenuOpen)return;const click=(e:PointerEvent)=>{if(!detailMenuRef.current?.contains(e.target as Node))setDetailMenuOpen(false)};const key=(e:KeyboardEvent)=>{if(e.key==="Escape")setDetailMenuOpen(false)};document.addEventListener("pointerdown",click);document.addEventListener("keydown",key);return ()=>{document.removeEventListener("pointerdown",click);document.removeEventListener("keydown",key)}},[detailMenuOpen]);
  const [selectedCard,setSelectedCard]=useState<string|null>(null);
  const [draftList,setDraftList]=useState<ListInput>(newListValue(""));
  const [listEditing,setListEditing]=useState<string|null>(null);
@@ -529,11 +533,16 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const learningButtonLabel=startingLearn?t("starting"):effectivePause?pauseLabel:
    everyCardLearned?t("allLearned"):listCardsForProgress.length===0?t("noCards"):t("learn");
  const listTitle=currentList?<span className="v-heading-list-title"><span className="v-emoji" aria-hidden="true">{data.subjects.find(s=>s.id===currentList.subject_id)?.emoji||"📘"}</span><span className="v-heading-title-text">{currentList.title}</span></span>:null;
+ const listProgress=learningProgress(listCardsForProgress,currentList?.reverse_share??0);
+ const detailActions=(size:number)=><div className="v-detail-header-actions" ref={detailMenuRef}>
+  <button type="button" className="v-icon-button" title={language==="de"?"Weitere Aktionen":"More actions"} aria-label={language==="de"?"Weitere Aktionen":"More actions"} aria-expanded={detailMenuOpen} aria-controls="v-detail-actions-popover" onClick={()=>setDetailMenuOpen(!detailMenuOpen)}><Ellipsis size={24}/></button>
+  {detailMenuOpen&&<div className="v-detail-actions-popover" id="v-detail-actions-popover"><IconButton label={t("share")} onClick={()=>{setDetailMenuOpen(false);void shareSelectedList()}}><Share2 size={size}/></IconButton>{screen==="list"&&csvButtons(size)}{screen==="list"&&<button className="v-icon-button v-skip-pause" title={t("skipPause")} aria-label={t("skipPause")} disabled={!effectivePause||everyCardLearned||working} onClick={()=>{setDetailMenuOpen(false);skipSelectedListPause()}}><SkipForward size={size}/></button>}{screen==="list"&&currentList&&<IconButton label={t("editList")} onClick={()=>{setDetailMenuOpen(false);editList(currentList)}}><Pencil size={size}/></IconButton>}</div>}
+ </div>;
  const actions=<div className="v-floats">{screen==="cardForm"&&<button className="v-icon-button v-floating-star" type="button" title={t("marked")} aria-label={t("marked")} aria-pressed={draftCard.marked} onClick={()=>setDraftCard({...draftCard,marked:!draftCard.marked})}><Star size={19} fill={draftCard.marked?"#ff9b00":"none"} stroke={draftCard.marked?"#ff9b00":"currentColor"}/></button>}<IconButton label={activeProfile?`${t("profile")}: ${profileName(activeProfile)}`:t("profile")} className="v-user-float v-profile-emoji-button" style={{backgroundColor:avatarColor+"24",borderColor:avatarColor+"66"}} onClick={onProfile}><span aria-hidden="true" className="v-profile-emoji">{profileEmoji(activeProfile)}</span></IconButton></div>;
- const listOverview = <section className="v-page v-lists-pane"><div className="v-section-header"><h2>{wide?t("lists"):`${currentSubject?.emoji||""} ${currentSubject?.title||""} · ${t("lists")}`}</h2></div>
+ const listOverview = <section className="v-page v-lists-pane"><div className="v-section-header"><h2>{t("lists")}</h2></div>
     <div className="v-list-grid">{data.lists.filter(l=>l.subject_id===selectedSubject).sort((a,b)=>usageDate(data,b.id)-usageDate(data,a.id)||a.title.localeCompare(b.title)).map(l=>{const listPercent=learningProgress(data.cards.filter(c=>c.list_id===l.id),l.reverse_share??0);return <button className={"v-list-row"+(l.id===selectedList&&screen!=="subject"?" selected":"")} aria-current={l.id===selectedList&&screen!=="subject"?"true":undefined} key={l.id} onClick={()=>openList(l.id)}><div><strong>{l.title}</strong><small>{cardCount(data.cards.filter(c=>c.list_id===l.id).length)} · {stamp(usageDate(data,l.id),language)}</small><div className="v-list-progress-label"><span>{t("progress")}</span><b>{listPercent} %</b></div><div className="v-list-progress-track" role="progressbar" aria-label={t("progress")} aria-valuenow={listPercent} aria-valuemin={0} aria-valuemax={100}><span style={{width:listPercent+"%"}}/></div><div className="v-tag-row">{l.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div><ChevronRight size={21}/></button>})}</div>
     {!data.lists.some(l=>l.subject_id===selectedSubject)&&<div className="v-empty">{t("none")}</div>}
-    <button className="v-primary" onClick={()=>newList(selectedSubject||"")}><Plus size={18}/>{t("createList")}</button>
+    <button className="v-secondary-action" onClick={()=>newList(selectedSubject||"")}><Plus size={18}/>{t("createList")}</button>
     </section>;
  return <div className={"v-app"+(screen==="cardForm"?" v-card-form-active":"")+(screen==="learn"?" v-learning-active":"")}>
   {screen!=="learn"&&actions}
@@ -545,15 +554,8 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
    {loading?<div className="v-empty">{t("loading")}</div>:<>
    {screen!=="learn"&&screen!=="mixedSelect"&&<header className="v-heading">
     {screen!=="home"&&<IconButton onClick={back} label={t("cancel")}><ArrowLeft/></IconButton>}
-    <h1>{screen==="home"?<span className="v-logo">Voka</span>:wide&&(screen==="subject"||screen==="list"||screen==="cardForm"||(screen==="listForm"&&Boolean(listEditing)))?<span>{currentSubject?.emoji} {currentSubject?.title}</span>:screen==="subject"?currentSubject?.title:screen==="list"?listTitle:screen==="listForm"?(listEditing?t("editList"):t("createList")):screen==="cardForm"?(selectedCard?t("editCard"):t("addCard")):t("manage")}</h1>
-    {!wide&&(screen==="list"||screen==="cardForm")&&currentList&&<div className="v-detail-header-actions">
-       <IconButton label={t("share")} onClick={()=>void shareSelectedList()}><Share2 size={19}/></IconButton>
-       {screen==="list"&&csvButtons(19)}
-       {screen==="list"&&<button className="v-icon-button v-skip-pause" type="button"
-         title={t("skipPause")} aria-label={t("skipPause")}
-         disabled={!effectivePause||everyCardLearned||working} onClick={skipSelectedListPause}><SkipForward size={19}/></button>}
-       {screen==="list"&&<IconButton label={t("editList")} onClick={()=>editList(currentList)}><Pencil size={19}/></IconButton>}
-     </div>}
+    <h1>{screen==="home"?<span className="v-logo">Voka</span>:wide&&(screen==="list"||screen==="cardForm"||(screen==="listForm"&&Boolean(listEditing)))?<span>{currentSubject?.emoji} {currentSubject?.title}</span>:screen==="subject"?<span className="v-heading-subject-title"><span className="v-emoji">{currentSubject?.emoji}</span>{currentSubject?.title}</span>:screen==="list"?listTitle:screen==="listForm"?(listEditing?t("editList"):t("createList")):screen==="cardForm"?(selectedCard?t("editCard"):t("addCard")):t("manage")}</h1>
+    {!wide&&(screen==="list"||screen==="cardForm")&&currentList&&detailActions(19)}
    </header>}
    {screen==="learn"&&learningSession&&learningList&&<LearningScreen language={language} list={learningList}
      cards={data.cards} session={learningSession}
@@ -565,12 +567,8 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
    {screen==="home"&&<div className="v-home">
     {streak&&<StreakCard streak={streak} language={language} onDismiss={dismissNotice}/>}
     {completedQueryId&&streak?.last_awarded_query_id===completedQueryId&&<p className="v-streak-awarded" role="status">Streak: {streak.n} {streak.n===1?"Tag":"Tage"} in Folge.</p>}
-    {data.lists.length===0&&<section className="v-intro"><div className="v-illustration"><BookOpen size={74}/><span>?</span></div><h2>{t("empty")}</h2><p>{t("emptyInfo")}</p><button className="v-primary" onClick={()=>newList()}><Plus size={18}/>{t("createList")}</button></section>}
-    <div className="v-section-tools"><h2 className="v-section-title">{t("mySubjects")}</h2>
-      <div className="v-home-actions">
-       {data.lists.length>0&&<button type="button" className="v-primary v-home-learn v-learn-cta" onClick={()=>setScreen("mixedSelect")}><Play size={17}/><span className="v-learn-cta-label">{t("learn")}</span></button>}
-       <button className="v-manage-link" onClick={()=>{setManageModalOpen(false);setScreen("manage")}}>{t("manage")} <Settings size={16}/></button>
-      </div></div>
+    {data.lists.length===0&&<section className="v-intro"><div className="v-illustration"><BookOpen size={74}/><span>?</span></div><h2>{t("empty")}</h2><p>{t("emptyInfo")}</p><button className="v-secondary-action" onClick={()=>newList()}><Plus size={18}/>{t("createList")}</button></section>}
+    <div className="v-section-tools"><h2 className="v-section-title">{t("mySubjects")}</h2><button className="v-manage-link" title={t("manage")} aria-label={t("manage")} onClick={()=>{setManageModalOpen(false);setScreen("manage")}}><Pencil size={20}/></button></div>{data.lists.length>0&&<button className="v-primary v-home-learn v-learn-cta" onClick={()=>setScreen("mixedSelect")}><Play size={20}/><span className="v-learn-cta-label">{t("learn")}</span></button>}
     <div className="v-group-grid">{visibleGroups.map(g=>{
      const subjects=[...data.subjects.filter(s=>s.group_id===g.id&&subjectsWithLists.has(s.id))].sort((a,b)=>subjectUsage(data,b.id)-subjectUsage(data,a.id)||a.title.localeCompare(b.title));
      return <section className="v-group" key={g.id}><div className="v-group-head"><strong>{g.title}</strong><small>{t("updated")}: {stamp(groupUsage(data,g.id),language)}</small><button aria-label={t("edit")+" "+g.title} onClick={()=>startManage("group",g)}><Pencil size={14}/></button></div>
@@ -578,23 +576,17 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
       {subjects.length>3&&<p className="v-scrollhint">{subjects.length-3} {t("moreSubjects")} · ↕</p>}
      </section>
     })}</div>
-    {data.lists.length>0&&<button className="v-primary v-create-home" onClick={()=>newList()}><Plus size={19}/>{t("createList")}</button>}
+    {data.lists.length>0&&<div className="v-group-grid v-create-home-grid"><button className="v-secondary-action v-create-home" onClick={()=>newList()}><Plus size={19}/>{t("createList")}</button></div>}
    </div>}
    {(screen==="subject"||screen==="list"||screen==="cardForm")&&<div className={"v-subject-workspace "+(screen==="subject"?"is-subject":screen==="cardForm"?"is-card":"is-list")}>
     {listOverview}
     {(screen==="list"||screen==="cardForm")&&currentList&&<div className={"v-list-page"+(screen==="cardForm"?" v-list-page-editing":"")}>
      <section className="v-list-detail-pane">
-     {wide&&<div className="v-pane-list-heading"><h2>{listTitle}</h2><div className="v-detail-header-actions">
-      <IconButton label={t("share")} onClick={()=>void shareSelectedList()}><Share2 size={18}/></IconButton>
-      {screen==="list"&&csvButtons(18)}
-      <button className="v-icon-button v-skip-pause" type="button"
-        title={t("skipPause")} aria-label={t("skipPause")}
-        disabled={!effectivePause||everyCardLearned||working} onClick={skipSelectedListPause}><SkipForward size={18}/></button>
-      <IconButton label={t("editList")} onClick={()=>editList(currentList)}><Pencil size={18}/></IconButton></div></div>}
+     {wide&&<div className="v-pane-list-heading"><h2>{listTitle}</h2>{detailActions(19)}</div>}{screen==="list"&&<div className="v-list-progress-track v-detail-progress" role="progressbar" aria-label={t("progress")+": "+listProgress+" %"} aria-valuenow={listProgress} aria-valuemin={0} aria-valuemax={100}><span style={{width:listProgress+"%"}}/></div>}
     <div className="v-list-main">
     {completedQueryId&&streak?.last_awarded_query_id===completedQueryId&&<p className="v-streak-awarded" role="status">Streak: {streak.n} {streak.n===1?"Tag":"Tage"} in Folge.</p>}
      {currentList.tags.length>0&&<div className="v-list-summary"><div className="v-tag-row">{currentList.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div>}
-      <div className="v-list-actions"><button className="v-primary v-learn-cta" type="button" title={learningButtonLabel} aria-label={learningButtonLabel} disabled={learningUnavailable} onClick={()=>void startLearning()}><Play size={19} fill="currentColor"/><span className="v-learn-cta-label">{learningButtonLabel}</span></button><div className="v-progress"><BarChart3 size={21}/><span>{t("progress")}<b>{learningProgress(listCardsForProgress,currentList.reverse_share??0)} %</b></span></div>
+      <div className="v-list-actions"><button className="v-primary v-learn-cta" type="button" title={learningButtonLabel} aria-label={learningButtonLabel} disabled={learningUnavailable} onClick={()=>void startLearning()}><Play size={19} fill="currentColor"/><span className="v-learn-cta-label">{learningButtonLabel}</span></button>
      </div>
      {shareStatus&&<p className="v-share-status" role="status">{shareStatus}</p>}
      {csvStatus&&<p className="v-share-status" role="status">{csvStatus}</p>}
@@ -638,7 +630,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
        </Fragment>;
      })}</div>
      {listCards.length===0&&<p className="v-empty">{data.cards.some(c=>c.list_id===selectedList)?t("noMatching"):t("noCards")}</p>}
-     <button className="v-primary v-add-card" onClick={()=>openCard()}><Plus size={18}/>{t("addCard")}</button>
+     <button className="v-secondary-action v-add-card" onClick={()=>openCard()}><Plus size={18}/>{t("addCard")}</button>
     </div>
      </section>
     {screen==="cardForm"&&<aside className="v-card-editor">
