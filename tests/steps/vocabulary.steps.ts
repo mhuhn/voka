@@ -222,6 +222,10 @@ Then("the list detail is beside the complete subject list overview", async funct
   await expect(overview).toBeVisible();
   await expect(details).toBeVisible();
   await expect(overview.getByRole("button",{name:/Irregular Verbs/})).toBeVisible();
+  await expect(overview.getByRole("heading",{name:"Lists",exact:true})).toHaveCount(0);
+  const listTitle=overview.getByRole("button",{name:/Irregular Verbs/}).locator("strong");
+  const titleSize=await listTitle.evaluate(el=>parseFloat(getComputedStyle(el).fontSize));
+  expect(titleSize).toBeGreaterThanOrEqual(16);
   const a=await overview.boundingBox(),b=await details.boundingBox();
   expect(a).not.toBeNull();expect(b).not.toBeNull();
   expect(b!.x).toBeGreaterThan(a!.x+a!.width-12);

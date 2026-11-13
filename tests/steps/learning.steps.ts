@@ -123,7 +123,11 @@ When("I start the next permitted calendar-spaced round",async function(this:Voka
 
 Then("the smallest active card position has been normalized to zero",async function(this:VokaWorld){
   await expect(this.page.locator(".v-learning-front")).toContainText("go");
-  await expect(this.page.locator(".v-learning-session-name")).toContainText("1 of 1");
+  await expect(this.page.locator(".v-learning-session-name")).toContainText("Irregular Verbs");
+  await expect(this.page.locator(".v-learning-list-emoji")).toHaveText("🇬🇧");
+  await expect(this.page.locator(".v-learning-session-name")).not.toContainText("1 of 1");
+  await expect(this.page.locator(".v-learning-header .v-learning-exit")).toHaveClass(/v-icon-button/);
+  await expect(this.page.locator(".v-learning-progress-label")).toContainText("0 / 1");
   await this.page.getByRole("button",{name:"Finish learning"}).click();
   await expect(this.page.locator(".v-learning")).toHaveCount(0);
 });

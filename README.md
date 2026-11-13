@@ -4,6 +4,8 @@ Voka is a deliberately minimal, authentication-first application that shares one
 
 ## Stack
 
+Eine ausführliche Dokumentation aller Technologien, SaaS-Dienste, Einsatzzwecke, Alternativen und des verifizierten Konfigurationsstands steht in **[docs/TECH_STACK.md](docs/TECH_STACK.md)**.
+
 | Layer | Technology | Main artifact |
 | --- | --- | --- |
 | Language/build | TypeScript, Vite | `tsconfig.json`, `vite.config.ts` |

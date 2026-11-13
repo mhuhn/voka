@@ -709,3 +709,31 @@
  .v-app .v-heading .v-detail-header-actions>.v-icon-button,
  .v-app .v-heading>.v-icon-button{width:52px;height:52px;min-width:52px;min-height:52px}
 }
+
+/* The subject title already identifies this pane; list names carry hierarchy. */
+.v-lists-pane .v-list-row strong{font-size:17px;line-height:1.25}
+@media(min-width:900px){.v-lists-pane .v-list-row strong{font-size:16px}}
+@media(min-width:700px) and (pointer:coarse){.v-lists-pane .v-list-row strong{font-size:19px}}
+
+/* Consistent circular back navigation and list/subject identification in learning. */
+.v-learning-header .v-learning-exit{
+ width:46px;height:46px;min-width:46px;min-height:46px;padding:0;
+ display:inline-flex;align-items:center;justify-content:center;border-radius:50%;
+ border:1px solid var(--v-line);background:#fff;color:#0d367b;
+ box-shadow:0 2px 9px #102c501a;font-size:inherit;
+}
+.v-learning-session-name .v-learning-list-title{
+ display:inline-flex;align-items:center;justify-content:center;gap:9px;
+ min-width:0;line-height:1.25;
+}
+.v-learning-list-title>span:last-child{min-width:0;overflow-wrap:anywhere}
+.v-learning-list-emoji{
+ width:30px;min-width:30px;flex:0 0 30px;min-height:30px;
+ font-size:24px;line-height:1.1;display:inline-flex;justify-content:center;align-items:center;
+}
+@media(min-width:700px) and (pointer:coarse){
+ .v-learning-header .v-learning-exit{width:52px;height:52px;min-width:52px;min-height:52px}
+}
+@media(prefers-color-scheme:dark){
+ .v-learning-header .v-learning-exit{background:#192742;color:#b9d8ff;border-color:#34466c}
+}

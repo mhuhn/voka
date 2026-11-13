@@ -14,7 +14,8 @@ Then("the normal orientation is first",async function(this:VokaWorld){
   const front=this.page.locator(".v-learning-front");
   await expect(front).toContainText("Infinitiv");
   await expect(front).toContainText("go");
-  await expect(this.page.locator(".v-learning-session-name")).toContainText("1 of 2");
+  await expect(this.page.locator(".v-learning-session-name")).toContainText("Irregular Verbs");
+  await expect(this.page.locator(".v-learning-progress-label")).toContainText("0 / 2");
   await expect(this.page.locator(".v-learning-points")).toContainText("0 / 4");
 });
 
