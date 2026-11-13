@@ -1,13 +1,13 @@
 # Native Capacitor setup
 
-Capacitor wraps the same `dist/` build for iOS/iPadOS and Android. The bundle identifiers and URL schemes are intentionally placeholders.
+Capacitor wraps the same `dist/` build for iOS/iPadOS and Android. The iOS bundle identifier is registered as `de.mhuhn.voka` in Apple Developer; its callback scheme is `de.mhuhn.voka`.
 
 ## Provision
 
-1. Choose your final reverse-DNS app ID; edit `appId` in `capacitor.config.ts`.
-2. Set `VITE_NATIVE_REDIRECT_URL` to a matching custom URL, for example `com.example.voka://auth/callback`.
+1. Use the registered bundle identifier `de.mhuhn.voka`, already set in `capacitor.config.ts`.
+2. Use the native callback `de.mhuhn.voka://auth/callback`; set `VITE_NATIVE_REDIRECT_URL` to this value when overriding the default.
 3. Run `npm run native:add:ios`, `npm run native:add:android`, then `npm run native:sync`.
-4. In Xcode, add a URL Type to your app target's Info > URL Types with URL scheme `com.example.voka`. This adds `CFBundleURLTypes` to the generated `Info.plist`.
+4. In Xcode, add a URL Type to your app target's Info > URL Types with URL scheme `de.mhuhn.voka`. This adds `CFBundleURLTypes` to the generated `Info.plist`.
 5. In `android/app/src/main/AndroidManifest.xml`, inside the main activity, add an intent filter:
 
 ```xml
@@ -15,7 +15,7 @@ Capacitor wraps the same `dist/` build for iOS/iPadOS and Android. The bundle id
   <action android:name="android.intent.action.VIEW" />
   <category android:name="android.intent.category.DEFAULT" />
   <category android:name="android.intent.category.BROWSABLE" />
-  <data android:scheme="com.example.voka" android:host="auth" android:path="/callback" />
+  <data android:scheme="de.mhuhn.voka" android:host="auth" android:path="/callback" />
 </intent-filter>
 ```
 
@@ -30,4 +30,4 @@ The native WebView currently uses the same localStorage session persistence as t
 
 ## Not yet provisioned
 
-Native platform directories, provisioning profiles, signing keys, developer-account credentials, final identifiers, store metadata, and distribution are not included. Native builds have not been verified until the above steps are completed on the platform toolchains.
+Native platform directories, provisioning profiles, signing keys, developer-account credentials, store metadata, and distribution are not included. Native builds have not been verified until the above steps are completed on the platform toolchains.
