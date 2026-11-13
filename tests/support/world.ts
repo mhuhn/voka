@@ -140,6 +140,15 @@ Before(async function (this: VokaWorld, { pickle }) {
   ];
 
 
+  const profilesByUser=new Map(users.map(u=>[u.id,[{id:u.id,user_id:u.id,first_name:u.name,last_name:"",is_default:true,created_at:"2026-01-01T00:00:00Z"}]]));
+  let nextProfile=10;
+  const signedInUser=(request:ReturnType<Route["request"]>)=>{
+    try{
+      const bearer=(request.headers()["authorization"]||"").replace(/^Bearer\\s+/i,"");
+      const claims=JSON.parse(Buffer.from(bearer.split(".")[1],"base64url").toString("utf8")) as {sub:string};
+      return users.find(u=>u.id===claims.sub)||users[0];
+    }catch{return users[0];}
+  };
   await this.page.route("http://127.0.0.1:54321/**", async (route: Route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -208,6 +217,25 @@ Before(async function (this: VokaWorld, { pickle }) {
       return;
     }
 
+    if(path==="/rest/v1/profiles"&&method==="GET"){
+      await route.fulfill(json(profilesByUser.get(signedInUser(request).id)||[]));return;
+    }
+    if(path==="/rest/v1/rpc/voka_create_profile"&&method==="POST"){
+      const user=signedInUser(request),body=request.postDataJSON() as {p_first_name:string;p_last_name:string};
+      const id="a0000000-0000-4000-8000-"+String(nextProfile++).padStart(12,"0");
+      profilesByUser.get(user.id)?.push({id,user_id:user.id,first_name:body.p_first_name,last_name:body.p_last_name||"",is_default:false,created_at:"2026-11-13T00:00:00Z"});
+      await route.fulfill(json(id));return;
+    }
+    if(path==="/rest/v1/rpc/voka_delete_profile"&&method==="POST"){
+      const user=signedInUser(request),body=request.postDataJSON() as {p_profile_id:string};
+      const records=profilesByUser.get(user.id)||[];
+      if(records.length<=1){await route.fulfill(json({message:"Cannot delete the last profile"},400));return;}
+      const idx=records.findIndex(p=>p.id===body.p_profile_id);
+      if(idx<0){await route.fulfill(json({message:"Profile not owned"},403));return;}
+      const [removed]=records.splice(idx,1);
+      if(removed.is_default)records[0].is_default=true;
+      await route.fulfill(json(null));return;
+    }
     if (path === "/rest/v1/rpc/voka_initialize_defaults" && method === "POST") {
       await route.fulfill(json(null));
       return;
