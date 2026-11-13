@@ -109,7 +109,7 @@ Then("stopping early retains the last result and leaves other cards due",async f
 Then("the list waits until tomorrow after a one-position delay",async function(this:VokaWorld){
   const button=this.page.getByRole("button",{name:"Paused until tomorrow"});
   await expect(button).toBeDisabled();
-  await expect(this.page.locator(".v-list-detail-pane .v-progress")).toContainText("42 %");
+  await expect(this.page.locator(".v-list-detail-pane .v-detail-progress")).toHaveAttribute("aria-valuenow","42");
 });
 
 When("I start the next permitted calendar-spaced round",async function(this:VokaWorld){
