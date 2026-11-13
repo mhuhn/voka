@@ -252,7 +252,7 @@ Before(async function (this: VokaWorld, { pickle }) {
       const records=profilesByUser.get(user.id)||[];
       const selected=request.headers()["x-client-info"]?.split("voka-profile=")[1]?.split(";")[0] || user.id;
       const profile=records.find(profile=>profile.id===body.p_profile_id);
-      if(records.length<2 || !profile || selected!==profile.id) {
+      if(!profile || selected!==profile.id) {
         await route.fulfill(json({message:"Profile editing not allowed"},403));return;
       }
       if(!body.p_name.trim()||body.p_name.trim().length>120){
