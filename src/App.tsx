@@ -141,7 +141,7 @@ function Profile({ language, onClose }: { language: Language; onClose: () => voi
         {editing&&active&&hasMultiple&&<form className="space-y-3 rounded-lg border border-stone-200 p-3" onSubmit={event=>void save(event)}>
           <div className="space-y-1"><Label htmlFor="profile-edit-name">{p.name}</Label><Input id="profile-edit-name" value={editName} onChange={event=>setEditName(event.target.value)} maxLength={120} required/></div>
           <fieldset className="space-y-2"><legend className="text-sm font-medium">{p.emoji}</legend>
-            <div className="grid grid-cols-6 gap-2 sm:grid-cols-8" role="group" aria-label={p.emoji}>
+            <div className="grid grid-cols-6 gap-2 sm:grid-cols-8">
               {PROFILE_EMOJIS.map(emoji=><button key={emoji} type="button" className="flex aspect-square items-center justify-center rounded-lg border text-2xl focus-visible:outline-2 focus-visible:outline-blue-600"
                 style={{backgroundColor:editEmoji===emoji?"#e0edff":"white",borderColor:editEmoji===emoji?"#2563eb":"#e5e7eb"}}
                 aria-label={emoji} aria-pressed={editEmoji===emoji} onClick={()=>setEditEmoji(emoji)}>{emoji}</button>)}
