@@ -150,3 +150,8 @@ The Supabase Security Advisor also reports pre-existing notices concerning `voka
 - The filter formerly named `Ungelernte anzeigen` is now `Gelernte anzeigen` (`Show learned` in English). It is **off by default**: cards with four points are excluded from the visible card list. Turning it on **includes** four-point cards alongside cards with fewer than four points. This filter affects browsing only, not learning eligibility.
 - Counts of flashcards use localized singular and plural forms, including the list overview, list details, and shared-list import preview (e.g. `1 Karte`, `2 Karten`).
 - When the list overview and list details are side by side on a wide screen (e.g. iPad landscape), the top-left back arrow returns directly to **Meine Fächer**. Smaller screens continue to return to the current subject's list overview.
+
+
+## Learning button visual refinement (Voka 0.8.2)
+
+All three entry points for learning (home, individual list, and multi-subject picker) now use a **white button with heavy black text** instead of an orange gradient. The distinctive Voka orange underline is drawn beneath a dedicated text span and tilted slightly, echoing the Voka wordmark. The stroke scales with short labels but has a **76px maximum width** so long cooldown messages such as `Noch 1:04 h Pause` never show a button-wide line. Disabled pause buttons retain white backgrounds, readable muted text and the short underline. No learning logic or data schema changes.
