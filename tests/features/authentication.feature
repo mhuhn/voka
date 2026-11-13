@@ -31,6 +31,7 @@ Feature: Account authentication
     When I create a profile named "Student"
     Then I can switch to the profile named "Alice"
     When I switch to the profile named "Student"
+    And I open the profile page
     Then I can delete the profile named "Student"
     And I cannot delete the last profile
 
