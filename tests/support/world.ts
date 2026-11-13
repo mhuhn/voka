@@ -439,7 +439,7 @@ Before(async function (this: VokaWorld, { pickle }) {
       };
       const user=signedInUser(request);
       // The mocked Data API enforces isolation by the explicit selected profile header.
-      const selected=request.headers()["x-voka-profile-id"] || user.id;
+      const selected=request.headers()["x-client-info"]?.split("voka-profile=")[1]?.split(";")[0] || user.id;
       const owner=profilesByUser.get(user.id)?.some(p=>p.id===selected);
       const sameDefaultProfile=selected===user.id;
       await route.fulfill(json(sampleData && owner && sameDefaultProfile
