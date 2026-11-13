@@ -87,7 +87,6 @@ Then("the two-hour pause survives a page reload",async function(this:VokaWorld){
   const pause=this.page.getByRole("button",{name:/Pause:.*(?:min|h) left/});
   await expect(pause).toBeDisabled();
   await this.page.reload();
-  await this.page.getByRole("button",{name:"Voka",exact:true}).click();
   await this.page.getByRole("button",{name:/Englisch/}).click();
   await this.page.getByRole("button",{name:/Irregular Verbs/}).click();
   await expect(this.page.getByRole("button",{name:/Pause:.*(?:min|h) left/})).toBeDisabled();
