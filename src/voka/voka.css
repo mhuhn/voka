@@ -622,11 +622,11 @@
 .v-csv-file-input{display:none}
 .v-detail-header-actions{display:flex;align-items:center;gap:5px;flex-wrap:nowrap}
 @media(max-width:600px){
- .v-heading:has(.v-detail-header-actions){padding-right:0;gap:6px}
+ .v-heading:has(.v-detail-header-actions){padding-right:0;gap:10px}
  .v-heading:has(.v-detail-header-actions)>h1{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
  .v-heading .v-detail-header-actions{margin-left:auto}
- .v-heading .v-detail-header-actions>.v-icon-button{width:32px;height:32px;min-width:32px}
- .v-heading .v-detail-header-actions>.v-icon-button svg{width:17px;height:17px}
+ .v-heading .v-detail-header-actions>.v-icon-button{width:46px;height:46px;min-width:46px}
+ .v-heading .v-detail-header-actions>.v-icon-button svg{width:22px;height:22px}
 }
 
 /* Last-used tags and autocomplete scoped to the selected subject. */
@@ -681,3 +681,31 @@
 @media(max-width:600px){.v-floats{top:auto;right:12px;bottom:calc(18px + env(safe-area-inset-bottom))}.v-heading,.v-card-form-active .v-heading{padding-right:0}.v-detail-header-actions .v-icon-button,.v-heading>.v-icon-button{width:46px;height:46px;min-width:46px}}
 @media(min-width:700px) and (pointer:coarse){.v-floats{top:auto;bottom:calc(22px + env(safe-area-inset-bottom))}.v-heading,.v-card-form-active .v-heading{padding-right:0}.v-heading>.v-icon-button,.v-detail-header-actions>.v-icon-button,.v-detail-actions-popover .v-icon-button{width:52px;height:52px;min-width:52px}}
 @media(prefers-color-scheme:dark){.v-manage-link,.v-detail-actions-popover{background:#192742;border-color:#34466c}.v-app .v-secondary-action{background:#1b2e4d;color:#bfdaff;border-color:#405778}}
+
+/* The word is centered independently of the leading play glyph. */
+.v-app .v-learn-cta{
+ display:grid;
+ grid-template-columns:minmax(24px,1fr) minmax(0,max-content) minmax(24px,1fr);
+ column-gap:10px;
+ align-items:center;
+ border:2px solid #ffbd59;
+ padding-inline:16px;
+}
+.v-app .v-learn-cta>svg{grid-column:1;justify-self:end;flex-shrink:0}
+.v-app .v-learn-cta>.v-learn-cta-label{grid-column:2;justify-self:center;min-width:0;overflow-wrap:anywhere}
+.v-app .v-learn-cta:disabled{border-color:#ffbd59}
+/* Match the back button and the overflow menu on iPhone and iPad. */
+.v-app .v-heading .v-detail-header-actions>.v-icon-button,
+.v-app .v-heading>.v-icon-button{width:46px;height:46px;min-width:46px;min-height:46px;padding:0}
+.v-app .v-heading .v-detail-header-actions>.v-icon-button svg{width:22px;height:22px}
+/* Subject and list titles keep their emoji in an identical slot. */
+.v-app .v-heading .v-heading-subject-title,
+.v-app .v-heading .v-heading-list-title{display:inline-flex;align-items:center;gap:9px;min-width:0}
+.v-app .v-heading .v-heading-subject-title>.v-emoji,
+.v-app .v-heading .v-heading-list-title>.v-emoji{
+ width:30px;min-width:30px;flex:0 0 30px;height:30px;font-size:24px;line-height:1;
+}
+@media(min-width:700px) and (pointer:coarse){
+ .v-app .v-heading .v-detail-header-actions>.v-icon-button,
+ .v-app .v-heading>.v-icon-button{width:52px;height:52px;min-width:52px;min-height:52px}
+}
