@@ -17,6 +17,25 @@ Feature: Vocabulary lists
     And the tablet card editor opens to the right of the full list details
     And the card editor occupies a third column
 
+  Scenario: Export cards and import updates by card ID
+    Given I open the Voka app
+    When I sign in as "alice@example.test" with password "correct-password"
+    And I return to vocabulary home
+    And I open the English subject
+    And I open the irregular verbs list
+    Then the list CSV download includes card IDs and both progress directions
+    When I import CSV with one existing and one new card
+    Then the CSV importer updates one card and adds one card
+
+  Scenario: CSV actions remain available on small smartphones
+    Given I open the Voka app
+    When I sign in as "alice@example.test" with password "correct-password"
+    And I return to vocabulary home
+    And I switch to a phone-sized viewport
+    And I open the English subject
+    And I open the irregular verbs list
+    Then CSV export and import buttons are visible in the phone list header
+
   Scenario: New lists for a language use its name as the answer label
     Given I open the Voka app
     When I sign in as "alice@example.test" with password "correct-password"
