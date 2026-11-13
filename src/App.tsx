@@ -1,11 +1,11 @@
 import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
-import { ArrowLeft, Check, CircleUserRound, LogOut, Plus, Trash2, UserRound, Users } from "lucide-react";
+import { ArrowLeft, Check, LogOut, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./components/ui/card";
 import { authManager } from "./auth/manager";
-import { profileManager } from "./auth/profiles";
+import { PROFILE_EMOJIS, profileEmoji, profileManager, profileName } from "./auth/profiles";
 import { isConfigured } from "./auth/config";
 import { detectLanguage, translations, translateError, type Language } from "./lib/i18n";
 import { changedAt, version, formatLastChange } from "./lib/buildInfo";
@@ -66,40 +66,50 @@ function AuthForm({ language }: { language: Language }) {
 }
 
 function Profile({ language, onClose }: { language: Language; onClose: () => void }) {
-  const t = translations[language];
-  const auth = useSyncExternalStore(authManager.subscribe, authManager.snapshot);
-  const profiles = useSyncExternalStore(profileManager.subscribe, profileManager.snapshot);
-  const account = auth.registry.accounts.find(a => a.id === auth.registry.activeId);
-  const user = authManager.activeUser;
+  const t=translations[language];
+  const auth=useSyncExternalStore(authManager.subscribe,authManager.snapshot);
+  const profiles=useSyncExternalStore(profileManager.subscribe,profileManager.snapshot);
+  const user=authManager.activeUser;
   const [creating,setCreating]=useState(false);
-  const [firstName,setFirstName]=useState("");
-  const [lastName,setLastName]=useState("");
-  const labels:Record<Language,{profiles:string;switchProfile:string;newProfile:string;deleteProfile:string;lastProfile:string;firstName:string;lastName:string;confirmDelete:string;create:string;cancel:string;loading:string}> = {
-    de:{profiles:"Profile",switchProfile:"Profil wechseln",newProfile:"Neues Profil",deleteProfile:"Profil löschen",lastProfile:"Das letzte Profil kann nicht gelöscht werden.",firstName:"Vorname",lastName:"Nachname (optional)",confirmDelete:"Dieses Profil mit allen Fächern, Fachgruppen, Listen und Lernständen endgültig löschen?",create:"Profil anlegen",cancel:"Abbrechen",loading:"Profile laden …"},
-    en:{profiles:"Profiles",switchProfile:"Switch profile",newProfile:"New profile",deleteProfile:"Delete profile",lastProfile:"The last profile cannot be deleted.",firstName:"First name",lastName:"Last name (optional)",confirmDelete:"Permanently delete this profile and all its subjects, lists and learning history?",create:"Create profile",cancel:"Cancel",loading:"Loading profiles…"},
-    fr:{profiles:"Profils",switchProfile:"Changer de profil",newProfile:"Nouveau profil",deleteProfile:"Supprimer le profil",lastProfile:"Impossible de supprimer le dernier profil.",firstName:"Prénom",lastName:"Nom (facultatif)",confirmDelete:"Supprimer définitivement ce profil et toutes ses données ?",create:"Créer le profil",cancel:"Annuler",loading:"Chargement des profils…"},
-    nl:{profiles:"Profielen",switchProfile:"Profiel wisselen",newProfile:"Nieuw profiel",deleteProfile:"Profiel verwijderen",lastProfile:"Het laatste profiel kan niet worden verwijderd.",firstName:"Voornaam",lastName:"Achternaam (optioneel)",confirmDelete:"Dit profiel en alle gegevens definitief verwijderen?",create:"Profiel maken",cancel:"Annuleren",loading:"Profielen laden…"},
-    da:{profiles:"Profiler",switchProfile:"Skift profil",newProfile:"Ny profil",deleteProfile:"Slet profil",lastProfile:"Den sidste profil kan ikke slettes.",firstName:"Fornavn",lastName:"Efternavn (valgfrit)",confirmDelete:"Slet profilen og alle dens data permanent?",create:"Opret profil",cancel:"Annuller",loading:"Indlæser profiler…"},
-    it:{profiles:"Profili",switchProfile:"Cambia profilo",newProfile:"Nuovo profilo",deleteProfile:"Elimina profilo",lastProfile:"L'ultimo profilo non può essere eliminato.",firstName:"Nome",lastName:"Cognome (opzionale)",confirmDelete:"Eliminare definitivamente questo profilo e tutti i dati?",create:"Crea profilo",cancel:"Annulla",loading:"Caricamento profili…"}
+  const [newName,setNewName]=useState("");
+  const [editing,setEditing]=useState(false);
+  const [editName,setEditName]=useState("");
+  const [editEmoji,setEditEmoji]=useState<string>("🙂");
+  const labels:Record<Language,{profiles:string;switchProfile:string;newProfile:string;deleteProfile:string;lastProfile:string;name:string;emoji:string;edit:string;confirmDelete:string;create:string;save:string;cancel:string;loading:string}> = {
+    de:{profiles:"Profile",switchProfile:"Profil wechseln",newProfile:"Neues Profil",deleteProfile:"Profil löschen",lastProfile:"Das letzte Profil kann nicht gelöscht werden.",name:"Profilname",emoji:"Profil-Emoji",edit:"Aktuelles Profil bearbeiten",confirmDelete:"Dieses Profil mit allen Fächern, Fachgruppen, Listen und Lernständen endgültig löschen?",create:"Profil anlegen",save:"Speichern",cancel:"Abbrechen",loading:"Profile laden …"},
+    en:{profiles:"Profiles",switchProfile:"Switch profile",newProfile:"New profile",deleteProfile:"Delete profile",lastProfile:"The last profile cannot be deleted.",name:"Profile name",emoji:"Profile emoji",edit:"Edit current profile",confirmDelete:"Permanently delete this profile and all its subjects, lists and learning history?",create:"Create profile",save:"Save",cancel:"Cancel",loading:"Loading profiles…"},
+    fr:{profiles:"Profils",switchProfile:"Changer de profil",newProfile:"Nouveau profil",deleteProfile:"Supprimer le profil",lastProfile:"Impossible de supprimer le dernier profil.",name:"Nom du profil",emoji:"Emoji du profil",edit:"Modifier le profil actuel",confirmDelete:"Supprimer définitivement ce profil et toutes ses données ?",create:"Créer le profil",save:"Enregistrer",cancel:"Annuler",loading:"Chargement des profils…"},
+    nl:{profiles:"Profielen",switchProfile:"Profiel wisselen",newProfile:"Nieuw profiel",deleteProfile:"Profiel verwijderen",lastProfile:"Het laatste profiel kan niet worden verwijderd.",name:"Profielnaam",emoji:"Profiel-emoji",edit:"Huidig profiel bewerken",confirmDelete:"Dit profiel en alle gegevens definitief verwijderen?",create:"Profiel maken",save:"Opslaan",cancel:"Annuleren",loading:"Profielen laden…"},
+    da:{profiles:"Profiler",switchProfile:"Skift profil",newProfile:"Ny profil",deleteProfile:"Slet profil",lastProfile:"Den sidste profil kan ikke slettes.",name:"Profilnavn",emoji:"Profil-emoji",edit:"Rediger aktuel profil",confirmDelete:"Slet profilen og alle dens data permanent?",create:"Opret profil",save:"Gem",cancel:"Annuller",loading:"Indlæser profiler…"},
+    it:{profiles:"Profili",switchProfile:"Cambia profilo",newProfile:"Nuovo profilo",deleteProfile:"Elimina profilo",lastProfile:"L'ultimo profilo non può essere eliminato.",name:"Nome profilo",emoji:"Emoji del profilo",edit:"Modifica profilo attuale",confirmDelete:"Eliminare definitivamente questo profilo e tutti i dati?",create:"Crea profilo",save:"Salva",cancel:"Annulla",loading:"Caricamento profili…"}
   };
-  const p=labels[language];
-  const active=profiles.profiles.find(profile=>profile.id===profiles.activeId);
-  const submit=async(event:FormEvent<HTMLFormElement>)=>{
+  const p=labels[language], active=profiles.profiles.find(profile=>profile.id===profiles.activeId);
+  const hasMultiple=profiles.profiles.length>1;
+  const create=async(event:FormEvent<HTMLFormElement>)=>{
     event.preventDefault();
-    try{await profileManager.create(firstName,lastName);setCreating(false);setFirstName("");setLastName("");}
-    catch{ /* Error is displayed in the profile page. */ }
+    try{await profileManager.create(newName);setCreating(false);setNewName("");}
+    catch{ /* Error is displayed within the profile page. */ }
+  };
+  const save=async(event:FormEvent<HTMLFormElement>)=>{
+    event.preventDefault();
+    try{await profileManager.updateCurrent(editName,editEmoji);setEditing(false);}
+    catch{ /* Error is displayed within the profile page. */ }
   };
   const remove=async(id:string)=>{
-    if(profiles.profiles.length<=1)return;
-    if(!window.confirm(p.confirmDelete))return;
-    try{await profileManager.delete(id);}catch{ /* Display server error. */ }
+    if(!hasMultiple||!window.confirm(p.confirmDelete))return;
+    try{await profileManager.delete(id);setEditing(false);}catch{ /* Show server error. */ }
+  };
+  const openEditor=()=>{
+    if(!active||!hasMultiple)return;
+    setEditName(profileName(active));setEditEmoji(profileEmoji(active));
+    setCreating(false);setEditing(true);
   };
   return <div className="v-profile space-y-5">
     <Card className="v-profile-card">
       <CardHeader>
-        <div className="v-profile-avatar mb-3 flex size-14 items-center justify-center rounded-full" style={{color:getUserAvatarColor(user?.id||""),backgroundColor:getUserAvatarColor(user?.id||"")+"20"}}><UserRound size={32}/></div>
+        <div className="v-profile-avatar mb-3 flex size-14 items-center justify-center rounded-full text-3xl" aria-hidden="true" style={{backgroundColor:getUserAvatarColor(user?.id||"")+"20"}}>{profileEmoji(active)}</div>
         <CardTitle>{t.profile}</CardTitle>
-        <CardDescription>{account?.name || user?.email}</CardDescription>
+        <CardDescription>{active?profileName(active):user?.email}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div><p className="text-xs font-medium uppercase tracking-wide text-stone-500">{t.email}</p><p className="mt-1 break-all font-medium">{user?.email || ""}</p></div>
@@ -114,23 +124,35 @@ function Profile({ language, onClose }: { language: Language; onClose: () => voi
         {profiles.error&&<p role="alert" className="text-sm text-red-700">{profiles.error}</p>}
         {profiles.profiles.map(profile=><div key={profile.id} className="flex items-center gap-2 rounded-lg border border-stone-200 p-2">
           <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left"
-            aria-label={p.switchProfile+": "+[profile.first_name,profile.last_name].filter(Boolean).join(" ")}
+            aria-label={p.switchProfile+": "+profileName(profile)}
             aria-current={profile.id===active?.id?"true":undefined}
             onClick={()=>{profileManager.select(profile.id);onClose();}}>
-            <CircleUserRound size={25} className="shrink-0" style={{color:getUserAvatarColor(profile.id)}}/>
-            <span className="block min-w-0 truncate text-sm font-semibold">{[profile.first_name,profile.last_name].filter(Boolean).join(" ") || p.profiles}</span>
+            <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center text-2xl">{profileEmoji(profile)}</span>
+            <span className="block min-w-0 truncate text-sm font-semibold">{profileName(profile)}</span>
             {profile.id===active?.id&&<Check size={18} className="ml-auto shrink-0 text-blue-600"/>}
           </button>
-          <button type="button" className="rounded-lg p-2 text-red-700 disabled:opacity-30" disabled={profiles.busy||profiles.profiles.length<=1}
-            title={profiles.profiles.length<=1?p.lastProfile:p.deleteProfile}
-            aria-label={p.deleteProfile+": "+profile.first_name}
+          {hasMultiple&&profile.id===active?.id&&<button type="button" className="rounded-lg p-2" disabled={profiles.busy}
+            title={p.edit} aria-label={p.edit} onClick={openEditor}><Pencil size={17}/></button>}
+          <button type="button" className="rounded-lg p-2 text-red-700 disabled:opacity-30" disabled={profiles.busy||!hasMultiple}
+            title={!hasMultiple?p.lastProfile:p.deleteProfile}
+            aria-label={p.deleteProfile+": "+profileName(profile)}
             onClick={()=>void remove(profile.id)}><Trash2 size={17}/></button>
         </div>)}
-        {!creating?<Button variant="outline" className="v-profile-action w-full" disabled={profiles.busy} onClick={()=>setCreating(true)}><Plus size={16}/>{p.newProfile}</Button>:
-        <form className="space-y-3" onSubmit={event=>void submit(event)}>
-          <div><Label htmlFor="profile-first">{p.firstName}</Label><Input id="profile-first" value={firstName} onChange={event=>setFirstName(event.target.value)} maxLength={150} required/></div>
-          <div><Label htmlFor="profile-last">{p.lastName}</Label><Input id="profile-last" value={lastName} onChange={event=>setLastName(event.target.value)} maxLength={150}/></div>
-          <div className="flex gap-2"><Button type="submit" disabled={profiles.busy||!firstName.trim()}>{p.create}</Button><Button type="button" variant="outline" onClick={()=>setCreating(false)}>{p.cancel}</Button></div>
+        {editing&&active&&hasMultiple&&<form className="space-y-3 rounded-lg border border-stone-200 p-3" onSubmit={event=>void save(event)}>
+          <div className="space-y-1"><Label htmlFor="profile-edit-name">{p.name}</Label><Input id="profile-edit-name" value={editName} onChange={event=>setEditName(event.target.value)} maxLength={120} required/></div>
+          <fieldset className="space-y-2"><legend className="text-sm font-medium">{p.emoji}</legend>
+            <div className="grid grid-cols-6 gap-2 sm:grid-cols-8" role="group" aria-label={p.emoji}>
+              {PROFILE_EMOJIS.map(emoji=><button key={emoji} type="button" className="flex aspect-square items-center justify-center rounded-lg border text-2xl focus-visible:outline-2 focus-visible:outline-blue-600"
+                style={{backgroundColor:editEmoji===emoji?"#e0edff":"white",borderColor:editEmoji===emoji?"#2563eb":"#e5e7eb"}}
+                aria-label={emoji} aria-pressed={editEmoji===emoji} onClick={()=>setEditEmoji(emoji)}>{emoji}</button>)}
+            </div>
+          </fieldset>
+          <div className="flex gap-2"><Button type="submit" disabled={profiles.busy||!editName.trim()}>{p.save}</Button><Button type="button" variant="outline" onClick={()=>setEditing(false)}>{p.cancel}</Button></div>
+        </form>}
+        {!creating?<Button variant="outline" className="v-profile-action w-full" disabled={profiles.busy} onClick={()=>{setEditing(false);setCreating(true);}}><Plus size={16}/>{p.newProfile}</Button>:
+        <form className="space-y-3" onSubmit={event=>void create(event)}>
+          <div className="space-y-1"><Label htmlFor="profile-name">{p.name}</Label><Input id="profile-name" value={newName} onChange={event=>setNewName(event.target.value)} maxLength={120} required/></div>
+          <div className="flex gap-2"><Button type="submit" disabled={profiles.busy||!newName.trim()}>{p.create}</Button><Button type="button" variant="outline" onClick={()=>setCreating(false)}>{p.cancel}</Button></div>
         </form>}
       </CardContent>
     </Card>
