@@ -554,7 +554,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
    {loading?<div className="v-empty">{t("loading")}</div>:<>
    {screen!=="learn"&&screen!=="mixedSelect"&&<header className="v-heading">
     {screen!=="home"&&<IconButton onClick={back} label={t("cancel")}><ArrowLeft/></IconButton>}
-    <h1>{screen==="home"?<span className="v-logo">Voka</span>:wide&&(screen==="list"||screen==="cardForm"||(screen==="listForm"&&Boolean(listEditing)))?<span>{currentSubject?.emoji} {currentSubject?.title}</span>:screen==="subject"?<span className="v-heading-subject-title"><span className="v-emoji">{currentSubject?.emoji}</span>{currentSubject?.title}</span>:screen==="list"?listTitle:screen==="listForm"?(listEditing?t("editList"):t("createList")):screen==="cardForm"?(selectedCard?t("editCard"):t("addCard")):t("manage")}</h1>
+    <h1>{screen==="home"?<span className="v-logo">Voka</span>:(screen==="subject"||wide&&(screen==="list"||screen==="cardForm"||(screen==="listForm"&&Boolean(listEditing))))?<span className="v-heading-subject-title"><span className="v-emoji" aria-hidden="true">{currentSubject?.emoji}</span><span>{currentSubject?.title}</span></span>:screen==="list"?listTitle:screen==="listForm"?(listEditing?t("editList"):t("createList")):screen==="cardForm"?(selectedCard?t("editCard"):t("addCard")):t("manage")}</h1>
     {!wide&&(screen==="list"||screen==="cardForm")&&currentList&&detailActions(19)}
    </header>}
    {screen==="learn"&&learningSession&&learningList&&<LearningScreen language={language} list={learningList}
@@ -568,7 +568,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
     {streak&&<StreakCard streak={streak} language={language} onDismiss={dismissNotice}/>}
     {completedQueryId&&streak?.last_awarded_query_id===completedQueryId&&<p className="v-streak-awarded" role="status">Streak: {streak.n} {streak.n===1?"Tag":"Tage"} in Folge.</p>}
     {data.lists.length===0&&<section className="v-intro"><div className="v-illustration"><BookOpen size={74}/><span>?</span></div><h2>{t("empty")}</h2><p>{t("emptyInfo")}</p><button className="v-secondary-action" onClick={()=>newList()}><Plus size={18}/>{t("createList")}</button></section>}
-    <div className="v-section-tools"><h2 className="v-section-title">{t("mySubjects")}</h2><button className="v-manage-link" title={t("manage")} aria-label={t("manage")} onClick={()=>{setManageModalOpen(false);setScreen("manage")}}><Pencil size={20}/></button></div>{data.lists.length>0&&<button className="v-primary v-home-learn v-learn-cta" onClick={()=>setScreen("mixedSelect")}><Play size={20}/><span className="v-learn-cta-label">{t("learn")}</span></button>}
+    <div className="v-section-tools"><h2 className="v-section-title">{t("mySubjects")}</h2><button className="v-manage-link" title={t("manage")} aria-label={t("manage")} onClick={()=>{setManageModalOpen(false);setScreen("manage")}}><Pencil size={20}/></button></div>{data.lists.length>0&&<button className="v-primary v-home-learn v-learn-cta" onClick={()=>setScreen("mixedSelect")}><Play size={20} aria-hidden="true"/><span className="v-learn-cta-label">{t("learn")}</span></button>}
     <div className="v-group-grid">{visibleGroups.map(g=>{
      const subjects=[...data.subjects.filter(s=>s.group_id===g.id&&subjectsWithLists.has(s.id))].sort((a,b)=>subjectUsage(data,b.id)-subjectUsage(data,a.id)||a.title.localeCompare(b.title));
      return <section className="v-group" key={g.id}><div className="v-group-head"><strong>{g.title}</strong><small>{t("updated")}: {stamp(groupUsage(data,g.id),language)}</small><button aria-label={t("edit")+" "+g.title} onClick={()=>startManage("group",g)}><Pencil size={14}/></button></div>
@@ -586,7 +586,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
     <div className="v-list-main">
     {completedQueryId&&streak?.last_awarded_query_id===completedQueryId&&<p className="v-streak-awarded" role="status">Streak: {streak.n} {streak.n===1?"Tag":"Tage"} in Folge.</p>}
      {currentList.tags.length>0&&<div className="v-list-summary"><div className="v-tag-row">{currentList.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div>}
-      <div className="v-list-actions"><button className="v-primary v-learn-cta" type="button" title={learningButtonLabel} aria-label={learningButtonLabel} disabled={learningUnavailable} onClick={()=>void startLearning()}><Play size={19} fill="currentColor"/><span className="v-learn-cta-label">{learningButtonLabel}</span></button>
+      <div className="v-list-actions"><button className="v-primary v-learn-cta" type="button" title={learningButtonLabel} aria-label={learningButtonLabel} disabled={learningUnavailable} onClick={()=>void startLearning()}><Play size={19} fill="currentColor" aria-hidden="true"/><span className="v-learn-cta-label">{learningButtonLabel}</span></button>
      </div>
      {shareStatus&&<p className="v-share-status" role="status">{shareStatus}</p>}
      {csvStatus&&<p className="v-share-status" role="status">{csvStatus}</p>}

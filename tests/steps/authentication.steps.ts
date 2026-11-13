@@ -12,7 +12,7 @@ When("I sign in as {string} with password {string}", async function (this: VokaW
   await this.page.getByLabel("Password").fill(password);
   await this.page.getByRole("button", { name: "Sign in", exact: true }).click();
   await this.page.locator(".v-floats button").last().click();
-  await expect(this.page.getByRole("heading", { name: "My profile" })).toBeVisible();
+  await expect(this.page.locator(".v-profile-card").first().locator('[data-slot="card-title"]')).toBeVisible();
 });
 
 When("I open registration", async function (this: VokaWorld) {
@@ -121,7 +121,7 @@ Then("the current profile is managed only in My profile", async function(this:Vo
   await expect(switchCard.getByRole("button",{name:"Edit current profile"})).toHaveCount(0);
   await expect(switchCard.getByRole("button",{name:"Delete profile"})).toHaveCount(0);
   await expect(switchCard.getByRole("button",{name:"New profile"})).toBeVisible();
-  const current=await currentCard.locator("[data-slot=card-description]").innerText();
+  const current=await currentCard.locator("[data-slot=card-title]").innerText();
   await expect(switchCard.getByRole("button",{name:"Switch profile: "+current.trim()})).toHaveCount(0);
 });
 
@@ -145,7 +145,7 @@ Then("I cannot delete the last profile", async function(this:VokaWorld) {
 });
 
 When("I return to Voka from the profile page", async function(this:VokaWorld) {
-  await this.page.getByRole("button",{name:"Voka",exact:true}).click();
+  await this.page.locator(".v-profile-heading .v-profile-back").click();
 });
 
 When("I open the profile page", async function(this:VokaWorld) {
@@ -164,12 +164,12 @@ Then("the original lists are visible again", async function(this:VokaWorld) {
 When("I reload the app", async function (this: VokaWorld) {
   await this.page.reload();
   await this.page.locator(".v-floats button").last().click();
-  await expect(this.page.getByRole("heading", { name: "My profile" })).toBeVisible();
+  await expect(this.page.locator(".v-profile-card").first().locator('[data-slot="card-title"]')).toBeVisible();
 });
 
 Then("I see the profile for {string}", async function (this: VokaWorld, email: string) {
-  if (!(await this.page.getByRole("heading", { name: "My profile" }).isVisible())) await this.page.locator(".v-floats button").last().click();
-  await expect(this.page.getByRole("heading", { name: "My profile" })).toBeVisible();
+  if (!(await this.page.locator(".v-profile-card").first().locator('[data-slot="card-title"]').isVisible())) await this.page.locator(".v-floats button").last().click();
+  await expect(this.page.locator(".v-profile-card").first().locator('[data-slot="card-title"]')).toBeVisible();
   await expect(this.page.locator('[data-slot="card"]').first()).toContainText(email);
 });
 
@@ -220,8 +220,8 @@ When("I sign in using the current locale as {string} with password {string}", as
   await this.page.locator(".v-floats button").last().click();
 });
 
-Then("the profile heading is {string}", async function (this: VokaWorld, title: string) {
-  await expect(this.page.getByRole("heading", { name: title })).toBeVisible();
+Then("the active profile heading shows {string}", async function (this: VokaWorld, name: string) {
+  await expect(this.page.locator(".v-profile-card").first().locator('[data-slot="card-title"]')).toHaveText(name);
 });
 
 Then("the profile sign-out button is {string}", async function (this: VokaWorld, label: string) {
@@ -287,7 +287,7 @@ Then("the selected user's floating avatar retains their profile color", async fu
  const map=await this.page.evaluate(()=>JSON.parse(localStorage.getItem("voka:user-avatar-colors:v1")||"{}") as Record<string,string>);
  const id="00000000-0000-4000-8000-000000000001";
  const expected=map[id].match(/\w\w/g)!.map(n=>parseInt(n,16));
- await this.page.getByRole("button",{name:"Voka",exact:true}).click();
+ await this.page.locator(".v-profile-heading .v-profile-back").click();
  const avatar=this.page.locator(".v-user-float");
  await expect(avatar).toBeVisible();
  await expect(avatar).toHaveCSS("color","rgb("+expected.join(", ")+")");

@@ -109,3 +109,10 @@ body:has(.v-auth-shell){background:#f8faff}
 @media(max-width:600px){.v-profile-shell{padding:calc(3px + env(safe-area-inset-top)) 14px calc(92px + env(safe-area-inset-bottom))}.v-profile-shell .v-profile-heading{min-height:61px;margin-bottom:12px}.v-profile-shell .v-profile-heading h1{font-size:19px}}
 @media(min-width:700px) and (pointer:coarse){.v-profile-shell{padding:30px 30px 126px}.v-profile-shell .v-profile-heading{min-height:73px;margin-bottom:24px}.v-profile-shell .v-profile-heading h1{font-size:29px}.v-profile-shell .v-profile-heading .v-profile-back{width:52px;height:52px;min-width:52px}}
 @media(prefers-color-scheme:dark){.v-profile-shell{--v-navy:#e9f0ff;--v-line:#34466c;background:#101a2d}.v-profile-shell .v-profile-heading .v-profile-back{background:#192742;color:#b9d8ff;border-color:#34466c}}
+
+/* Avoid pinch/double-tap magnification and iOS focus zoom in mobile app views. */
+@media(pointer:coarse){
+ .v-app,.v-profile-shell,.v-auth-shell{touch-action:pan-x pan-y}
+ .v-app .v-form input:not([type=checkbox]),.v-app .v-form select,
+ .v-app .v-form textarea,.v-profile-shell input,.v-auth-shell input{font-size:max(16px,1em)}
+}

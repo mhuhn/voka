@@ -7,5 +7,5 @@ Then("the list overview shows the equally weighted 45-percent progress",async fu
   await expect(row.locator(".v-list-progress-label")).toContainText("45 %");
   await expect(row.getByRole("progressbar")).toHaveAttribute("aria-valuenow","45");
   await row.click();
-  await expect(this.page.locator(".v-list-detail-pane .v-progress")).toContainText("45 %");
+  await expect(this.page.locator(".v-list-detail-pane .v-detail-progress")).toHaveAttribute("aria-valuenow","45");
 });

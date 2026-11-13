@@ -77,7 +77,8 @@ Then("the third learning question is shown",async function(this:VokaWorld){
 });
 
 When("I skip the learning pause",async function(this:VokaWorld){
-  const button=this.page.locator(".v-detail-header-actions").getByRole("button",{name:"Skip learning pause"});
+  await this.page.getByRole("button",{name:"More actions"}).click();
+   const button=this.page.locator(".v-detail-actions-popover").getByRole("button",{name:"Skip learning pause"});
   await expect(button).toBeEnabled();
   const request=this.page.waitForRequest(req=>
     new URL(req.url()).pathname==="/rest/v1/rpc/voka_skip_learning_pause");

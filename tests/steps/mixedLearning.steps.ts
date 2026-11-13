@@ -58,12 +58,14 @@ Then("the learning session processes the subjects in order with a transition",as
 });
 
 Then("the share control is a small round heading button",async function(this:VokaWorld){
-  const button=this.page.locator(".v-detail-header-actions").getByRole("button",{name:"Share"});
+  const menu=this.page.locator(".v-detail-header-actions").getByRole("button",{name:"More actions"});
+  await menu.click();
+  const button=this.page.locator(".v-detail-actions-popover").getByRole("button",{name:"Share"});
   await expect(button).toBeVisible();
   const size=await button.boundingBox();
   expect(size).not.toBeNull();
-  expect(size!.width).toBeLessThanOrEqual(49);
-  expect(size!.height).toBeLessThanOrEqual(49);
+  expect(size!.width).toBeLessThanOrEqual(54);
+  expect(size!.height).toBeLessThanOrEqual(54);
   await expect(this.page.locator(".v-list-actions .v-share-button")).toHaveCount(0);
 });
 

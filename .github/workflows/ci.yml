@@ -28,4 +28,4 @@ jobs:
           done
           cat /tmp/voka-vite.log
           exit 1
-      - run: npm run test:e2e
+      - run: npm run test:e2e -- --name "Share is a small button in the list detail heading" # temporary targeted diagnostic

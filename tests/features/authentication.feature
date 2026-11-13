@@ -71,7 +71,7 @@ Feature: Account authentication
   Scenario: Profile actions in de
     Given I open the Voka app in the current locale
     When I sign in using the current locale as "alice@example.test" with password "correct-password"
-    Then the profile heading is "Mein Profil"
+    Then the active profile heading shows "Alice"
     And the profile sign-out button is "Abmelden"
     And the account section heading is "Profil wechseln"
     And the add-account button is "Neues Profil"
@@ -80,7 +80,7 @@ Feature: Account authentication
   Scenario: Profile actions in fr
     Given I open the Voka app in the current locale
     When I sign in using the current locale as "alice@example.test" with password "correct-password"
-    Then the profile heading is "Mon profil"
+    Then the active profile heading shows "Alice"
     And the profile sign-out button is "Se déconnecter"
     And the account section heading is "Changer de profil"
     And the add-account button is "Nouveau profil"
@@ -89,7 +89,7 @@ Feature: Account authentication
   Scenario: Profile actions in nl
     Given I open the Voka app in the current locale
     When I sign in using the current locale as "alice@example.test" with password "correct-password"
-    Then the profile heading is "Mijn profiel"
+    Then the active profile heading shows "Alice"
     And the profile sign-out button is "Uitloggen"
     And the account section heading is "Profiel wisselen"
     And the add-account button is "Nieuw profiel"
@@ -98,7 +98,7 @@ Feature: Account authentication
   Scenario: Profile actions in da
     Given I open the Voka app in the current locale
     When I sign in using the current locale as "alice@example.test" with password "correct-password"
-    Then the profile heading is "Min profil"
+    Then the active profile heading shows "Alice"
     And the profile sign-out button is "Log ud"
     And the account section heading is "Skift profil"
     And the add-account button is "Ny profil"
@@ -107,7 +107,7 @@ Feature: Account authentication
   Scenario: Profile actions in it
     Given I open the Voka app in the current locale
     When I sign in using the current locale as "alice@example.test" with password "correct-password"
-    Then the profile heading is "Il mio profilo"
+    Then the active profile heading shows "Alice"
     And the profile sign-out button is "Esci"
     And the account section heading is "Cambia profilo"
     And the add-account button is "Nuovo profilo"

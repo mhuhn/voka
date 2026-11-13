@@ -65,17 +65,19 @@ Then("canceling the shared-list import leaves my lists untouched",async function
 
 Then("the list share button calls the native share sheet with the list ID",async function(this:VokaWorld){
  await this.page.evaluate('Object.defineProperty(navigator,"share",{configurable:true,value:function(payload){window.__vokaShared=payload;return Promise.resolve();}})');
+ await this.page.getByRole("button",{name:"More actions"}).click();
  await this.page.getByRole("button",{name:"Share",exact:true}).click();
  const payload=await this.page.evaluate(()=>(window as Window&{__vokaShared?:ShareData}).__vokaShared);
  expect(payload?.title).toBe("Irregular Verbs");
  const url=new URL(payload?.url||"");
  expect(url.origin).toBe("https://mhuhn.github.io");
- expect(url.pathname).toBe("/voka/react/");
+ expect(url.pathname).toBe("/voka/");
  expect(url.searchParams.get("importList")).toBe(sourceId);
 });
 
 Then("sharing copies a usable link if no share sheet is supported",async function(this:VokaWorld){
  await this.page.evaluate('Object.defineProperty(navigator,"share",{configurable:true,value:undefined});Object.defineProperty(navigator,"clipboard",{configurable:true,value:{writeText:function(value){window.__vokaCopied=value;return Promise.resolve();}}})');
+ await this.page.getByRole("button",{name:"More actions"}).click();
  await this.page.getByRole("button",{name:"Share",exact:true}).click();
  await expect(this.page.getByRole("status")).toContainText("Link copied");
  const link=await this.page.evaluate(()=>(window as Window&{__vokaCopied?:string}).__vokaCopied);
