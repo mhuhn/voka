@@ -2,6 +2,9 @@ name: Publish Voka iOS to TestFlight
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - 'testflight-v*'
 
 permissions:
   contents: read
@@ -24,6 +27,24 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
+      - name: Determine iOS app version
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            if [[ "$GITHUB_REF_NAME" != testflight-v* ]]; then
+              echo "::error::Unsupported tag name: $GITHUB_REF_NAME"
+              exit 1
+            fi
+            APP_VERSION="${GITHUB_REF_NAME#testflight-v}"
+          else
+            APP_VERSION="$(node -p "require('./package.json').version")"
+          fi
+          if [[ ! "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid iOS app version '$APP_VERSION'. Expected X.Y.Z (e.g. testflight-v0.16.2)."
+            exit 1
+          fi
+          echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
+          echo "### Voka iOS $APP_VERSION (build $GITHUB_RUN_NUMBER)" >> "$GITHUB_STEP_SUMMARY"
       - name: Verify signing configuration
         env:
           P12: ${{ secrets.IOS_DISTRIBUTION_P12_BASE64 }}
@@ -133,6 +154,7 @@ jobs:
             CODE_SIGN_IDENTITY="Apple Distribution" \
             PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
             CODE_SIGN_KEYCHAIN="$SIGNING_KEYCHAIN" \
+            MARKETING_VERSION="$APP_VERSION" \
             CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
             archive
       - name: Export IPA
