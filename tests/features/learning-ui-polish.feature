@@ -3,11 +3,11 @@ Feature: Learning action branding and tablet navigation
   The learning action is emphasized in the orange Voka brand style.
   A wide tablet view should return directly to all subjects.
 
-  Scenario: Home learning button uses orange brand color and underline
+  Scenario: Home learning button is white with black type and a short orange text underline
     Given I open the Voka app
     When I sign in as "alice@example.test" with password "correct-password"
     And I return to vocabulary home
-    Then the main learning action uses the logo orange and underline
+    Then the main learning action uses a white background and short orange text underline
 
   Scenario: Back from a list in the two-column iPad layout opens My subjects
     Given I open the Voka app
