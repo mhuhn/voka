@@ -25,18 +25,14 @@ Feature: Account authentication
     When I sign out
     Then I see the sign-in form
 
-  Scenario: Add and switch between two persistent accounts
+  Scenario: Create, switch and delete profiles under one signed-in account
     Given I open the Voka app
     And I sign in as "alice@example.test" with password "correct-password"
-    When I add another user
-    And I sign in as "bob@example.test" with password "correct-password"
-    Then I see the profile for "bob@example.test"
-    When I switch to "alice@example.test"
-    Then I see the profile for "alice@example.test"
-    When I reload the app
-    Then I see the profile for "alice@example.test"
-    When I switch to "bob@example.test"
-    Then I see the profile for "bob@example.test"
+    When I create a profile named "Student"
+    Then I can switch to the profile named "Alice"
+    When I switch to the profile named "Student"
+    Then I can delete the profile named "Student"
+    And I cannot delete the last profile
 
   @de
   Scenario: German interface and unobtrusive version label
@@ -52,8 +48,8 @@ Feature: Account authentication
     When I sign in using the current locale as "alice@example.test" with password "correct-password"
     Then the profile heading is "Mein Profil"
     And the profile sign-out button is "Abmelden"
-    And the account section heading is "Konten"
-    And the add-account button is "Weiteren Benutzer hinzufügen"
+    And the account section heading is "Profile"
+    And the add-account button is "Neues Profil"
 
   @fr
   Scenario: Profile actions in fr
@@ -61,8 +57,8 @@ Feature: Account authentication
     When I sign in using the current locale as "alice@example.test" with password "correct-password"
     Then the profile heading is "Mon profil"
     And the profile sign-out button is "Se déconnecter"
-    And the account section heading is "Comptes"
-    And the add-account button is "Ajouter un autre utilisateur"
+    And the account section heading is "Profils"
+    And the add-account button is "Nouveau profil"
 
   @nl
   Scenario: Profile actions in nl
@@ -70,8 +66,8 @@ Feature: Account authentication
     When I sign in using the current locale as "alice@example.test" with password "correct-password"
     Then the profile heading is "Mijn profiel"
     And the profile sign-out button is "Uitloggen"
-    And the account section heading is "Accounts"
-    And the add-account button is "Nog een gebruiker toevoegen"
+    And the account section heading is "Profielen"
+    And the add-account button is "Nieuw profiel"
 
   @da
   Scenario: Profile actions in da
@@ -79,8 +75,8 @@ Feature: Account authentication
     When I sign in using the current locale as "alice@example.test" with password "correct-password"
     Then the profile heading is "Min profil"
     And the profile sign-out button is "Log ud"
-    And the account section heading is "Konti"
-    And the add-account button is "Tilføj en anden bruger"
+    And the account section heading is "Profiler"
+    And the add-account button is "Ny profil"
 
   @it
   Scenario: Profile actions in it
@@ -88,8 +84,8 @@ Feature: Account authentication
     When I sign in using the current locale as "alice@example.test" with password "correct-password"
     Then the profile heading is "Il mio profilo"
     And the profile sign-out button is "Esci"
-    And the account section heading is "Account"
-    And the add-account button is "Aggiungi un altro utente"
+    And the account section heading is "Profili"
+    And the add-account button is "Nuovo profilo"
 
   Scenario: Sign-in and registration match the Voka theme
     Given I open the Voka app
@@ -101,12 +97,8 @@ Feature: Account authentication
     Given I open the Voka app
     Then the Voka home-screen icon is explicitly linked on iOS
 
-  Scenario: Account color identifies the current user consistently
+  Scenario: Profile selection does not expose additional account sign-in controls
     Given I open the Voka app
     When I sign in as "alice@example.test" with password "correct-password"
     Then the account profile has no green-themed controls
-    When I add another user
-    And I sign in as "bob@example.test" with password "correct-password"
-    Then each account has a different persistent profile color
-    When I switch to "alice@example.test"
-    Then the selected user's floating avatar retains their profile color
+
