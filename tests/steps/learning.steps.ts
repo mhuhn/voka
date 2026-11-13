@@ -24,6 +24,17 @@ Then("learning hides the list workspace and shows a question only",async functio
   await expect(this.page.locator(".v-bottom-nav")).toHaveCount(0);
   await expect(this.page.locator(".v-learning-front")).toContainText("Infinitiv");
   await expect(this.page.locator(".v-learning-front")).toContainText("choose");
+  const header=this.page.locator(".v-learning-header");
+  await expect(header.getByRole("heading",{name:"Irregular Verbs"})).toBeVisible();
+  await expect(header.locator(".v-emoji")).toHaveText("🇬🇧");
+  const back=await header.locator(".v-learning-exit").boundingBox();
+  const title=await header.locator(".v-learning-session-name").boundingBox();
+  expect(back).not.toBeNull();expect(title).not.toBeNull();
+  expect(Math.abs(back!.y-title!.y)).toBeLessThanOrEqual(16);
+  const points=header.locator(".v-learning-points");
+  await expect(points).toHaveAttribute("aria-label","Points: 2 / 4");
+  await expect(points.locator(".v-learning-point")).toHaveCount(4);
+  await expect(points.locator(".v-learning-point.is-filled")).toHaveCount(2);
   await expect(this.page.locator(".v-learning-back")).toHaveAttribute("aria-hidden","true");
   await expect(this.page.getByRole("button",{name:"Reveal"})).toBeVisible();
   await expect(this.page.getByRole("button",{name:"Knew it"})).toHaveCount(0);
@@ -124,7 +135,7 @@ When("I start the next permitted calendar-spaced round",async function(this:Voka
 Then("the smallest active card position has been normalized to zero",async function(this:VokaWorld){
   await expect(this.page.locator(".v-learning-front")).toContainText("go");
   await expect(this.page.locator(".v-learning-session-name")).toContainText("Irregular Verbs");
-  await expect(this.page.locator(".v-learning-list-emoji")).toHaveText("🇬🇧");
+  await expect(this.page.locator(".v-learning-header .v-emoji")).toHaveText("🇬🇧");
   await expect(this.page.locator(".v-learning-session-name")).not.toContainText("1 of 1");
   await expect(this.page.locator(".v-learning-header .v-learning-exit")).toHaveClass(/v-icon-button/);
   await expect(this.page.locator(".v-learning-progress-label")).toContainText("0 / 1");
