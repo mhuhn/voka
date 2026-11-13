@@ -137,19 +137,18 @@ Then("the card editor occupies a third column", async function (this: VokaWorld)
   await expect(this.page.getByRole("heading",{name:"Edit card",exact:true})).toBeVisible();
 });
 
-Then("the direction control is a full-width push button", async function (this: VokaWorld) {
-  const button=this.page.getByRole("button",{name:"Learn in both directions"});
-  const input=this.page.getByRole("textbox",{name:/Title/});
-  await expect(button).toBeVisible();
-  await expect(button).toHaveAttribute("aria-pressed","false");
-  await expect(this.page.getByRole("checkbox",{name:"Learn in both directions"})).toHaveCount(0);
-  const b=await button.boundingBox(), i=await input.boundingBox();
-  expect(b).not.toBeNull();expect(i).not.toBeNull();
-  expect(Math.abs(b!.width-i!.width)).toBeLessThan(3);
-  await button.click();
-  await expect(button).toHaveAttribute("aria-pressed","true");
-  await button.click();
-  await expect(button).toHaveAttribute("aria-pressed","false");
+Then("the reverse-learning slider provides five levels", async function (this: VokaWorld) {
+  const slider=this.page.getByRole("slider",{name:"Reverse questions"});
+  await expect(slider).toBeVisible();
+  await expect(slider).toHaveAttribute("min","0");
+  await expect(slider).toHaveAttribute("max","100");
+  await expect(slider).toHaveAttribute("step","25");
+  await expect(slider).toHaveValue("0");
+  for(const level of [25,50,75,100,0]){
+    await this.page.getByRole("button",{name:level+" %",exact:true}).click();
+    await expect(slider).toHaveValue(String(level));
+  }
+  await expect(this.page.getByRole("button",{name:"Learn in both directions"})).toHaveCount(0);
 });
 
 When("I switch to iPad landscape width", async function (this: VokaWorld) {

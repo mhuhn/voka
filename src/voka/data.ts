@@ -2,8 +2,8 @@ import { authManager } from "../auth/manager";
 
 export interface SubjectGroup { id: string; user_id: string; title: string }
 export interface Subject { id: string; user_id: string; group_id: string; title: string; emoji: string }
-export interface VokaList { id: string; user_id: string; subject_id: string; title: string; tags: string[]; question_label: string; answer_label: string; learn_both_directions: boolean; learning_paused_until: string | null; last_learning_at: string | null; learning_timezone: string; updated_at: string; created_at: string }
-export interface VokaCard { id: string; user_id: string; list_id: string; question: string; answer: string; marked: boolean; success_count: number; position: number; created_at: string; updated_at: string }
+export interface VokaList { id: string; user_id: string; subject_id: string; title: string; tags: string[]; question_label: string; answer_label: string; learn_both_directions: boolean; reverse_share: number; learning_paused_until: string | null; last_learning_at: string | null; learning_timezone: string; updated_at: string; created_at: string }
+export interface VokaCard { id: string; user_id: string; list_id: string; question: string; answer: string; marked: boolean; success_count: number; position: number; reverse_success_count: number; reverse_position: number; created_at: string; updated_at: string }
 export interface Usage { list_id: string; user_id: string; last_used_at: string | null }
 export interface VokaLearningState { list_id: string; min_position: number | null; calendar_pause_until: string | null }
 export interface VokaData { groups: SubjectGroup[]; subjects: Subject[]; lists: VokaList[]; cards: VokaCard[]; usage: Usage[]; learningStates: VokaLearningState[] }
@@ -38,7 +38,7 @@ export async function deleteGroup(id:string) { await check(client().from("voka_s
 export async function insertSubject(group_id:string,title:string,emoji:string) { await check(client().from("voka_subjects").insert({group_id,title,emoji})); }
 export async function updateSubject(id:string,title:string,emoji:string,group_id:string) { await check(client().from("voka_subjects").update({title,emoji,group_id}).eq("id",id)); }
 export async function deleteSubject(id:string) { await check(client().from("voka_subjects").delete().eq("id",id)); }
-export type ListInput = Pick<VokaList,"subject_id"|"title"|"tags"|"question_label"|"answer_label"|"learn_both_directions">;
+export type ListInput = Pick<VokaList,"subject_id"|"title"|"tags"|"question_label"|"answer_label"|"reverse_share">;
 export async function saveList(value:ListInput,id?:string) {
   const c=client();
   if(id) { await check(c.from("voka_lists").update(value).eq("id",id)); return id; }
@@ -65,9 +65,11 @@ export function groupUsage(data:VokaData,groupId:string):number {
 }
 
 export type LearningResult = "known" | "unknown" | "unsure";
+export interface LearningEntry {id:string;reverse:boolean}
 export interface BeginLearningResponse {
   query_id?: string;
-  card_ids: string[];
+  cards: LearningEntry[];
+  card_ids?: string[];
   paused_until?: string | null;
   calendar_pause_until?: string | null;
   all_learned?: boolean;
@@ -75,6 +77,7 @@ export interface BeginLearningResponse {
 export interface GradeLearningResponse {
   success_count: number;
   position: number;
+  reverse?: boolean;
   finished: boolean;
   paused_until: string | null;
 }
@@ -82,7 +85,7 @@ export interface GradeLearningResponse {
 /** The backend starts one query for all due (position-zero) cards in random order. */
 export async function beginLearning(listId: string): Promise<BeginLearningResponse> {
   return await check<BeginLearningResponse>(
-    client().rpc("voka_begin_learning", {
+    client().rpc("voka_begin_learning_v2", {
       p_list_id:listId,
       p_timezone:Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
     })
@@ -91,11 +94,11 @@ export async function beginLearning(listId: string): Promise<BeginLearningRespon
 
 /** Grades exactly one due card once; the backend also closes the round atomically. */
 export async function gradeLearning(
-  queryId: string,cardId: string,result: LearningResult
+  queryId: string,cardId: string,reverse: boolean,result: LearningResult
 ): Promise<GradeLearningResponse> {
   return await check<GradeLearningResponse>(
-    client().rpc("voka_grade_learning",{
-      p_query_id:queryId,p_card_id:cardId,p_result:result
+    client().rpc("voka_grade_learning_v2",{
+      p_query_id:queryId,p_card_id:cardId,p_reverse:reverse,p_result:result
     })
   );
 }
@@ -112,21 +115,21 @@ export interface MixedLearningPreview {
 }
 export async function previewMixedLearning(subjectIds:string[],tags:string[]):Promise<MixedLearningPreview> {
   return await check<MixedLearningPreview>(
-    client().rpc("voka_preview_mixed_learning",{p_subject_ids:subjectIds,p_tags:tags})
+    client().rpc("voka_preview_mixed_learning_v2",{p_subject_ids:subjectIds,p_tags:tags})
   );
 }
 
 /** Atomically begins a single query whose cards are ordered by subject. */
 export async function beginMixedLearning(subjectIds:string[],tags:string[]):Promise<BeginLearningResponse> {
-  return await check<BeginLearningResponse>(client().rpc("voka_begin_mixed_learning",{
+  return await check<BeginLearningResponse>(client().rpc("voka_begin_mixed_learning_v2",{
     p_subject_ids:subjectIds,
     p_tags:tags,
     p_timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC"
   }));
 }
 
-export async function gradeMixedLearning(queryId:string,cardId:string,result:LearningResult):Promise<GradeLearningResponse> {
-  return await check<GradeLearningResponse>(client().rpc("voka_grade_mixed_learning",{
-    p_query_id:queryId,p_card_id:cardId,p_result:result
+export async function gradeMixedLearning(queryId:string,cardId:string,reverse:boolean,result:LearningResult):Promise<GradeLearningResponse> {
+  return await check<GradeLearningResponse>(client().rpc("voka_grade_mixed_learning_v2",{
+    p_query_id:queryId,p_card_id:cardId,p_reverse:reverse,p_result:result
   }));
 }

@@ -11,7 +11,7 @@ const cardIds={
 
 When("I start learning the open list",async function(this:VokaWorld){
   const request=this.page.waitForRequest(req=>
-    new URL(req.url()).pathname==="/rest/v1/rpc/voka_begin_learning"
+    new URL(req.url()).pathname==="/rest/v1/rpc/voka_begin_learning_v2"
     && req.method()==="POST");
   await this.page.getByRole("button",{name:"Learn",exact:true}).click();
   expect((await request).postDataJSON()).toMatchObject({p_list_id:listId,p_timezone:expect.any(String)});
@@ -58,24 +58,24 @@ When("I correct and star the revealed card",async function(this:VokaWorld){
 
 Then("all three answers save the rules and finish the list",async function(this:VokaWorld){
   // choose starts at 2 points -> known: 3 points, position 19.
-  const grade1=this.page.waitForRequest(req=>new URL(req.url()).pathname==="/rest/v1/rpc/voka_grade_learning");
+  const grade1=this.page.waitForRequest(req=>new URL(req.url()).pathname==="/rest/v1/rpc/voka_grade_learning_v2");
   await this.page.getByRole("button",{name:"Knew it"}).click();
   expect((await grade1).postDataJSON()).toEqual({
     p_query_id:"80000000-0000-4000-8000-000000000001",
-    p_card_id:cardIds.choose,p_result:"known"
+    p_card_id:cardIds.choose,p_reverse:false,p_result:"known"
   });
   await expect(this.page.locator(".v-learning-front")).toContainText("be");
   await this.page.getByRole("button",{name:"Reveal"}).click();
   // be starts at 1 point -> unsure: retain 1 point, position 1.
-  const grade2=this.page.waitForRequest(req=>new URL(req.url()).pathname==="/rest/v1/rpc/voka_grade_learning");
+  const grade2=this.page.waitForRequest(req=>new URL(req.url()).pathname==="/rest/v1/rpc/voka_grade_learning_v2");
   await this.page.getByRole("button",{name:"Unsure"}).click();
-  expect((await grade2).postDataJSON()).toMatchObject({p_card_id:cardIds.be,p_result:"unsure"});
+  expect((await grade2).postDataJSON()).toMatchObject({p_card_id:cardIds.be,p_reverse:false,p_result:"unsure"});
   await expect(this.page.locator(".v-learning-front")).toContainText("go");
   await this.page.getByRole("button",{name:"Reveal"}).click();
   // go starts at 0 points -> unknown: 0 points, position 1.
-  const grade3=this.page.waitForRequest(req=>new URL(req.url()).pathname==="/rest/v1/rpc/voka_grade_learning");
+  const grade3=this.page.waitForRequest(req=>new URL(req.url()).pathname==="/rest/v1/rpc/voka_grade_learning_v2");
   await this.page.getByRole("button",{name:"Didn't know"}).click();
-  expect((await grade3).postDataJSON()).toMatchObject({p_card_id:cardIds.go,p_result:"unknown"});
+  expect((await grade3).postDataJSON()).toMatchObject({p_card_id:cardIds.go,p_reverse:false,p_result:"unknown"});
   await expect(this.page.locator(".v-learning")).toHaveCount(0);
   await expect(this.page.locator(".v-list-detail-pane")).toBeVisible();
   await expect(this.page.getByRole("button",{name:/Pause:.*(?:min|h) left/})).toBeDisabled();
@@ -95,7 +95,7 @@ Then("the two-hour pause survives a page reload",async function(this:VokaWorld){
 
 Then("stopping early retains the last result and leaves other cards due",async function(this:VokaWorld){
   await this.page.getByRole("button",{name:"Reveal"}).click();
-  const grade=this.page.waitForRequest(req=>new URL(req.url()).pathname==="/rest/v1/rpc/voka_grade_learning");
+  const grade=this.page.waitForRequest(req=>new URL(req.url()).pathname==="/rest/v1/rpc/voka_grade_learning_v2");
   await this.page.getByRole("button",{name:"Knew it"}).click();
   expect((await grade).postDataJSON()).toMatchObject({p_card_id:cardIds.choose,p_result:"known"});
   const finished=this.page.waitForRequest(req=>new URL(req.url()).pathname==="/rest/v1/rpc/voka_finish_learning");
@@ -114,7 +114,7 @@ Then("the list waits until tomorrow after a one-position delay",async function(t
 });
 
 When("I start the next permitted calendar-spaced round",async function(this:VokaWorld){
-  const start=this.page.waitForRequest(req=>new URL(req.url()).pathname==="/rest/v1/rpc/voka_begin_learning");
+  const start=this.page.waitForRequest(req=>new URL(req.url()).pathname==="/rest/v1/rpc/voka_begin_learning_v2");
   await this.page.getByRole("button",{name:"Learn",exact:true}).click();
   const payload=(await start).postDataJSON() as {p_list_id:string;p_timezone:string};
   expect(payload.p_list_id).toBe(listId);

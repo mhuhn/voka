@@ -16,7 +16,7 @@ Then("the live count uses selected subjects and every selected tag",async functi
   await expect(picker.locator(".v-mixed-card-count strong")).toHaveText("3");
   await picker.getByRole("checkbox",{name:"Verben"}).check();
   const requestPromise=this.page.waitForRequest(req=>
-     new URL(req.url()).pathname==="/rest/v1/rpc/voka_preview_mixed_learning" &&
+     new URL(req.url()).pathname==="/rest/v1/rpc/voka_preview_mixed_learning_v2" &&
      (req.postDataJSON() as {p_tags:string[]}).p_tags.length===2);
   await picker.getByRole("checkbox",{name:"Unit 3"}).check();
   await expect(picker.locator(".v-mixed-card-count strong")).toHaveText("2");
@@ -27,7 +27,7 @@ Then("the live count uses selected subjects and every selected tag",async functi
 
 When("I start learning the selected subjects and tags",async function(this:VokaWorld){
   const request=this.page.waitForRequest(req=>
-    new URL(req.url()).pathname==="/rest/v1/rpc/voka_begin_mixed_learning");
+    new URL(req.url()).pathname==="/rest/v1/rpc/voka_begin_mixed_learning_v2");
   await this.page.locator(".v-mixed-picker").getByRole("button",{name:"Start learning"}).click();
   expect((await request).postDataJSON()).toMatchObject({
     p_subject_ids:[

@@ -155,3 +155,28 @@ The Supabase Security Advisor also reports pre-existing notices concerning `voka
 ## Learning button visual refinement (Voka 0.8.2)
 
 All three entry points for learning (home, individual list, and multi-subject picker) now use a **white button with heavy black text** instead of an orange gradient. The distinctive Voka orange underline is drawn beneath a dedicated text span and tilted slightly, echoing the Voka wordmark. The stroke scales with short labels but has a **76px maximum width** so long cooldown messages such as `Noch 1:04 h Pause` never show a button-wide line. Disabled pause buttons retain the same white background, bold black text and short orange underline; the pause label and disabled state communicate that learning is unavailable. No learning logic or data schema changes.
+
+
+## Independent reverse-learning tracks (Voka 0.9.0)
+
+Each list now stores `reverse_share` in `{0,25,50,75,100}`; the old boolean switch is replaced by a five-stop slider. New lists inherit the percentage from the most recently **created** list in the same subject, falling back to 0 when no such list exists. Existing lists with the old two-directions setting enabled are migrated to **50%**, and older installed PWAs remain supported through a compatibility trigger.
+
+Each card has independent `reverse_success_count` and `reverse_position`. Existing normal `success_count` and `position` keep their original values and meaning; reverse scores start at 0, position 0. At 0%, reverse scores are inactive but stored for possible future reactivation. The maximum available reverse points are 1/2/3/4 for 25/50/75/100%, respectively. On **known**, increase only the active direction's points by one and set its position according to the points *before* grading:
+
+| Reverse intensity | 0 points → 1 | 1 point → 2 | 2 points → 3 | 3 points → 4 |
+| --- | ---: | ---: | ---: | ---: |
+| 25% | 10 | — | — | — |
+| 50% | 4 | 13 | — | — |
+| 75% | 4 | 12 | 24 | — |
+| 100% | 1 | 4 | 10 | 24 |
+
+Unknown resets the active direction's points to 0 and sets its position to 1. Unsure keeps the active direction's points and sets its position to 1. The inactive direction's points and position are never modified by individual scoring. When a round finishes, **both** schedules advance by one position (minimum 0), followed by the usual two-hour pause. On the next permitted learning start, the minimum position across all unfinished normal and enabled reverse card orientations is subtracted from **both** schedules. Calendar-day pauses use that same minimum. A card can be included twice in one round if both directions are due at the same position: **all normal orientations first, then all reverse orientations**, shuffled within each direction. For mixed-subject learning, the existing subject/list ordering remains the primary order, with normal before reverse inside each list.
+
+A list's progress is `sum(min(normal_score,4)+min(reverse_score,reverse_max)) / (cards × (4 + reverse_max))`. Thus, at 25%, 4 normal points contribute 80% of each card's total, and 1 reverse point contributes 20%. Other levels use 4/6, 4/7 and 4/8 weighting. A card is complete only when its normal score is 4 and its *enabled* reverse score has reached the selected cap; the **Gelernte anzeigen** filter reflects that status. The list view shows normal points and teal reverse points side by side, and points sorting uses their total. Position sorting uses the earliest unfinished orientation. The answer face is more distinctly light blue.
+
+### Schema, authorization, and API
+
+- `supabase/migrations/20261113080000_voka_reverse_tracks_schema.sql` adds the list selector, per-card reverse fields, a direction flag to `voka_query_cards`, and a new composite PK `(query_id,card_id,reverse)` so both orientations of one card can coexist in one query. It updates the owner-RLS-aware `voka_list_learning_state` view and the privileged private shared-list copy functions to preserve list reverse settings while resetting both learning tracks.
+- `supabase/migrations/20261113081000_voka_directional_learning_rpc.sql` adds versioned v2, SECURITY INVOKER RPCs for single-list start, mixed-list preview/start and directional grading. The shared private invoker helpers validate owner access and app authorization and use row locks to preserve atomic grading, two-hour and day-based pauses. The former RPC signatures are kept for installed legacy PWAs.
+- The frontend passes a direction for every graded entry. The grade history stores both directions distinctly and does not infer direction probabilistically at render time.
+
