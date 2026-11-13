@@ -661,3 +661,25 @@
 .v-app .v-content{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
 @media(min-width:850px){.v-app .v-content{padding-bottom:36px}}
 @media(min-width:1200px){.v-app .v-content{padding-bottom:40px}}
+
+.v-floats{top:auto;bottom:calc(18px + env(safe-area-inset-bottom));right:18px;opacity:1;flex-direction:column}
+.v-heading,.v-card-form-active .v-heading{padding-right:0}
+.v-heading h1{flex:1;min-width:0}
+.v-heading-subject-title{display:inline-flex;align-items:center;gap:9px}
+.v-section-tools .v-section-title{flex:1;min-width:0;white-space:nowrap}
+.v-manage-link{height:46px;width:46px;min-width:46px;flex-shrink:0;justify-content:center;border:1px solid var(--v-line);border-radius:50%;background:#fff}
+.v-app .v-home-learn{width:100%;min-height:60px;flex:none;margin-bottom:18px;font-size:19px;border:2px solid #ffbd59}
+.v-app .v-secondary-action{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;width:100%;padding:10px 16px;border-radius:11px;border:1px solid #c7d6ed;background:#f8fbff;color:#375b91;font-size:14px;font-weight:650}
+.v-create-home-grid{margin-top:14px}
+.v-app .v-create-home{max-width:none;margin:0}
+.v-list-row>svg:last-child{color:var(--v-orange)}
+.v-list-actions{display:block}
+.v-list-actions .v-learn-cta{width:100%;min-height:58px}
+.v-detail-progress{height:9px;margin:0 0 17px}
+.v-heading>.v-icon-button,.v-detail-header-actions>.v-icon-button{width:46px;height:46px;min-width:46px}
+.v-detail-header-actions{position:relative;margin-left:auto}
+.v-detail-actions-popover{position:absolute;z-index:75;top:calc(100% + 8px);right:0;display:flex;align-items:center;gap:7px;padding:8px;max-width:calc(100vw - 28px);border:1px solid var(--v-line);border-radius:14px;background:#fff;box-shadow:0 8px 28px #132e5a35}
+.v-detail-actions-popover .v-icon-button{width:46px;height:46px;min-width:46px}
+@media(max-width:600px){.v-floats{top:auto;right:12px;bottom:calc(18px + env(safe-area-inset-bottom))}.v-heading,.v-card-form-active .v-heading{padding-right:0}.v-detail-header-actions .v-icon-button,.v-heading>.v-icon-button{width:46px;height:46px;min-width:46px}}
+@media(min-width:700px) and (pointer:coarse){.v-floats{top:auto;bottom:calc(22px + env(safe-area-inset-bottom))}.v-heading,.v-card-form-active .v-heading{padding-right:0}.v-heading>.v-icon-button,.v-detail-header-actions>.v-icon-button,.v-detail-actions-popover .v-icon-button{width:52px;height:52px;min-width:52px}}
+@media(prefers-color-scheme:dark){.v-manage-link,.v-detail-actions-popover{background:#192742;border-color:#34466c}.v-app .v-secondary-action{background:#1b2e4d;color:#bfdaff;border-color:#405778}}
