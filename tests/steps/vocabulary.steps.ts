@@ -98,13 +98,16 @@ Then("the new list form suggests recent English tags and completes typed tags",a
 });
 
 When("I return to vocabulary home", async function (this: VokaWorld) {
-  for(let i=0;i<5;i++) {
-    if(await this.page.locator(".v-home").isVisible())break;
-    const profileBack=this.page.locator(".v-profile-heading .v-profile-back");
-    if(await profileBack.isVisible())await profileBack.click();
-    else await this.page.locator(".v-heading > .v-icon-button").first().click();
+  const errors:string[]=[];
+  this.page.on("pageerror",e=>errors.push(e.message));
+  const profileBack=this.page.locator(".v-profile-heading .v-profile-back");
+  try {
+    await profileBack.click({timeout:3500});
+    await expect(this.page.locator(".v-home")).toBeVisible({timeout:5000});
+  } catch(error) {
+    const visible=await this.page.locator("body").innerText().catch(()=>"<no body>");
+    throw new Error("Home navigation diagnostic: "+JSON.stringify({errors,body:visible.slice(0,1200),url:this.page.url(),cause:String(error).slice(0,400)}));
   }
-  await expect(this.page.locator(".v-home")).toBeVisible();
 });
 
 Then("I see subjects grouped on the home screen", async function (this: VokaWorld) {
