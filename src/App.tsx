@@ -110,7 +110,7 @@ function Profile({ language, onClose }: { language: Language; onClose: () => voi
     setEditName(profileName(active));setEditEmoji(profileEmoji(active));
     setCreating(false);setEditing(true);
   };
-  return <div className="v-profile space-y-5">
+  return <div className="v-profile">
     <Card className="v-profile-card">
       <CardHeader>
         <div className="v-profile-avatar mb-3 flex size-14 items-center justify-center rounded-full text-3xl" aria-hidden="true" style={{backgroundColor:getUserAvatarColor(user?.id||"")+"20"}}>{profileEmoji(active)}</div>
@@ -213,9 +213,8 @@ export default function App() {
     it:"Accedi per importare la lista di vocaboli condivisa."
   };
   useEffect(() => { setProfileOpen(false); }, [user?.id]);
-  return <>{!state.loading && !showAuth && !profileOpen && !profileState.loading && profileState.activeId ? <VokaApp key={user.id+":"+profileState.activeId} language={language} onProfile={() => setProfileOpen(true)}/> : <main className="v-auth-shell safe-top safe-bottom mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 sm:px-6">
-    {profileOpen && !showAuth && <Button variant="ghost" className="v-profile-back mb-3 w-fit" onClick={() => setProfileOpen(false)}><ArrowLeft size={16}/> Voka</Button>}
-    <Brand/>
+  return <>{!state.loading && !showAuth && !profileOpen && !profileState.loading && profileState.activeId ? <VokaApp key={user.id+":"+profileState.activeId} language={language} onProfile={() => setProfileOpen(true)}/> : <main className={profileOpen&&!showAuth?"v-profile-shell safe-top safe-bottom min-h-dvh w-full":"v-auth-shell safe-top safe-bottom mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 sm:px-6"}>
+    {profileOpen && !showAuth && <header className="v-heading v-profile-heading"><button type="button" className="v-icon-button v-profile-back" aria-label={t.back} onClick={() => setProfileOpen(false)}><ArrowLeft size={22}/></button><h1>{({de:"Profil",en:"Profile",fr:"Profil",nl:"Profiel",da:"Profil",it:"Profilo"} as Record<Language,string>)[language]}</h1></header>}{(!profileOpen || showAuth)&&<Brand/>}
     {showAuth && sharedLinkWaiting && <div className="v-auth-import-hint" role="status">{sharedLinkPrompt[language]}</div>}
     {!isConfigured && <div role="alert" className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">{t.config}</div>}
     {state.error && <div role="alert" className="mb-4 rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800">{translateError(state.error, language)}</div>}
