@@ -114,12 +114,9 @@ function Profile({ language, onClose }: { language: Language; onClose: () => voi
     <Card className="v-profile-card">
       <CardHeader>
         <div className="v-profile-avatar mb-3 flex size-14 items-center justify-center rounded-full text-3xl" aria-hidden="true" style={{backgroundColor:getUserAvatarColor(user?.id||"")+"20"}}>{profileEmoji(active)}</div>
-        <CardTitle>{t.profile}</CardTitle>
-        <CardDescription>{active?profileName(active):user?.email}</CardDescription>
+        <CardTitle>{active?profileName(active):t.profile}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div><p className="text-xs font-medium uppercase tracking-wide text-stone-500">{t.email}</p><p className="mt-1 break-all font-medium">{user?.email || ""}</p></div>
-        <div><p className="text-xs font-medium uppercase tracking-wide text-stone-500">{t.userId}</p><p className="mt-1 break-all font-mono text-xs text-stone-600">{user?.id}</p></div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" className="flex-1" disabled={profiles.busy||!active} onClick={openEditor}><Pencil size={16}/>{p.edit}</Button>
           <Button variant="outline" className="flex-1 text-red-700" disabled={profiles.busy||!hasMultiple||!active}
@@ -140,6 +137,7 @@ function Profile({ language, onClose }: { language: Language; onClose: () => voi
           </fieldset>
           <div className="flex gap-2"><Button type="submit" disabled={profiles.busy||!editName.trim()||!validProfileEmoji(editEmoji)||editEmojiError}>{p.save}</Button><Button type="button" variant="outline" onClick={()=>setEditing(false)}>{p.cancel}</Button></div>
         </form>}
+        <div className="v-profile-email"><p className="text-xs font-medium uppercase tracking-wide text-stone-500">{t.email}</p><p className="mt-1 break-all font-medium">{user?.email || ""}</p></div>
         <Button variant="outline" className="v-profile-action w-full" disabled={auth.busy || !user} onClick={()=>user&&void authManager.logout(user.id)}><LogOut size={16}/>{t.signOut}</Button>
       </CardContent>
     </Card>
@@ -200,6 +198,19 @@ export default function App() {
     return () => window.removeEventListener("languagechange", refresh);
   }, []);
   useEffect(() => { document.documentElement.lang = language; }, [language]);
+  useEffect(() => {
+    // iOS/iPadOS Safari and Capacitor: suppress native pinch-to-zoom gestures.
+    const appleTouchDevice = /iPad|iPhone|iPod/.test(navigator.userAgent)
+      || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    if (!appleTouchDevice) return;
+    const preventPinchZoom = (event: Event) => event.preventDefault();
+    document.addEventListener("gesturestart", preventPinchZoom, { passive: false });
+    document.addEventListener("gesturechange", preventPinchZoom, { passive: false });
+    return () => {
+      document.removeEventListener("gesturestart", preventPinchZoom);
+      document.removeEventListener("gesturechange", preventPinchZoom);
+    };
+  }, []);
   const user = authManager.activeUser;
   useEffect(()=>{if(user?.id)void profileManager.refresh(user.id);else profileManager.reset();},[user?.id]);
   const showAuth = state.adding || !user || state.screen === "reset";
