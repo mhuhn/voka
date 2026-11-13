@@ -37,7 +37,7 @@ Then("the list filters and sorting work", async function (this: VokaWorld) {
 });
 
 Then("I can open the card editor without editing progress", async function (this: VokaWorld) {
-  await this.page.getByRole("button", { name: /go.*0 P/ }).click();
+  await this.page.locator(".v-card-list .v-card-open").filter({hasText:"go"}).first().click();
   await expect(this.page.getByRole("heading", { name: "Edit card", exact: true })).toBeVisible();
   await expect(this.page.getByRole("textbox", { name: "Infinitiv" })).toHaveValue("go");
   await expect(this.page.getByRole("textbox", { name: "Englisch" })).toHaveValue("went");
@@ -327,7 +327,7 @@ Then("cards sort by increasing position", async function (this: VokaWorld) {
 });
 
 Then("the card editor uses its list's question and answer labels", async function (this: VokaWorld) {
-  await this.page.getByRole("button",{name:/go.*0 P/}).click();
+  await this.page.locator(".v-card-list .v-card-open").filter({hasText:"go"}).first().click();
   const editor=this.page.locator(".v-card-editor");
   await expect(editor.getByRole("textbox",{name:"Infinitiv"})).toHaveValue("go");
   await expect(editor.getByRole("textbox",{name:"Englisch"})).toHaveValue("went");
