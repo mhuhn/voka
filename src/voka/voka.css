@@ -569,7 +569,6 @@
 .v-card-list .v-dots,.v-card-list .v-reverse-dots{gap:4px}
 .v-card-list .v-dots i,.v-card-list .v-reverse-dots i{width:10px;height:10px}
 .v-skip-pause:disabled{opacity:.35;cursor:not-allowed}
-.v-skip-pause:not(:disabled){color:var(--v-blue);border-color:var(--v-blue)}
 @media(max-width:600px){
  .v-filter-area .v-filter-switches .v-toggle{font-size:11px;padding:4px}
  .v-position-heading{font-size:12px}
@@ -737,3 +736,39 @@
 @media(prefers-color-scheme:dark){
  .v-learning-header .v-learning-exit{background:#192742;color:#b9d8ff;border-color:#34466c}
 }
+
+/* Learning header follows the list-detail navigation: back / emoji + list / points. */
+.v-learning-header{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px}
+.v-learning-header .v-learning-exit{grid-column:1;grid-row:1;justify-self:start}
+.v-learning-header .v-learning-session-name{
+ grid-column:2;grid-row:1;min-width:0;margin:0;text-align:left;
+ display:flex;align-items:center
+}
+.v-learning-header .v-learning-session-name h1{
+ display:inline-flex;align-items:center;justify-content:flex-start;gap:9px;
+ min-width:0;margin:0;font-size:24px;font-weight:760;letter-spacing:-.6px;line-height:1.2;text-align:left
+}
+.v-learning-header .v-learning-session-name .v-emoji{
+ width:30px;height:30px;min-width:30px;flex:0 0 30px;
+ display:inline-flex;align-items:center;justify-content:center;font-size:24px;line-height:1
+}
+.v-learning-header .v-heading-title-text{min-width:0;overflow-wrap:anywhere}
+.v-learning-header .v-learning-points{
+ grid-column:3;grid-row:1;justify-self:end;padding:3px 0;
+ display:flex;align-items:center;gap:5px;white-space:nowrap;background:transparent;border:0
+}
+.v-learning-point{width:12px;height:12px;flex:0 0 12px;border-radius:50%;background:#cfd3da;border:1px solid #bcc5d3}
+.v-learning-point.is-filled{background:var(--v-orange);border-color:var(--v-orange)}
+.v-learning-points.is-reverse .v-learning-point.is-filled{background:#18a5c8;border-color:#18a5c8}
+@media(max-width:600px){
+ .v-learning-header{grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:auto;gap:9px}
+ .v-learning-header .v-learning-session-name{grid-column:2;grid-row:1;margin:0}
+ .v-learning-header .v-learning-session-name h1{font-size:19px}
+ .v-learning-header .v-learning-points{grid-column:3;grid-row:1;gap:4px}
+ .v-learning-point{width:11px;height:11px;flex-basis:11px}
+}
+@media(min-width:700px) and (pointer:coarse){
+ .v-learning-header .v-learning-session-name h1{font-size:29px}
+ .v-learning-point{width:14px;height:14px;flex-basis:14px}
+}
+@media(prefers-color-scheme:dark){.v-learning-point{background:#455775;border-color:#6c7e9a}}
