@@ -476,3 +476,46 @@
   .v-app .v-learn-cta:hover:not(:disabled){background:#fff;color:#101010}
   .v-app .v-learn-cta:disabled{color:#101010;background:#fff}
 }
+
+
+/* Reverse-learning level: one editable range with five precise stops. */
+.v-reverse-selector{display:flex;flex-direction:column;gap:10px;border:1px solid var(--v-line);border-radius:14px;padding:18px 20px;background:var(--v-card)}
+.v-reverse-selector>label{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--v-navy);font-size:15px;font-weight:800}
+.v-reverse-selector>label>span{display:flex;align-items:center;gap:9px}
+.v-reverse-selector>label>strong{color:var(--v-blue);font-size:18px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.v-form .v-reverse-selector input[type=range]{width:100%;height:7px;min-height:7px;box-sizing:border-box;margin:16px 0 4px;padding:0;appearance:none;-webkit-appearance:none;border:0;border-radius:99px;background:linear-gradient(90deg,var(--v-blue),#b5d5ff);cursor:pointer;resize:none}
+.v-form .v-reverse-selector input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:23px;height:23px;border:4px solid #fff;border-radius:50%;background:var(--v-blue);box-shadow:0 1px 7px #172e544d}
+.v-form .v-reverse-selector input[type=range]::-moz-range-thumb{width:17px;height:17px;border:3px solid #fff;border-radius:50%;background:var(--v-blue);box-shadow:0 1px 7px #172e544d}
+.v-reverse-ticks{display:flex;align-items:center;justify-content:space-between;gap:2px}
+.v-reverse-ticks button{border:0;border-radius:7px;padding:7px 5px;min-width:43px;color:var(--v-muted);font-size:13px;font-weight:750;background:transparent}
+.v-reverse-ticks button.is-selected{color:var(--v-blue);background:var(--v-soft);font-weight:900}
+.v-reverse-selector .v-help{font-size:12px;line-height:1.4;margin:0}
+.v-score-pair{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex:0 0 auto}
+.v-score-pair>b{font-size:12px;min-width:23px;text-align:right;white-space:nowrap}
+.v-reverse-score{display:flex;align-items:center;gap:6px;margin-left:7px;color:#167da1;font-size:12px;font-weight:850;white-space:nowrap}
+.v-reverse-dots{display:flex;gap:3px}
+.v-reverse-dots i{width:9px;height:9px;border-radius:50%;background:#cbdde6}
+.v-reverse-dots i.filled{background:#18a5c8}
+/* The revealed answer must look visibly different from the white question face. */
+.v-learning-back{background:#d2eaff;border-color:#8abaff}
+.v-learning-back .v-learning-face-label{color:#285f9e}
+.v-learning-back .v-learning-face-text{color:#123451}
+@media(max-width:600px){
+ .v-reverse-selector{padding:14px 12px}
+ .v-score-pair{gap:5px;flex-wrap:wrap}
+ .v-reverse-score{margin-left:3px;gap:5px}
+ .v-dots i,.v-reverse-dots i{width:8px;height:8px}
+}
+@media(min-width:700px) and (pointer:coarse){
+ .v-reverse-selector>label{font-size:18px}
+ .v-reverse-ticks button{font-size:16px;min-height:45px}
+ .v-score-pair>b,.v-reverse-score{font-size:15px}
+}
+@media(prefers-color-scheme:dark){
+ .v-reverse-selector{background:#192742}
+ .v-reverse-ticks button.is-selected{background:#274469}
+ .v-reverse-score{color:#73d6f1}
+ .v-learning-back{background:#cbe5ff;border-color:#87b8ee}
+ .v-learning-back .v-learning-face-label{color:#285f9e}
+ .v-learning-back .v-learning-face-text{color:#123451}
+}
