@@ -58,6 +58,22 @@ When("I create a profile named {string}", async function(this:VokaWorld,name:str
   await expect(this.page.getByRole("button",{name:"Switch profile: "+name})).toBeVisible();
 });
 
+When("I create a profile named {string} with emoji {string}", async function(this:VokaWorld,name:string,emoji:string){
+  await this.page.getByRole("button",{name:"New profile"}).click();
+  await this.page.getByRole("textbox",{name:"Profile name"}).fill(name);
+  await this.page.getByRole("textbox",{name:"Profile emoji"}).fill(emoji);
+  await this.page.getByRole("button",{name:"Create profile"}).click();
+  await expect(this.page.getByRole("button",{name:"Switch profile: "+name})).toBeVisible();
+});
+
+Then("I cannot choose an emoji already used by another profile",async function(this:VokaWorld){
+  await this.page.getByRole("button",{name:"New profile"}).click();
+  await this.page.getByRole("textbox",{name:"Profile name"}).fill("Duplicate");
+  await this.page.getByRole("textbox",{name:"Profile emoji"}).fill("🙂");
+  await expect(this.page.getByRole("button",{name:"Create profile"})).toBeDisabled();
+  await expect(this.page.getByText("Emoji already used by another profile")).toBeVisible();
+});
+
 Then("the single profile has no edit button", async function(this:VokaWorld) {
   await expect(this.page.getByRole("button",{name:"Edit current profile"})).toHaveCount(0);
 });
