@@ -529,7 +529,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const learningButtonLabel=startingLearn?t("starting"):effectivePause?pauseLabel:
    everyCardLearned?t("allLearned"):listCardsForProgress.length===0?t("noCards"):t("learn");
  const listTitle=currentList?<span className="v-heading-list-title"><span className="v-emoji" aria-hidden="true">{data.subjects.find(s=>s.id===currentList.subject_id)?.emoji||"📘"}</span><span className="v-heading-title-text">{currentList.title}</span></span>:null;
- const actions=<div className="v-floats">{screen==="cardForm"&&<button className="v-icon-button v-floating-star" type="button" title={t("marked")} aria-label={t("marked")} aria-pressed={draftCard.marked} onClick={()=>setDraftCard({...draftCard,marked:!draftCard.marked})}><Star size={19} fill={draftCard.marked?"#ff9b00":"none"} stroke={draftCard.marked?"#ff9b00":"currentColor"}/></button>}<IconButton label={t("notifications")} onClick={()=>{}}><Bell size={19}/></IconButton><IconButton label={activeProfile?`${t("profile")}: ${profileName(activeProfile)}`:t("profile")} className="v-user-float v-profile-emoji-button" style={{backgroundColor:avatarColor+"24",borderColor:avatarColor+"66"}} onClick={onProfile}><span aria-hidden="true" className="v-profile-emoji">{profileEmoji(activeProfile)}</span></IconButton></div>;
+ const actions=<div className="v-floats">{screen==="cardForm"&&<button className="v-icon-button v-floating-star" type="button" title={t("marked")} aria-label={t("marked")} aria-pressed={draftCard.marked} onClick={()=>setDraftCard({...draftCard,marked:!draftCard.marked})}><Star size={19} fill={draftCard.marked?"#ff9b00":"none"} stroke={draftCard.marked?"#ff9b00":"currentColor"}/></button>}<IconButton label={activeProfile?`${t("profile")}: ${profileName(activeProfile)}`:t("profile")} className="v-user-float v-profile-emoji-button" style={{backgroundColor:avatarColor+"24",borderColor:avatarColor+"66"}} onClick={onProfile}><span aria-hidden="true" className="v-profile-emoji">{profileEmoji(activeProfile)}</span></IconButton></div>;
  const listOverview = <section className="v-page v-lists-pane"><div className="v-section-header"><h2>{wide?t("lists"):`${currentSubject?.emoji||""} ${currentSubject?.title||""} · ${t("lists")}`}</h2></div>
     <div className="v-list-grid">{data.lists.filter(l=>l.subject_id===selectedSubject).sort((a,b)=>usageDate(data,b.id)-usageDate(data,a.id)||a.title.localeCompare(b.title)).map(l=>{const listPercent=learningProgress(data.cards.filter(c=>c.list_id===l.id),l.reverse_share??0);return <button className={"v-list-row"+(l.id===selectedList&&screen!=="subject"?" selected":"")} aria-current={l.id===selectedList&&screen!=="subject"?"true":undefined} key={l.id} onClick={()=>openList(l.id)}><div><strong>{l.title}</strong><small>{cardCount(data.cards.filter(c=>c.list_id===l.id).length)} · {stamp(usageDate(data,l.id),language)}</small><div className="v-list-progress-label"><span>{t("progress")}</span><b>{listPercent} %</b></div><div className="v-list-progress-track" role="progressbar" aria-label={t("progress")} aria-valuenow={listPercent} aria-valuemin={0} aria-valuemax={100}><span style={{width:listPercent+"%"}}/></div><div className="v-tag-row">{l.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div><ChevronRight size={21}/></button>})}</div>
     {!data.lists.some(l=>l.subject_id===selectedSubject)&&<div className="v-empty">{t("none")}</div>}
@@ -771,11 +771,6 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
       </section>
      </div>}
   </div>
-  {screen!=="learn"&&<nav className="v-bottom-nav" aria-label={t("navigation")}>
-   <button className="active" type="button" onClick={()=>setScreen("home")}><Home size={21} fill="currentColor"/><span>Voka</span></button>
-   <button type="button" onClick={()=>{}}><Search size={21}/><span>{t("search")}</span></button>
-   <button type="button" onClick={()=>{}}><BarChart3 size={21}/><span>{t("statistics")}</span></button>
-   <button type="button" onClick={()=>{}}><Settings size={21}/><span>{t("settings")}</span></button>
-  </nav>}
+
  </div>;
 }
