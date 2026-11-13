@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, CheckCircle2, ChevronRight, Download, Upload, Eye, Home, ListOrdered, ArrowDownAZ, Pencil, Plus, Search, Settings, Share2, SkipForward, Star, Trash2, X, Play } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, BarChart3, BookOpen, Check, CheckCircle2, ChevronRight, Download, Upload, Eye, ListOrdered, ArrowDownAZ, Pencil, Plus, Share2, SkipForward, Star, Trash2, X, Play } from "lucide-react";
 import type { Language } from "../lib/i18n";
 import { emptyData, loadVoka, loadProfileStreak, dismissStreakNotice, type ProfileStreak, beginLearning, beginMixedLearning, skipLearningPause, importCsvCards, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type LearningEntry, type Subject, type SubjectGroup, type ListInput } from "./data";
 import "./voka.css";
