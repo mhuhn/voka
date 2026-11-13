@@ -17,11 +17,11 @@ jobs:
       BUNDLE_ID: de.mhuhn.voka
       PROFILE_NAME: ${{ vars.IOS_APP_STORE_PROFILE_NAME }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
       - name: Verify signing configuration
