@@ -8,7 +8,13 @@ declare v_user uuid := (select auth.uid());
         v_profile uuid;
 begin
   if v_user is null then return null; end if;
-  v_raw := nullif((nullif(pg_catalog.current_setting('request.headers', true),'')::jsonb ->> 'x-voka-profile-id'),'');
+  -- x-client-info is an allowlisted Supabase Data API header (unlike arbitrary x-* headers).
+  -- Treat its profile marker as an untrusted identifier and verify ownership below.
+  v_raw := pg_catalog.split_part(
+    pg_catalog.coalesce(nullif(pg_catalog.current_setting('request.headers', true),'')::jsonb ->> 'x-client-info',''),
+    'voka-profile=',2
+  );
+  v_raw := nullif(pg_catalog.split_part(v_raw,';',1),'');
   if v_raw is null then
     select id into v_profile from public.profiles
       where user_id=v_user and is_default and status <> 'disabled'
