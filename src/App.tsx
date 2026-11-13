@@ -5,7 +5,7 @@ import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./components/ui/card";
 import { authManager } from "./auth/manager";
-import { PROFILE_EMOJIS, profileEmoji, profileManager, profileName } from "./auth/profiles";
+import { PROFILE_EMOJIS, profileEmoji, profileManager, profileName, validProfileEmoji } from "./auth/profiles";
 import { isConfigured } from "./auth/config";
 import { detectLanguage, translations, translateError, type Language } from "./lib/i18n";
 import { changedAt, version, formatLastChange } from "./lib/buildInfo";
@@ -72,6 +72,7 @@ function Profile({ language, onClose }: { language: Language; onClose: () => voi
   const user=authManager.activeUser;
   const [creating,setCreating]=useState(false);
   const [newName,setNewName]=useState("");
+  const [newEmoji,setNewEmoji]=useState("");
   const [editing,setEditing]=useState(false);
   const [editName,setEditName]=useState("");
   const [editEmoji,setEditEmoji]=useState<string>("🙂");
@@ -85,9 +86,14 @@ function Profile({ language, onClose }: { language: Language; onClose: () => voi
   };
   const p=labels[language], active=profiles.profiles.find(profile=>profile.id===profiles.activeId);
   const hasMultiple=profiles.profiles.length>1;
+  const suggestedEmoji=PROFILE_EMOJIS.find(emoji=>!profiles.profiles.some(profile=>profile.emoji===emoji))||"";
+  const chosenNewEmoji=newEmoji||suggestedEmoji;
+  const emojiTaken=(emoji:string,exceptId?:string)=>profiles.profiles.some(profile=>profile.id!==exceptId&&profile.emoji===emoji.trim().normalize("NFC"));
+  const newEmojiError=!!chosenNewEmoji&&emojiTaken(chosenNewEmoji);
+  const editEmojiError=!!editEmoji&&emojiTaken(editEmoji,active?.id);
   const create=async(event:FormEvent<HTMLFormElement>)=>{
     event.preventDefault();
-    try{await profileManager.create(newName);setCreating(false);setNewName("");}
+    try{await profileManager.create(newName,chosenNewEmoji);setCreating(false);setNewName("");setNewEmoji("");}
     catch{ /* Error is displayed within the profile page. */ }
   };
   const save=async(event:FormEvent<HTMLFormElement>)=>{
@@ -141,18 +147,30 @@ function Profile({ language, onClose }: { language: Language; onClose: () => voi
         {editing&&active&&hasMultiple&&<form className="space-y-3 rounded-lg border border-stone-200 p-3" onSubmit={event=>void save(event)}>
           <div className="space-y-1"><Label htmlFor="profile-edit-name">{p.name}</Label><Input id="profile-edit-name" value={editName} onChange={event=>setEditName(event.target.value)} maxLength={120} required/></div>
           <fieldset className="space-y-2"><legend className="text-sm font-medium">{p.emoji}</legend>
-            <div className="grid grid-cols-6 gap-2 sm:grid-cols-8">
-              {PROFILE_EMOJIS.map(emoji=><button key={emoji} type="button" className="flex aspect-square items-center justify-center rounded-lg border text-2xl focus-visible:outline-2 focus-visible:outline-blue-600"
-                style={{backgroundColor:editEmoji===emoji?"#e0edff":"white",borderColor:editEmoji===emoji?"#2563eb":"#e5e7eb"}}
+            <Input aria-label={p.emoji} value={editEmoji} onChange={event=>setEditEmoji(event.target.value)} maxLength={64} placeholder="🐼" autoComplete="off"/>
+            <div className="flex flex-wrap gap-2" aria-label={p.emoji+" – Vorschläge"}>
+              {PROFILE_EMOJIS.map(emoji=><button key={emoji} type="button" className="flex size-10 items-center justify-center rounded-lg border text-2xl disabled:opacity-30"
+                disabled={emojiTaken(emoji,active.id)}
+                title={emojiTaken(emoji,active.id)?"Already assigned":emoji}
                 aria-label={emoji} aria-pressed={editEmoji===emoji} onClick={()=>setEditEmoji(emoji)}>{emoji}</button>)}
             </div>
+            {editEmojiError&&<p role="alert" className="text-sm text-red-700">Emoji already used by another profile</p>}
           </fieldset>
-          <div className="flex gap-2"><Button type="submit" disabled={profiles.busy||!editName.trim()}>{p.save}</Button><Button type="button" variant="outline" onClick={()=>setEditing(false)}>{p.cancel}</Button></div>
+          <div className="flex gap-2"><Button type="submit" disabled={profiles.busy||!editName.trim()||!validProfileEmoji(editEmoji)||editEmojiError}>{p.save}</Button><Button type="button" variant="outline" onClick={()=>setEditing(false)}>{p.cancel}</Button></div>
         </form>}
-        {!creating?<Button variant="outline" className="v-profile-action w-full" disabled={profiles.busy} onClick={()=>{setEditing(false);setCreating(true);}}><Plus size={16}/>{p.newProfile}</Button>:
+        {!creating?<Button variant="outline" className="v-profile-action w-full" disabled={profiles.busy} onClick={()=>{setEditing(false);setNewEmoji("");setCreating(true);}}><Plus size={16}/>{p.newProfile}</Button>:
         <form className="space-y-3" onSubmit={event=>void create(event)}>
           <div className="space-y-1"><Label htmlFor="profile-name">{p.name}</Label><Input id="profile-name" value={newName} onChange={event=>setNewName(event.target.value)} maxLength={120} required/></div>
-          <div className="flex gap-2"><Button type="submit" disabled={profiles.busy||!newName.trim()}>{p.create}</Button><Button type="button" variant="outline" onClick={()=>setCreating(false)}>{p.cancel}</Button></div>
+          <fieldset className="space-y-2"><legend className="text-sm font-medium">{p.emoji}</legend>
+            <Input aria-label={p.emoji} value={chosenNewEmoji} onChange={event=>setNewEmoji(event.target.value)} maxLength={64} placeholder="🐼" autoComplete="off" required/>
+            <div className="flex flex-wrap gap-2" aria-label={p.emoji+" – Vorschläge"}>
+              {PROFILE_EMOJIS.map(emoji=><button key={emoji} type="button" className="flex size-10 items-center justify-center rounded-lg border text-2xl disabled:opacity-30"
+                disabled={emojiTaken(emoji)} title={emojiTaken(emoji)?"Already assigned":emoji}
+                aria-label={emoji} aria-pressed={chosenNewEmoji===emoji} onClick={()=>setNewEmoji(emoji)}>{emoji}</button>)}
+            </div>
+            {newEmojiError&&<p role="alert" className="text-sm text-red-700">Emoji already used by another profile</p>}
+          </fieldset>
+          <div className="flex gap-2"><Button type="submit" disabled={profiles.busy||!newName.trim()||!validProfileEmoji(chosenNewEmoji)||newEmojiError}>{p.create}</Button><Button type="button" variant="outline" onClick={()=>setCreating(false)}>{p.cancel}</Button></div>
         </form>}
       </CardContent>
     </Card>
