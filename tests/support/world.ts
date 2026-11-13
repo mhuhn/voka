@@ -158,7 +158,7 @@ Before(async function (this: VokaWorld, { pickle }) {
       await route.fulfill({ status: 204, headers: {
         "access-control-allow-origin": "*",
         "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "access-control-allow-headers": "authorization, apikey, content-type, x-client-info"
+        "access-control-allow-headers": "authorization, apikey, content-type, x-client-info, x-voka-profile-id"
       } });
       return;
     }
