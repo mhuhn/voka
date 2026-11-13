@@ -92,6 +92,7 @@ Then("no lists from the default profile are visible", async function(this:VokaWo
 
 Then("the original lists are visible again", async function(this:VokaWorld) {
   await expect(this.page.getByRole("button",{name:/Englisch/})).toBeVisible();
+});
 
 When("I reload the app", async function (this: VokaWorld) {
   await this.page.reload();
