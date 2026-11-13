@@ -23,7 +23,7 @@ Feature: Vocabulary lists
     And I return to vocabulary home
     And I open the English subject
     Then the language list form uses automatic labels
-    And the direction control is a full-width push button
+    And the reverse-learning slider provides five levels
 
   Scenario: A phone shows only the editor for an opened card
     Given I open the Voka app
