@@ -16,7 +16,9 @@ Then("the normal orientation is first",async function(this:VokaWorld){
   await expect(front).toContainText("go");
   await expect(this.page.locator(".v-learning-session-name")).toContainText("Irregular Verbs");
   await expect(this.page.locator(".v-learning-progress-label")).toContainText("0 / 2");
-  await expect(this.page.locator(".v-learning-points")).toContainText("0 / 4");
+  await expect(this.page.locator(".v-learning-points")).toHaveAttribute("aria-label","Points: 0 / 4");
+  await expect(this.page.locator(".v-learning-points .v-learning-point")).toHaveCount(4);
+  await expect(this.page.locator(".v-learning-points .v-learning-point.is-filled")).toHaveCount(0);
 });
 
 Then("the revealed answer has a clear light-blue background",async function(this:VokaWorld){
@@ -35,7 +37,9 @@ When("I grade the normal orientation as known",async function(this:VokaWorld){
 Then("the reverse orientation of the same card follows",async function(this:VokaWorld){
   await expect(this.page.locator(".v-learning-front")).toContainText("Englisch");
   await expect(this.page.locator(".v-learning-front")).toContainText("went");
-  await expect(this.page.locator(".v-learning-points")).toContainText("0 / 1");
+  await expect(this.page.locator(".v-learning-points")).toHaveAttribute("aria-label","Points: 0 / 1");
+  await expect(this.page.locator(".v-learning-points .v-learning-point")).toHaveCount(1);
+  await expect(this.page.locator(".v-learning-points")).toHaveClass(/is-reverse/);
 });
 
 When("I grade the reverse orientation as known",async function(this:VokaWorld){
