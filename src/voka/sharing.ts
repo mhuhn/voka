@@ -27,7 +27,7 @@ export function shareUrlForList(id: string): string {
     && loc.hostname !== "localhost" && loc.hostname !== "127.0.0.1";
   const base = web
     ? new URL(import.meta.env.BASE_URL, loc.origin)
-    : new URL(import.meta.env.VITE_PUBLIC_APP_URL || "https://mhuhn.github.io/voka/react/");
+    : new URL(import.meta.env.VITE_PUBLIC_APP_URL || "https://mhuhn.github.io/voka/");
   base.searchParams.set(LINK_PARAMETER, id);
   return base.toString();
 }
