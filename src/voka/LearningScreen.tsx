@@ -3,11 +3,11 @@ import { ArrowLeft, Check, Pencil, RotateCcw, Star, X } from "lucide-react";
 import type { Language } from "../lib/i18n";
 import {
   finishLearning, gradeLearning, gradeMixedLearning, markCard, saveCard,
-  type LearningResult, type Subject, type VokaCard, type VokaList
+  type LearningEntry, type LearningResult, type Subject, type VokaCard, type VokaList
 } from "./data";
-import { pickReverseDirection } from "./learning";
+import { reverseMaxPoints } from "./learning";
 
-type LearningSession = { queryId: string; cardIds: string[] };
+type LearningSession = { queryId: string; cards: LearningEntry[] };
 
 const texts:Record<Language,Record<string,string>>={
   de:{
@@ -68,16 +68,18 @@ export default function LearningScreen({
   const t=texts[language];
   const [index,setIndex]=useState(0);
   const [revealed,setRevealed]=useState(false);
-  const [reverse,setReverse]=useState(()=>pickReverseDirection(list.learn_both_directions));
+
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
   const [editing,setEditing]=useState(false);
   const [transition,setTransition]=useState(false);
   const [editQuestion,setEditQuestion]=useState("");
   const [editAnswer,setEditAnswer]=useState("");
-  const currentId=session.cardIds[index];
+  const currentEntry=session.cards[index];
+  const reverse=Boolean(currentEntry?.reverse);
+  const currentId=currentEntry?.id;
   const currentCard=cards.find(card=>card.id===currentId);
-  const total=session.cardIds.length;
+  const total=session.cards.length;
   const activeList=(mixed?.lists.find(entry=>entry.id===currentCard?.list_id)||list);
   const activeSubject=mixed?.subjects.find(subject=>subject.id===activeList.subject_id);
   const faceQuestion=reverse?currentCard?.answer:currentCard?.question;
@@ -86,8 +88,8 @@ export default function LearningScreen({
   const answerLabel=reverse?activeList.question_label:activeList.answer_label;
   useEffect(()=>{
     if(!mixed||index===0){setTransition(false);return;}
-    const prior=cards.find(card=>card.id===session.cardIds[index-1]);
-    const next=cards.find(card=>card.id===session.cardIds[index]);
+    const prior=cards.find(card=>card.id===session.cards[index-1]?.id);
+    const next=cards.find(card=>card.id===session.cards[index]?.id);
     const previousSubject=mixed.lists.find(l=>l.id===prior?.list_id)?.subject_id;
     const nextSubject=mixed.lists.find(l=>l.id===next?.list_id)?.subject_id;
     if(!previousSubject||previousSubject===nextSubject){setTransition(false);return;}
@@ -115,16 +117,13 @@ export default function LearningScreen({
     if(!currentCard||busy||!revealed||editing)return;
     setBusy(true);setError("");
     try {
-      const gradeResult=mixed?await gradeMixedLearning(session.queryId,currentCard.id,result):await gradeLearning(session.queryId,currentCard.id,result);
+      const gradeResult=mixed?await gradeMixedLearning(session.queryId,currentCard.id,reverse,result):await gradeLearning(session.queryId,currentCard.id,reverse,result);
       await onRefresh();
       if(gradeResult.finished||index+1>=total){
         if(!gradeResult.finished)await finishLearning(session.queryId);
         onExit();
       }else{
         setIndex(value=>value+1);
-        const nextCard=cards.find(card=>card.id===session.cardIds[index+1]);
-        const nextList=mixed?.lists.find(l=>l.id===nextCard?.list_id)||list;
-        setReverse(pickReverseDirection(nextList.learn_both_directions));
         setRevealed(false);
       }
     }catch(e){
@@ -177,7 +176,7 @@ export default function LearningScreen({
         <span>{t.stage} {index+1} {t.of} {total}</span>
       </div>
       <div className="v-learning-points" aria-label={t.points}>
-        {currentCard?.success_count??0} / 4
+        {reverse?(currentCard?.reverse_success_count??0):(currentCard?.success_count??0)} / {reverse?reverseMaxPoints(activeList.reverse_share):4}
       </div>
     </header>
     <div className="v-learning-progress" role="progressbar" aria-label={t.stage}
