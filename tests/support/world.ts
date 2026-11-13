@@ -437,7 +437,13 @@ Before(async function (this: VokaWorld, { pickle }) {
         voka_list_learning_state: [{list_id:"30000000-0000-4000-8000-000000000001",min_position:learningData?Math.min(...learningCards.filter(c=>c.success_count<4).map(c=>c.position)):1,calendar_pause_until:learningData&&!pauseSkipped?nextCalendarPause():null},
           ...(mixedData?mixedLists.map(l=>({list_id:l.id,min_position:Math.min(...mixedCards.filter(c=>c.list_id===l.id).map(c=>c.position)),calendar_pause_until:null})):[])]
       };
-      await route.fulfill(json(sampleData ? fixtures[path.split("/").pop() || ""] || [] : []));
+      const user=signedInUser(request);
+      // The mocked Data API enforces isolation by the explicit selected profile header.
+      const selected=request.headers()["x-voka-profile-id"] || user.id;
+      const owner=profilesByUser.get(user.id)?.some(p=>p.id===selected);
+      const sameDefaultProfile=selected===user.id;
+      await route.fulfill(json(sampleData && owner && sameDefaultProfile
+        ? fixtures[path.split("/").pop() || ""] || [] : []));
       return;
     }
     if (path.startsWith("/rest/v1/voka_") && ["POST","PATCH","DELETE"].includes(method)) {
