@@ -48,7 +48,8 @@ Before(async function (this: VokaWorld, { pickle }) {
   };
   const locale = pickle.tags.map(tag => locales[tag.name]).find(Boolean) ?? "en-US";
   const sampleData = pickle.tags.some(tag => tag.name === "@voka");
-  const learningData = pickle.tags.some(tag => tag.name === "@learning");
+  const reverseData = pickle.tags.some(tag => tag.name === "@reverse");
+  const learningData = pickle.tags.some(tag => tag.name === "@learning") || reverseData;
   const calendarBlocked = pickle.tags.some(tag => tag.name === "@calendar-blocked");
   const calendarReady = pickle.tags.some(tag => tag.name === "@calendar-ready");
   const progressCase = pickle.tags.some(tag => tag.name === "@progress");
@@ -66,15 +67,16 @@ Before(async function (this: VokaWorld, { pickle }) {
   let learningCards=[
     {id:"40000000-0000-4000-8000-000000000001",user_id:users[0].id,
      list_id:"30000000-0000-4000-8000-000000000001",question:"go",answer:"went",
-     marked:true,success_count:0,position:0,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
+     marked:true,success_count:0,position:0,reverse_success_count:0,reverse_position:0,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
     {id:"40000000-0000-4000-8000-000000000002",user_id:users[0].id,
      list_id:"30000000-0000-4000-8000-000000000001",question:"be",answer:"was/were",
-     marked:false,success_count:1,position:0,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
+     marked:false,success_count:1,position:0,reverse_success_count:0,reverse_position:0,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
     {id:"40000000-0000-4000-8000-000000000003",user_id:users[0].id,
      list_id:"30000000-0000-4000-8000-000000000001",question:"choose",answer:"chose",
-     marked:false,success_count:2,position:0,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"}
+     marked:false,success_count:2,position:0,reverse_success_count:0,reverse_position:0,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"}
   ];
 
+  if(reverseData)learningCards=[learningCards[0]];
   if(calendarBlocked||calendarReady){
     const firstPosition=calendarBlocked?1:4;
     learningCards=[
@@ -102,11 +104,11 @@ Before(async function (this: VokaWorld, { pickle }) {
   const mixedLists=[
     {id:mathListId,user_id:users[0].id,subject_id:"20000000-0000-4000-8000-000000000002",
       title:"Mathe Übungen",tags:["Verben","Unit 3"],question_label:"Aufgabe",answer_label:"Lösung",
-      learn_both_directions:false,learning_paused_until:null,last_learning_at:null,learning_timezone:"UTC",
+      learn_both_directions:false,reverse_share:0,learning_paused_until:null,last_learning_at:null,learning_timezone:"UTC",
       created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
     {id:extraListId,user_id:users[0].id,subject_id:"20000000-0000-4000-8000-000000000002",
       title:"Nicht passende Tags",tags:["Verben"],question_label:"Aufgabe",answer_label:"Lösung",
-      learn_both_directions:false,learning_paused_until:null,last_learning_at:null,learning_timezone:"UTC",
+      learn_both_directions:false,reverse_share:0,learning_paused_until:null,last_learning_at:null,learning_timezone:"UTC",
       created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"}
   ];
   const mixedCards=[
@@ -209,13 +211,13 @@ Before(async function (this: VokaWorld, { pickle }) {
       await route.fulfill(json(null));
       return;
     }
-    if(mixedData&&path==="/rest/v1/rpc/voka_preview_mixed_learning"&&method==="POST"){
+    if(mixedData&&path==="/rest/v1/rpc/voka_preview_mixed_learning_v2"&&method==="POST"){
       const body=request.postDataJSON() as {p_subject_ids:string[];p_tags:string[]};
       const selected=selectedMixedLists(body.p_subject_ids,body.p_tags);
       const lists=selected.map(l=>({list_id:l.id,subject_id:l.subject_id,count:mixedDue(l.id).length}));
       await route.fulfill(json({total:lists.reduce((sum,l)=>sum+l.count,0),lists}));return;
     }
-    if(mixedData&&path==="/rest/v1/rpc/voka_begin_mixed_learning"&&method==="POST"){
+    if(mixedData&&path==="/rest/v1/rpc/voka_begin_mixed_learning_v2"&&method==="POST"){
       const body=request.postDataJSON() as {p_subject_ids:string[];p_tags:string[];p_timezone:string};
       const selected=selectedMixedLists(body.p_subject_ids,body.p_tags)
         .sort((a,b)=>a.subject_id.localeCompare(b.subject_id)||a.title.localeCompare(b.title));
@@ -229,9 +231,9 @@ Before(async function (this: VokaWorld, { pickle }) {
       }
       mixedQueryId=mixedCardIds.length?"80000000-0000-4000-8000-000000000099":null;
       gradedMixed.clear();
-      await route.fulfill(json(mixedCardIds.length?{query_id:mixedQueryId,card_ids:mixedCardIds}:{card_ids:[]}));return;
+      await route.fulfill(json(mixedCardIds.length?{query_id:mixedQueryId,cards:mixedCardIds.map(id=>({id,reverse:false}))}:{cards:[]}));return;
     }
-    if(mixedData&&path==="/rest/v1/rpc/voka_grade_mixed_learning"&&method==="POST"){
+    if(mixedData&&path==="/rest/v1/rpc/voka_grade_mixed_learning_v2"&&method==="POST"){
       const body=request.postDataJSON() as {p_query_id:string;p_card_id:string;p_result:"known"|"unknown"|"unsure"};
       const card=mixedCards.find(c=>c.id===body.p_card_id);
       if(!card||body.p_query_id!==mixedQueryId||gradedMixed.has(card.id)){
@@ -256,20 +258,21 @@ Before(async function (this: VokaWorld, { pickle }) {
       mixedQueryId=null;
       await route.fulfill(json(null));return;
     }
-    if(learningData && path==="/rest/v1/rpc/voka_begin_learning" && method==="POST"){
+    if(learningData && path==="/rest/v1/rpc/voka_begin_learning_v2" && method==="POST"){
       const body=request.postDataJSON() as {p_list_id:string;p_timezone?:string};
       const unlearned=learningCards.filter(c=>c.success_count<4);
       if(!unlearned.length){
-        await route.fulfill(json({all_learned:true,card_ids:[]}));return;
+        await route.fulfill(json({all_learned:true,cards:[]}));return;
       }
       const dayUntil=nextCalendarPause();
       if((learningPausedUntil && Date.parse(learningPausedUntil)>Date.now()) ||
          (dayUntil && Date.parse(dayUntil)>Date.now())){
-        await route.fulfill(json({paused_until:learningPausedUntil,calendar_pause_until:dayUntil,card_ids:[]}));return;
+        await route.fulfill(json({paused_until:learningPausedUntil,calendar_pause_until:dayUntil,cards:[]}));return;
       }
       const min=Math.min(...unlearned.map(c=>c.position));
       if(min>0)for(const card of learningCards)card.position=Math.max(0,card.position-min);
       const due=learningCards.filter(c=>c.position===0&&c.success_count<4);
+      const reverseDue=reverseData?learningCards.filter(c=>c.reverse_position===0&&c.reverse_success_count<1):[];
       lastLearningAt=new Date().toISOString();
       if(!body.p_timezone){
         await route.fulfill(json({message:"Timezone required"},400));return;
@@ -278,32 +281,46 @@ Before(async function (this: VokaWorld, { pickle }) {
       gradedLearningIds.clear();
       await route.fulfill(json({
         query_id:activeLearningQuery,
-        card_ids:due.map(c=>c.id).reverse()
+        cards:[...due.map(c=>({id:c.id,reverse:false})).reverse(),...reverseDue.map(c=>({id:c.id,reverse:true}))]
       }));
       return;
     }
-    if(learningData && path==="/rest/v1/rpc/voka_grade_learning" && method==="POST"){
-      const body=request.postDataJSON() as {p_query_id:string;p_card_id:string;p_result:string};
+    if(learningData && path==="/rest/v1/rpc/voka_grade_learning_v2" && method==="POST"){
+      const body=request.postDataJSON() as {p_query_id:string;p_card_id:string;p_reverse:boolean;p_result:string};
       const card=learningCards.find(c=>c.id===body.p_card_id);
-      if(!card||body.p_query_id!==activeLearningQuery||card.position!==0||gradedLearningIds.has(card.id)){
-        await route.fulfill(json({message:"Card is not due"},400));return;
+      const key=body.p_card_id+":"+body.p_reverse;
+      if(!card||body.p_query_id!==activeLearningQuery||
+          (body.p_reverse?card.reverse_position:card.position)!==0||gradedLearningIds.has(key)){
+        await route.fulfill(json({message:"Card orientation is not due"},400));return;
       }
-      gradedLearningIds.add(card.id);
-      const before=card.success_count;
-      if(body.p_result==="known"){
-        card.success_count=Math.min(4,before+1);
-        card.position=before===0?2:before===1?6:19;
-      }else if(body.p_result==="unknown"){
-        card.success_count=0;card.position=1;
-      }else { card.position=1; }
-      const finished=learningCards.every(c=>c.position!==0||c.success_count>=4);
-      const position=card.position,success_count=card.success_count;
+      gradedLearningIds.add(key);
+      if(body.p_reverse){
+        const before=card.reverse_success_count;
+        card.reverse_success_count=body.p_result==="known"?Math.min(1,before+1):body.p_result==="unknown"?0:before;
+        card.reverse_position=body.p_result==="known"?10:1;
+      }else{
+        const before=card.success_count;
+        if(body.p_result==="known"){
+          card.success_count=Math.min(4,before+1);
+          card.position=before===0?2:before===1?6:19;
+        }else if(body.p_result==="unknown"){card.success_count=0;card.position=1;}
+        else card.position=1;
+      }
+      const finished=learningCards.every(c=>
+        (c.position!==0||c.success_count>=4)&&
+        (!reverseData||c.reverse_position!==0||c.reverse_success_count>=1)
+      );
+      const position=body.p_reverse?card.reverse_position:card.position;
+      const success_count=body.p_reverse?card.reverse_success_count:card.success_count;
       if(finished){
-        for(const entry of learningCards)entry.position=Math.max(0,entry.position-1);
+        for(const entry of learningCards){
+          entry.position=Math.max(0,entry.position-1);
+          entry.reverse_position=Math.max(0,entry.reverse_position-1);
+        }
         learningPausedUntil=new Date(Date.now()+120*60_000).toISOString();
         activeLearningQuery=null;
       }
-      await route.fulfill(json({success_count,position,finished,paused_until:learningPausedUntil}));
+      await route.fulfill(json({success_count,position,reverse:body.p_reverse,finished,paused_until:learningPausedUntil}));
       return;
     }
     if(learningData && path==="/rest/v1/rpc/voka_finish_learning" && method==="POST"){
@@ -363,7 +380,7 @@ Before(async function (this: VokaWorld, { pickle }) {
           {id:"20000000-0000-4000-8000-000000000002",user_id:users[0].id,group_id:"10000000-0000-4000-8000-000000000002",title:"Mathe",emoji:"➗"}
         ],
         voka_lists: [
-          {id:"30000000-0000-4000-8000-000000000001",user_id:users[0].id,subject_id:"20000000-0000-4000-8000-000000000001",title:"Irregular Verbs",tags:["Verben","Unit 3"],question_label:"Infinitiv",answer_label:"Englisch",learn_both_directions:!learningData&&!mixedData,learning_paused_until:mixedData&&mixedPaused.has(englishListId)?new Date(Date.now()+120*60_000).toISOString():learningPausedUntil,last_learning_at:lastLearningAt,learning_timezone:learningTimezone,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
+          {id:"30000000-0000-4000-8000-000000000001",user_id:users[0].id,subject_id:"20000000-0000-4000-8000-000000000001",title:"Irregular Verbs",tags:["Verben","Unit 3"],question_label:"Infinitiv",answer_label:"Englisch",learn_both_directions:reverseData||(!learningData&&!mixedData),reverse_share:reverseData?25:0,learning_paused_until:mixedData&&mixedPaused.has(englishListId)?new Date(Date.now()+120*60_000).toISOString():learningPausedUntil,last_learning_at:lastLearningAt,learning_timezone:learningTimezone,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
           ...(importedList?[importedList]:[]),
           ...(mixedData?mixedLists.map(l=>({...l,learning_paused_until:mixedPaused.has(l.id)?new Date(Date.now()+120*60_000).toISOString():null})):[])
         ],
