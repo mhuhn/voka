@@ -58,7 +58,8 @@ When("I create a profile named {string}", async function(this:VokaWorld,name:str
   try{await expect(createButton).toBeEnabled({timeout:4000});}
   catch(error){throw new Error("Create profile disabled: "+(await this.page.locator("body").innerText()).slice(0,1200)+" / "+String(error));}
   await createButton.click();
-  await expect(this.page.getByRole("button",{name:"Switch profile: "+name})).toBeVisible();
+  await expect(this.page.locator(".v-profile-card").first()).toContainText(name);
+  await expect(this.page.getByRole("button",{name:"Switch profile: "+name})).toHaveCount(0);
 });
 
 When("I create a profile named {string} with emoji {string}", async function(this:VokaWorld,name:string,emoji:string){
@@ -69,7 +70,8 @@ When("I create a profile named {string} with emoji {string}", async function(thi
   try{await expect(createButton).toBeEnabled({timeout:4000});}
   catch(error){throw new Error("Create profile disabled: "+(await this.page.locator("body").innerText()).slice(0,1200)+" / "+String(error));}
   await createButton.click();
-  await expect(this.page.getByRole("button",{name:"Switch profile: "+name})).toBeVisible();
+  await expect(this.page.locator(".v-profile-card").first()).toContainText(name);
+  await expect(this.page.getByRole("button",{name:"Switch profile: "+name})).toHaveCount(0);
 });
 
 Then("I cannot choose an emoji already used by another profile",async function(this:VokaWorld){
@@ -87,12 +89,12 @@ Then("the single profile can be renamed and assigned an emoji", async function(t
   await editName.fill("Alice Renamed");
   await editEmoji.fill("🐼");
   await this.page.getByRole("button",{name:"Save",exact:true}).click();
-  await expect(this.page.getByRole("button",{name:"Switch profile: Alice Renamed"})).toBeVisible();
+  await expect(this.page.locator(".v-profile-card").first()).toContainText("Alice Renamed");
   await this.page.getByRole("button",{name:"Edit current profile"}).click();
   await this.page.getByRole("textbox",{name:"Profile name"}).fill("Alice");
   await this.page.getByRole("textbox",{name:"Profile emoji"}).fill("🙂");
   await this.page.getByRole("button",{name:"Save",exact:true}).click();
-  await expect(this.page.getByRole("button",{name:"Switch profile: Alice"})).toBeVisible();
+  await expect(this.page.locator(".v-profile-card").first()).toContainText("Alice");
 });
 
 When("I edit the current profile to {string} with emoji {string}", async function(this:VokaWorld,name:string,emoji:string) {
@@ -100,7 +102,7 @@ When("I edit the current profile to {string} with emoji {string}", async functio
   await this.page.getByRole("textbox",{name:"Profile name"}).fill(name);
   await this.page.getByRole("group",{name:"Profile emoji"}).getByRole("button",{name:emoji}).click();
   await this.page.getByRole("button",{name:"Save",exact:true}).click();
-  await expect(this.page.getByRole("button",{name:"Switch profile: "+name})).toBeVisible();
+  await expect(this.page.locator(".v-profile-card").first()).toContainText(name);
 });
 
 Then("the floating profile button shows {string} for {string}", async function(this:VokaWorld,emoji:string,name:string) {
@@ -108,6 +110,19 @@ Then("the floating profile button shows {string} for {string}", async function(t
   await expect(button).toHaveAttribute("aria-label","Profile: "+name);
   await expect(button.locator(".v-profile-emoji")).toHaveText(emoji);
   await expect(button.locator("svg")).toHaveCount(0);
+});
+
+Then("the current profile is managed only in My profile", async function(this:VokaWorld){
+  const currentCard=this.page.locator(".v-profile-card").first();
+  const switchCard=this.page.locator(".v-profile-card").nth(1);
+  await expect(currentCard.getByRole("button",{name:"Edit current profile"})).toBeVisible();
+  await expect(currentCard.getByRole("button",{name:"Delete profile"})).toBeEnabled();
+  await expect(switchCard.getByRole("heading",{name:"Switch profile"})).toBeVisible();
+  await expect(switchCard.getByRole("button",{name:"Edit current profile"})).toHaveCount(0);
+  await expect(switchCard.getByRole("button",{name:"Delete profile"})).toHaveCount(0);
+  await expect(switchCard.getByRole("button",{name:"New profile"})).toBeVisible();
+  const current=await currentCard.locator("[data-slot=card-description]").innerText();
+  await expect(switchCard.getByRole("button",{name:"Switch profile: "+current.trim()})).toHaveCount(0);
 });
 
 Then("I can switch to the profile named {string}", async function(this:VokaWorld,name:string) {
@@ -121,12 +136,12 @@ When("I switch to the profile named {string}", async function(this:VokaWorld,nam
 
 Then("I can delete the profile named {string}", async function(this:VokaWorld,name:string) {
   this.page.once("dialog",dialog=>void dialog.accept());
-  await this.page.getByRole("button",{name:"Delete profile: "+name}).click();
-  await expect(this.page.getByRole("button",{name:"Switch profile: "+name})).toHaveCount(0);
+  await this.page.locator(".v-profile-card").first().getByRole("button",{name:"Delete profile"}).click();
+  await expect(this.page.locator(".v-profile-card").first()).not.toContainText(name);
 });
 
 Then("I cannot delete the last profile", async function(this:VokaWorld) {
-  await expect(this.page.getByRole("button",{name:/Delete profile:/})).toBeDisabled();
+  await expect(this.page.locator(".v-profile-card").first().getByRole("button",{name:"Delete profile"})).toBeDisabled();
 });
 
 When("I return to Voka from the profile page", async function(this:VokaWorld) {

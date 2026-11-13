@@ -120,30 +120,12 @@ function Profile({ language, onClose }: { language: Language; onClose: () => voi
       <CardContent className="space-y-4">
         <div><p className="text-xs font-medium uppercase tracking-wide text-stone-500">{t.email}</p><p className="mt-1 break-all font-medium">{user?.email || ""}</p></div>
         <div><p className="text-xs font-medium uppercase tracking-wide text-stone-500">{t.userId}</p><p className="mt-1 break-all font-mono text-xs text-stone-600">{user?.id}</p></div>
-        <Button variant="outline" className="v-profile-action w-full" disabled={auth.busy || !user} onClick={()=>user&&void authManager.logout(user.id)}><LogOut size={16}/>{t.signOut}</Button>
-      </CardContent>
-    </Card>
-    <Card className="v-profile-card">
-      <CardHeader><CardTitle className="flex items-center gap-2"><Users size={18}/>{p.profiles}</CardTitle><CardDescription>{p.switchProfile}</CardDescription></CardHeader>
-      <CardContent className="space-y-3">
-        {profiles.loading&&<p role="status">{p.loading}</p>}
-        {profiles.error&&<p role="alert" className="text-sm text-red-700">{profiles.error}</p>}
-        {profiles.profiles.map(profile=><div key={profile.id} className="flex items-center gap-2 rounded-lg border border-stone-200 p-2">
-          <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left"
-            aria-label={p.switchProfile+": "+profileName(profile)}
-            aria-current={profile.id===active?.id?"true":undefined}
-            onClick={()=>{profileManager.select(profile.id);onClose();}}>
-            <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center text-2xl">{profileEmoji(profile)}</span>
-            <span className="block min-w-0 truncate text-sm font-semibold">{profileName(profile)}</span>
-            {profile.id===active?.id&&<Check size={18} className="ml-auto shrink-0 text-blue-600"/>}
-          </button>
-          {profile.id===active?.id&&<button type="button" className="rounded-lg p-2" disabled={profiles.busy}
-            title={p.edit} aria-label={p.edit} onClick={openEditor}><Pencil size={17}/></button>}
-          <button type="button" className="rounded-lg p-2 text-red-700 disabled:opacity-30" disabled={profiles.busy||!hasMultiple}
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" className="flex-1" disabled={profiles.busy||!active} onClick={openEditor}><Pencil size={16}/>{p.edit}</Button>
+          <Button variant="outline" className="flex-1 text-red-700" disabled={profiles.busy||!hasMultiple||!active}
             title={!hasMultiple?p.lastProfile:p.deleteProfile}
-            aria-label={p.deleteProfile+": "+profileName(profile)}
-            onClick={()=>void remove(profile.id)}><Trash2 size={17}/></button>
-        </div>)}
+            onClick={()=>active&&void remove(active.id)}><Trash2 size={16}/>{p.deleteProfile}</Button>
+        </div>
         {editing&&active&&<form className="space-y-3 rounded-lg border border-stone-200 p-3" onSubmit={event=>void save(event)}>
           <div className="space-y-1"><Label htmlFor="profile-edit-name">{p.name}</Label><Input id="profile-edit-name" value={editName} onChange={event=>setEditName(event.target.value)} maxLength={120} required/></div>
           <fieldset className="space-y-2"><legend className="text-sm font-medium">{p.emoji}</legend>
@@ -158,6 +140,22 @@ function Profile({ language, onClose }: { language: Language; onClose: () => voi
           </fieldset>
           <div className="flex gap-2"><Button type="submit" disabled={profiles.busy||!editName.trim()||!validProfileEmoji(editEmoji)||editEmojiError}>{p.save}</Button><Button type="button" variant="outline" onClick={()=>setEditing(false)}>{p.cancel}</Button></div>
         </form>}
+        <Button variant="outline" className="v-profile-action w-full" disabled={auth.busy || !user} onClick={()=>user&&void authManager.logout(user.id)}><LogOut size={16}/>{t.signOut}</Button>
+      </CardContent>
+    </Card>
+    <Card className="v-profile-card">
+      <CardHeader><CardTitle className="flex items-center gap-2"><Users size={18}/>{p.switchProfile}</CardTitle></CardHeader>
+      <CardContent className="space-y-3">
+        {profiles.loading&&<p role="status">{p.loading}</p>}
+        {profiles.error&&<p role="alert" className="text-sm text-red-700">{profiles.error}</p>}
+        {profiles.profiles.filter(profile=>profile.id!==active?.id).map(profile=><div key={profile.id} className="flex items-center gap-2 rounded-lg border border-stone-200 p-2">
+          <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left"
+            aria-label={p.switchProfile+": "+profileName(profile)}
+            onClick={()=>{profileManager.select(profile.id);setEditing(false);onClose();}}>
+            <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center text-2xl">{profileEmoji(profile)}</span>
+            <span className="block min-w-0 truncate text-sm font-semibold">{profileName(profile)}</span>
+          </button>
+        </div>)}
         {!creating?<Button variant="outline" className="v-profile-action w-full" disabled={profiles.busy} onClick={()=>{setEditing(false);setNewEmoji("");setCreating(true);}}><Plus size={16}/>{p.newProfile}</Button>:
         <form className="space-y-3" onSubmit={event=>void create(event)}>
           <div className="space-y-1"><Label htmlFor="profile-name">{p.name}</Label><Input id="profile-name" value={newName} onChange={event=>setNewName(event.target.value)} maxLength={120} required/></div>

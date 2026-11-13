@@ -29,7 +29,11 @@ Feature: Account authentication
     Given I open the Voka app
     And I sign in as "alice@example.test" with password "correct-password"
     When I create a profile named "Student"
-    Then I can switch to the profile named "Alice"
+    Then the current profile is managed only in My profile
+    And I can switch to the profile named "Alice"
+    When I switch to the profile named "Alice"
+    And I open the profile page
+    Then I can switch to the profile named "Student"
     When I switch to the profile named "Student"
     And I open the profile page
     Then I can delete the profile named "Student"
@@ -69,7 +73,7 @@ Feature: Account authentication
     When I sign in using the current locale as "alice@example.test" with password "correct-password"
     Then the profile heading is "Mein Profil"
     And the profile sign-out button is "Abmelden"
-    And the account section heading is "Profile"
+    And the account section heading is "Profil wechseln"
     And the add-account button is "Neues Profil"
 
   @fr
@@ -78,7 +82,7 @@ Feature: Account authentication
     When I sign in using the current locale as "alice@example.test" with password "correct-password"
     Then the profile heading is "Mon profil"
     And the profile sign-out button is "Se déconnecter"
-    And the account section heading is "Profils"
+    And the account section heading is "Changer de profil"
     And the add-account button is "Nouveau profil"
 
   @nl
@@ -87,7 +91,7 @@ Feature: Account authentication
     When I sign in using the current locale as "alice@example.test" with password "correct-password"
     Then the profile heading is "Mijn profiel"
     And the profile sign-out button is "Uitloggen"
-    And the account section heading is "Profielen"
+    And the account section heading is "Profiel wisselen"
     And the add-account button is "Nieuw profiel"
 
   @da
@@ -96,7 +100,7 @@ Feature: Account authentication
     When I sign in using the current locale as "alice@example.test" with password "correct-password"
     Then the profile heading is "Min profil"
     And the profile sign-out button is "Log ud"
-    And the account section heading is "Profiler"
+    And the account section heading is "Skift profil"
     And the add-account button is "Ny profil"
 
   @it
@@ -105,7 +109,7 @@ Feature: Account authentication
     When I sign in using the current locale as "alice@example.test" with password "correct-password"
     Then the profile heading is "Il mio profilo"
     And the profile sign-out button is "Esci"
-    And the account section heading is "Profili"
+    And the account section heading is "Cambia profilo"
     And the add-account button is "Nuovo profilo"
 
   Scenario: Sign-in and registration match the Voka theme
