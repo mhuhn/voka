@@ -2,6 +2,12 @@
 Feature: Vocabulary lists
   Signed-in learners can browse subjects, filter cards and use tablet and phone layouts.
 
+  Scenario: Unused navigation and notifications controls are absent
+    Given I open the Voka app
+    When I sign in as "alice@example.test" with password "correct-password"
+    And I return to vocabulary home
+    Then no bottom navigation or notification button is shown
+
   Scenario: Browse and filter an existing vocabulary list on a tablet
     Given I open the Voka app
     When I sign in as "alice@example.test" with password "correct-password"

@@ -38,7 +38,7 @@ Feature: Account authentication
   Scenario: Profile names and emojis are editable only with multiple profiles
     Given I open the Voka app
     And I sign in as "alice@example.test" with password "correct-password"
-    Then the single profile has no edit button
+    Then the single profile can be renamed and assigned an emoji
     When I create a profile named "Student"
     And I edit the current profile to "Panda Fan" with emoji "🐼"
     And I return to Voka from the profile page

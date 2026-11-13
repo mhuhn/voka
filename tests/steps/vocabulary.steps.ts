@@ -3,6 +3,11 @@ import { readFile } from "node:fs/promises";
 import { expect } from "@playwright/test";
 import type { VokaWorld } from "../support/world";
 
+Then("no bottom navigation or notification button is shown",async function(this:VokaWorld) {
+  await expect(this.page.locator(".v-bottom-nav")).toHaveCount(0);
+  await expect(this.page.getByRole("button",{name:"Notifications"})).toHaveCount(0);
+});
+
 Then("the list CSV download includes card IDs and both progress directions",async function(this:VokaWorld){
   const [download]=await Promise.all([
     this.page.waitForEvent("download"),
@@ -268,7 +273,7 @@ Then("I can cancel a new card without saving it", async function(this:VokaWorld)
 
 Then("the small phone has larger floating icon targets", async function(this:VokaWorld){
  const targets=this.page.locator(".v-floats .v-icon-button");
- await expect(targets).toHaveCount(2);
+ await expect(targets).toHaveCount(1);
  for(const box of await targets.all()){
   const dims=await box.boundingBox();
   expect(dims).not.toBeNull();

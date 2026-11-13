@@ -107,7 +107,7 @@ class ProfileManager {
     const userId=authManager.activeUser?.id;
     const current=this.activeProfile;
     if(!userId || !current)throw new Error("No active profile");
-    if(this.state.profiles.length<2)throw new Error("Editing requires at least two profiles");
+
     if(!name.trim()||name.trim().length>120)throw new Error("Invalid profile name");
     if(!validProfileEmoji(emoji))throw new Error("Invalid profile emoji");
     if(this.state.profiles.some(p=>p.id!==current.id&&p.emoji===emoji.trim().normalize("NFC")))throw new Error("This emoji is already used by another profile");
