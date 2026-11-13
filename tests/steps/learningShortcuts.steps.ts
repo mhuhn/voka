@@ -30,7 +30,6 @@ Then("the filter switches and sorting controls share a compact row",async functi
 });
 
 Then("the grade controls are shown above marking and editing",async function(this:VokaWorld){
-  await this.page.getByRole("button",{name:"Reveal"}).click();
   const grade=this.page.locator(".v-learning-result-actions");
   const tools=this.page.locator(".v-learning-card-tools");
   await expect(grade).toBeVisible();
@@ -38,34 +37,31 @@ Then("the grade controls are shown above marking and editing",async function(thi
   const gradeBox=await grade.boundingBox(),toolBox=await tools.boundingBox();
   expect(gradeBox).not.toBeNull();expect(toolBox).not.toBeNull();
   expect(gradeBox!.y+gradeBox!.height).toBeLessThan(toolBox!.y+3);
-  // Restore question face for keyboard shortcut coverage via the next round?
-  // The following separate step uses the currently revealed face.
 });
 
 When("I reveal the hidden card with Enter",async function(this:VokaWorld){
-  if(await this.page.getByRole("button",{name:"Reveal"}).count()){
-    await this.page.locator(".v-learning").evaluate(el=>(el as HTMLElement).focus());
-    await this.page.keyboard.press("Enter");
-  }
+  await expect(this.page.getByRole("button",{name:"Reveal"})).toBeVisible();
+  await this.page.evaluate(()=>(document.activeElement as HTMLElement|null)?.blur());
+  await this.page.keyboard.press("Enter");
   await expect(this.page.getByRole("button",{name:"Knew it"})).toBeVisible();
 });
 
 When("I reveal the hidden card with Space",async function(this:VokaWorld){
-  await this.page.locator(".v-learning").evaluate(el=>(el as HTMLElement).focus());
+  await this.page.evaluate(()=>(document.activeElement as HTMLElement|null)?.blur());
   await this.page.keyboard.press("Space");
   await expect(this.page.getByRole("button",{name:"Knew it"})).toBeVisible();
 });
 
 When("I grade the revealed card with Space",async function(this:VokaWorld){
   const pending=this.page.waitForRequest(req=>new URL(req.url()).pathname==="/rest/v1/rpc/voka_grade_learning_v2");
-  await this.page.locator(".v-learning").evaluate(el=>(el as HTMLElement).focus());
+  await this.page.evaluate(()=>(document.activeElement as HTMLElement|null)?.blur());
   await this.page.keyboard.press("Space");
   expect((await pending).postDataJSON()).toMatchObject({p_reverse:false,p_result:"known"});
 });
 
 When("I grade the revealed card with Enter",async function(this:VokaWorld){
   const pending=this.page.waitForRequest(req=>new URL(req.url()).pathname==="/rest/v1/rpc/voka_grade_learning_v2");
-  await this.page.locator(".v-learning").evaluate(el=>(el as HTMLElement).focus());
+  await this.page.evaluate(()=>(document.activeElement as HTMLElement|null)?.blur());
   await this.page.keyboard.press("Enter");
   expect((await pending).postDataJSON()).toMatchObject({p_reverse:false,p_result:"known"});
 });
