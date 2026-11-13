@@ -23,15 +23,15 @@ When("I open the irregular verbs list", async function (this: VokaWorld) {
 
 Then("the list filters and sorting work", async function (this: VokaWorld) {
   await expect(this.page.getByText("2 Cards", { exact: true })).toBeVisible();
-  const showLearned = this.page.getByRole("checkbox", { name: "Show learned" });
-  await expect(showLearned).not.toBeChecked();
+  const showLearned = this.page.getByRole("button", { name: "Show learned" });
+  await expect(showLearned).toHaveAttribute("aria-pressed","false");
   await expect(this.page.locator(".v-card-list .v-card-open")).toHaveCount(2);
-  await showLearned.check();
+  await showLearned.click();
   await expect(this.page.getByText("3 Cards", { exact: true })).toBeVisible();
   await expect(this.page.locator(".v-card-list .v-card-open")).toHaveCount(3);
-  await this.page.getByRole("checkbox", { name: "Show Englisch" }).check();
+  await this.page.getByRole("button", { name: "Show Englisch" }).click();
   await expect(this.page.getByText("went", { exact: true })).toBeVisible();
-  await this.page.getByRole("checkbox", { name: "Only starred" }).check();
+  await this.page.getByRole("button", { name: "Only starred" }).click();
   await expect(this.page.getByText("1 Card", { exact: true })).toBeVisible();
   await this.page.getByRole("button", { name: "By points" }).click();
 });
@@ -315,7 +315,7 @@ Then("an existing group is updated through the dialog", async function(this:Voka
 });
 
 Then("cards sort by increasing position", async function (this: VokaWorld) {
-  await this.page.getByRole("checkbox",{name:"Show learned"}).check();
+  await this.page.getByRole("button",{name:"Show learned"}).click();
   const order=()=>this.page.locator(".v-card-list .v-card-question").allTextContents();
   await expect(this.page.getByRole("button",{name:"By position"})).toBeVisible();
   await this.page.getByRole("button",{name:"By position"}).click();
@@ -377,12 +377,12 @@ Then("other school subjects suggest the matching emoji", async function (this: V
 });
 
 Then("the German learned-card switch and card counts use the correct wording", async function(this:VokaWorld){
-  const learned=this.page.getByRole("checkbox",{name:"Gelernte anzeigen"});
-  await expect(learned).not.toBeChecked();
+  const learned=this.page.getByRole("button",{name:"Gelernte anzeigen"});
+  await expect(learned).toHaveAttribute("aria-pressed","false");
   await expect(this.page.locator(".v-list-count")).toHaveText("2 Karten");
-  await learned.check();
+  await learned.click();
   await expect(this.page.locator(".v-list-count")).toHaveText("3 Karten");
-  await this.page.getByRole("checkbox",{name:"Nur Markierte"}).check();
+  await this.page.getByRole("button",{name:"Nur Markierte"}).click();
   await expect(this.page.locator(".v-list-count")).toHaveText("1 Karte");
   await expect(this.page.locator(".v-list-grid .v-list-row").first()).toContainText("3 Karten");
 });
