@@ -1,0 +1,73 @@
+name: iOS cloud build (unsigned simulator validation)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'ios/**'
+      - 'capacitor.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+      - '.github/workflows/ios.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  simulator:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install frontend dependencies
+        run: npm install --no-audit
+      - name: Build web assets
+        run: npm run build
+      - name: Generate iOS project
+        run: |
+          if [ -d ios/App ]; then
+            npx cap sync ios
+          else
+            npx cap add ios
+          fi
+      - name: Set iOS deep-link URL scheme
+        run: |
+          python3 - <<'PY'
+          import plistlib
+          from pathlib import Path
+          p = Path("ios/App/App/Info.plist")
+          with p.open("rb") as f:
+              data = plistlib.load(f)
+          types = data.get("CFBundleURLTypes", [])
+          if not any("de.mhuhn.voka" in item.get("CFBundleURLSchemes", []) for item in types):
+              types.append({"CFBundleURLName": "de.mhuhn.voka", "CFBundleURLSchemes": ["de.mhuhn.voka"]})
+          data["CFBundleURLTypes"] = types
+          with p.open("wb") as f:
+              plistlib.dump(data, f)
+          PY
+      - name: Build unsigned iOS simulator application
+        run: |
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/voka-derived" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+      - name: Upload simulator app
+        uses: actions/upload-artifact@v4
+        with:
+          name: voka-ios-simulator
+          path: ${{ runner.temp }}/voka-derived/Build/Products/Debug-iphonesimulator/App.app
+          if-no-files-found: error
