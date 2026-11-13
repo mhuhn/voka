@@ -75,12 +75,16 @@ jobs:
             echo "::error::The P12 or its password is invalid. Recheck IOS_DISTRIBUTION_P12_BASE64 and IOS_DISTRIBUTION_P12_PASSWORD."
             exit 1
           fi
-          set -o pipefail
-          openssl pkcs12 -in "$RUNNER_TEMP/cert.p12" -passin env:P12_PASSWORD -nodes |
-            openssl pkcs12 -export -legacy \
-              -in /dev/stdin -out "$RUNNER_TEMP/cert-macos.p12" \
-              -passout env:P12_PASSWORD -name "Voka Distribution" \
-              -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -macalg sha1
+          # PKCS#12 export reads PEM more than once, so a pipe (/dev/stdin)
+          # cannot be used here. Keep the unencrypted PEM in the ephemeral
+          # runner's private temporary directory, and delete it after rewrapping.
+          openssl pkcs12 -in "$RUNNER_TEMP/cert.p12" \
+            -passin env:P12_PASSWORD -nodes -out "$RUNNER_TEMP/extracted.pem"
+          openssl pkcs12 -export -legacy \
+            -in "$RUNNER_TEMP/extracted.pem" -out "$RUNNER_TEMP/cert-macos.p12" \
+            -passout env:P12_PASSWORD -name "Voka Distribution" \
+            -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -macalg sha1
+          rm -f "$RUNNER_TEMP/extracted.pem"
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security set-keychain-settings -lut 21600 "$KEYCHAIN"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
