@@ -31,6 +31,9 @@ Feature: Account authentication
     When I create a profile named "Student"
     Then the current profile is managed only in My profile
     And I can switch to the profile named "Alice"
+    When I switch to the profile named "Alice"
+    And I open the profile page
+    Then I can switch to the profile named "Student"
     When I switch to the profile named "Student"
     And I open the profile page
     Then I can delete the profile named "Student"
