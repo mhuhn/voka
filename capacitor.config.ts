@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: "com.example.voka",
+  appId: "de.mhuhn.voka",
   appName: "Voka",
   webDir: "dist"
 };
