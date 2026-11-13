@@ -14,7 +14,7 @@ describe("Voka share links",()=>{
   it("creates an app link with a list ID, not a local development URL",()=>{
     const url=new URL(shareUrlForList(id));
     expect(url.origin).toBe("https://mhuhn.github.io");
-    expect(url.pathname).toBe("/voka/react/");
+    expect(url.pathname).toBe("/voka/");
     expect(url.searchParams.get("importList")).toBe(id);
   });
 
