@@ -1,9 +1,9 @@
 name: React application checks
 on:
   push:
-    branches: [react]
+    branches: [main]
   pull_request:
-    branches: [react]
+    branches: [main]
 
 jobs:
   verify:
