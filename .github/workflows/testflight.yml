@@ -66,12 +66,25 @@ jobs:
           umask 077
           KEYCHAIN="$RUNNER_TEMP/voka-signing.keychain-db"
           KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
-          echo "$P12" | base64 -D > "$RUNNER_TEMP/cert.p12"
-          echo "$PROFILE" | base64 -D > "$RUNNER_TEMP/profile.mobileprovision"
+          printf '%s' "$P12" | base64 -D > "$RUNNER_TEMP/cert.p12"
+          printf '%s' "$PROFILE" | base64 -D > "$RUNNER_TEMP/profile.mobileprovision"
+          # Linux OpenSSL 3 uses a PKCS#12 encryption/MAC format that Apple's
+          # Security.framework may reject as "wrong password", even when valid.
+          # First validate the secret and password, then rewrap for macOS.
+          if ! openssl pkcs12 -in "$RUNNER_TEMP/cert.p12" -passin env:P12_PASSWORD -noout >/dev/null 2>&1; then
+            echo "::error::The P12 or its password is invalid. Recheck IOS_DISTRIBUTION_P12_BASE64 and IOS_DISTRIBUTION_P12_PASSWORD."
+            exit 1
+          fi
+          set -o pipefail
+          openssl pkcs12 -in "$RUNNER_TEMP/cert.p12" -passin env:P12_PASSWORD -nodes |
+            openssl pkcs12 -export -legacy \
+              -in /dev/stdin -out "$RUNNER_TEMP/cert-macos.p12" \
+              -passout env:P12_PASSWORD -name "Voka Distribution" \
+              -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -macalg sha1
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security set-keychain-settings -lut 21600 "$KEYCHAIN"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$P12_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          security import "$RUNNER_TEMP/cert-macos.p12" -k "$KEYCHAIN" -P "$P12_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
