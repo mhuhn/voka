@@ -444,7 +444,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
     {data.lists.length===0&&<section className="v-intro"><div className="v-illustration"><BookOpen size={74}/><span>?</span></div><h2>{t("empty")}</h2><p>{t("emptyInfo")}</p><button className="v-primary" onClick={()=>newList()}><Plus size={18}/>{t("createList")}</button></section>}
     <div className="v-section-tools"><h2 className="v-section-title">{t("mySubjects")}</h2>
       <div className="v-home-actions">
-       {data.lists.length>0&&<button type="button" className="v-primary v-home-learn v-learn-cta" onClick={()=>setScreen("mixedSelect")}><Play size={17}/>{t("learn")}</button>}
+       {data.lists.length>0&&<button type="button" className="v-primary v-home-learn v-learn-cta" onClick={()=>setScreen("mixedSelect")}><Play size={17}/><span className="v-learn-cta-label">{t("learn")}</span></button>}
        <button className="v-manage-link" onClick={()=>{setManageModalOpen(false);setScreen("manage")}}>{t("manage")} <Settings size={16}/></button>
       </div></div>
     <div className="v-group-grid">{visibleGroups.map(g=>{
@@ -465,7 +465,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
       <IconButton label={t("editList")} onClick={()=>editList(currentList)}><Pencil size={18}/></IconButton></div></div>}
     <div className="v-list-main">
      {currentList.tags.length>0&&<div className="v-list-summary"><div className="v-tag-row">{currentList.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div>}
-      <div className="v-list-actions"><button className="v-primary v-learn-cta" type="button" title={learningButtonLabel} aria-label={learningButtonLabel} disabled={learningUnavailable} onClick={()=>void startLearning()}><Play size={19} fill="currentColor"/> {learningButtonLabel}</button><div className="v-progress"><BarChart3 size={21}/><span>{t("progress")}<b>{learningProgress(listCardsForProgress)} %</b></span></div>
+      <div className="v-list-actions"><button className="v-primary v-learn-cta" type="button" title={learningButtonLabel} aria-label={learningButtonLabel} disabled={learningUnavailable} onClick={()=>void startLearning()}><Play size={19} fill="currentColor"/><span className="v-learn-cta-label">{learningButtonLabel}</span></button><div className="v-progress"><BarChart3 size={21}/><span>{t("progress")}<b>{learningProgress(listCardsForProgress)} %</b></span></div>
      </div>
      {shareStatus&&<p className="v-share-status" role="status">{shareStatus}</p>}
      <div className="v-filter-area">
