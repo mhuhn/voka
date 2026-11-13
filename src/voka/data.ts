@@ -72,6 +72,15 @@ export function groupUsage(data:VokaData,groupId:string):number {
   return Math.max(0,...data.subjects.filter(s=>s.group_id===groupId).map(s=>subjectUsage(data,s.id)));
 }
 
+export interface ProfileStreak { n:number; day:string; note:{lost:number;days:number}|null; last_awarded_query_id:string|null }
+export async function loadProfileStreak():Promise<ProfileStreak>{
+  return await check<ProfileStreak>(client().rpc("voka_get_profile_streak",{
+    p_timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC"
+  }));
+}
+export async function dismissStreakNotice():Promise<void>{
+  await check(client().rpc("voka_dismiss_streak_notice"));
+}
 export type LearningResult = "known" | "unknown" | "unsure";
 export interface LearningEntry {id:string;reverse:boolean}
 export interface BeginLearningResponse {
