@@ -226,6 +226,17 @@ Before(async function (this: VokaWorld, { pickle }) {
       profilesByUser.get(user.id)?.push({id,user_id:user.id,first_name:body.p_first_name,last_name:body.p_last_name||"",display_name:body.p_first_name,emoji:"🙂",is_default:false,created_at:"2026-11-13T00:00:00Z"});
       await route.fulfill(json(id));return;
     }
+    if(path==="/rest/v1/rpc/voka_create_profile_with_emoji"&&method==="POST"){
+      const user=signedInUser(request),body=request.postDataJSON() as {p_name:string;p_emoji:string};
+      const profiles=profilesByUser.get(user.id)||[];
+      if(profiles.some(p=>p.emoji===body.p_emoji)){
+        await route.fulfill(json({message:"This emoji is already used by another profile"},409));return;
+      }
+      const id="a0000000-0000-4000-8000-"+String(nextProfile++).padStart(12,"0");
+      profiles.push({id,user_id:user.id,first_name:body.p_name,last_name:"",
+        display_name:body.p_name,emoji:body.p_emoji,is_default:false,created_at:"2026-11-13T00:00:00Z"});
+      await route.fulfill(json(id));return;
+    }
     if(path==="/rest/v1/rpc/voka_update_profile"&&method==="POST"){
       const user=signedInUser(request);
       const body=request.postDataJSON() as {p_profile_id:string;p_name:string;p_emoji:string};
@@ -237,6 +248,9 @@ Before(async function (this: VokaWorld, { pickle }) {
       }
       if(!body.p_name.trim()||body.p_name.trim().length>120){
         await route.fulfill(json({message:"Invalid profile name"},400));return;
+      }
+      if(records.some(p=>p.id!==profile.id&&p.emoji===body.p_emoji)){
+        await route.fulfill(json({message:"This emoji is already used by another profile"},409));return;
       }
       profile.display_name=body.p_name.trim();
       profile.emoji=body.p_emoji;

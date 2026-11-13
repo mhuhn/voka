@@ -10,6 +10,16 @@ export interface VokaProfile {
   is_default: boolean;
 }
 export const PROFILE_EMOJIS = ["🙂","😀","🐼","🦊","🐻","🐱","🐶","🐸","🦄","🐧","🐨","🐯","🦁","🐙","🐝","🦋","🌸","🌻","🌈","⭐","🚀","⚽","🎨","🎵","🧠","📚","🍀","🍕","🐢","🦉"] as const;
+export function validProfileEmoji(input:string):boolean {
+  const emoji=input.trim().normalize("NFC");
+  if(!emoji||Array.from(emoji).length>32||/\s/u.test(emoji))return false;
+  const segments=Array.from(new Intl.Segmenter(undefined,{granularity:"grapheme"}).segment(emoji));
+  return segments.length===1 && /[\p{Extended_Pictographic}\p{Regional_Indicator}\p{Emoji_Presentation}\u20e3]/u.test(emoji);
+}
+export function availableEmoji(profiles:Pick<VokaProfile,"emoji">[],excludeId?:string,allProfiles?:VokaProfile[]):string {
+  const used=new Set(profiles.filter((p,i)=>!excludeId||!allProfiles||allProfiles[i]?.id!==excludeId).map(p=>p.emoji));
+  return PROFILE_EMOJIS.find(emoji=>!used.has(emoji))||"";
+}
 export function profileName(profile: VokaProfile): string {
   return profile.display_name?.trim() || [profile.first_name,profile.last_name].filter(Boolean).join(" ").trim() || "Profil";
 }
@@ -66,14 +76,16 @@ class ProfileManager {
     try{localStorage.setItem(this.storageKey(this.state.userId),id);}catch{}
     this.patch({activeId:id,error:null});
   }
-  async create(name:string) {
+  async create(name:string,emoji:string) {
     const userId=authManager.activeUser?.id;
     const client=authManager.activeClient;
     if(!client||!userId)throw new Error("Sign in first");
     if(!name.trim()||name.trim().length>120)throw new Error("Invalid profile name");
+    if(!validProfileEmoji(emoji))throw new Error("Invalid profile emoji");
+    if(this.state.profiles.some(p=>p.emoji===emoji.trim().normalize("NFC")))throw new Error("This emoji is already used by another profile");
     this.patch({busy:true,error:null});
     try{
-      const {data,error}=await client.rpc("voka_create_profile",{p_first_name:name.trim(),p_last_name:""});
+      const {data,error}=await client.rpc("voka_create_profile_with_emoji",{p_name:name.trim(),p_emoji:emoji.trim().normalize("NFC")});
       if(error)throw error;
       await this.refresh(userId);
       if(typeof data==="string")this.select(data);
@@ -86,11 +98,12 @@ class ProfileManager {
     if(!userId || !current)throw new Error("No active profile");
     if(this.state.profiles.length<2)throw new Error("Editing requires at least two profiles");
     if(!name.trim()||name.trim().length>120)throw new Error("Invalid profile name");
-    if(!PROFILE_EMOJIS.some(e=>e===emoji))throw new Error("Invalid profile emoji");
+    if(!validProfileEmoji(emoji))throw new Error("Invalid profile emoji");
+    if(this.state.profiles.some(p=>p.id!==current.id&&p.emoji===emoji.trim().normalize("NFC")))throw new Error("This emoji is already used by another profile");
     this.patch({busy:true,error:null});
     try{
       const {error}=await this.client.rpc("voka_update_profile",{
-        p_profile_id:current.id,p_name:name.trim(),p_emoji:emoji
+        p_profile_id:current.id,p_name:name.trim(),p_emoji:emoji.trim().normalize("NFC")
       });
       if(error)throw error;
       await this.refresh(userId);

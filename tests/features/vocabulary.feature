@@ -36,6 +36,22 @@ Feature: Vocabulary lists
     And I open the irregular verbs list
     Then CSV export and import buttons are visible in the phone list header
 
+  Scenario: A new list suggests recent subject tags and autocompletes
+    Given I open the Voka app
+    When I sign in as "alice@example.test" with password "correct-password"
+    And I return to vocabulary home
+    And I open the English subject
+    Then the new list form suggests recent English tags and completes typed tags
+
+  Scenario: Export is disabled when a list contains no cards
+    Given I open the Voka app
+    And the card API has no cards
+    When I sign in as "alice@example.test" with password "correct-password"
+    And I return to vocabulary home
+    And I open the English subject
+    And I open the irregular verbs list
+    Then the list export button is disabled
+
   Scenario: New lists for a language use its name as the answer label
     Given I open the Voka app
     When I sign in as "alice@example.test" with password "correct-password"

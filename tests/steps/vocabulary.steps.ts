@@ -59,6 +59,31 @@ Then("CSV export and import buttons are visible in the phone list header",async 
   expect(bounds!.x+bounds!.width).toBeLessThanOrEqual(375);
 });
 
+When("the card API has no cards",async function(this:VokaWorld){
+  await this.page.route("**/rest/v1/voka_cards*",async route=>{
+    if(route.request().method()==="GET"){
+      await route.fulfill({status:200,contentType:"application/json",body:"[]",headers:{"access-control-allow-origin":"*"}});
+    }else await route.continue();
+  });
+});
+
+Then("the list export button is disabled",async function(this:VokaWorld){
+  await expect(this.page.getByRole("button",{name:"Export list as CSV"}).last()).toBeDisabled();
+});
+
+Then("the new list form suggests recent English tags and completes typed tags",async function(this:VokaWorld){
+  await this.page.getByRole("button",{name:"Create list"}).click();
+  const field=this.page.locator(".v-tag-field");
+  await expect(field.getByText("Recently used")).toBeVisible();
+  await expect(field.getByRole("button",{name:"Unit 3"})).toBeVisible();
+  await expect(field.getByRole("button",{name:"Verben"})).toBeVisible();
+  const input=field.getByRole("textbox",{name:"Tags"});
+  await input.fill("Ve");
+  await expect(field.getByRole("option",{name:"Verben"})).toBeVisible();
+  await input.press("Enter");
+  await expect(field.locator(".v-tag-row").getByRole("button",{name:/Verben/})).toBeVisible();
+});
+
 When("I return to vocabulary home", async function (this: VokaWorld) {
   await this.page.getByRole("button", { name: "Voka", exact: true }).click();
 });

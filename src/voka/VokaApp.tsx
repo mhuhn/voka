@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, CheckCircl
 import type { Language } from "../lib/i18n";
 import { emptyData, loadVoka, beginLearning, beginMixedLearning, skipLearningPause, importCsvCards, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type LearningEntry, type Subject, type SubjectGroup, type ListInput } from "./data";
 import "./voka.css";
+import { recentSubjectTags, matchingSubjectTags } from "./tagSuggestions";
 import { exportCardsCsv, parseCardsCsv } from "./cardCsv";
 import LearningScreen from "./LearningScreen";
 import MixedLearningPicker from "./MixedLearningPicker";
@@ -183,6 +184,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const cardQuestionRef=useRef<HTMLTextAreaElement>(null);
  const cardAnswerRef=useRef<HTMLTextAreaElement>(null);
  const [tagText,setTagText]=useState("");
+ const [tagFocused,setTagFocused]=useState(false);
  const [showAnswers,setShowAnswers]=useState(false),[markedOnly,setMarkedOnly]=useState(false),[showLearned,setShowLearned]=useState(false);
  const [sort,setSort]=useState<"alpha"|"points"|"position">("position");
  const [manageType,setManageType]=useState<"group"|"subject">("subject");
@@ -309,7 +311,9 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
   finally{setCsvBusy(false);if(csvFileRef.current)csvFileRef.current.value="";}
  };
  const csvButtons=(size:number)=><>
-   <IconButton label={csvWords[language].export} onClick={exportSelectedListCsv}><Download size={size}/></IconButton>
+   <button type="button" className="v-icon-button" disabled={!currentList||!data.cards.some(card=>card.list_id===currentList.id)}
+     title={csvWords[language].export} aria-label={csvWords[language].export}
+     onClick={exportSelectedListCsv}><Download size={size}/></button>
    <button type="button" className="v-icon-button" disabled={csvBusy}
      title={csvWords[language].import} aria-label={csvWords[language].import}
      onClick={()=>csvFileRef.current?.click()}><Upload size={size}/></button>
@@ -395,6 +399,22 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  };
  const editList=(l:VokaList)=>{setSelectedList(l.id);setListEditing(l.id);setDraftList({subject_id:l.subject_id,title:l.title,tags:[...l.tags],question_label:l.question_label,answer_label:languageSubject(data,l.subject_id)?.title||l.answer_label,reverse_share:l.reverse_share??(l.learn_both_directions?50:0)});setTagText("");setScreen("listForm")};
  const openCard=(card?:VokaCard)=>{setSelectedCard(card?.id||null);setDraftCard({question:card?.question||"",answer:card?.answer||"",marked:card?.marked||false});setScreen("cardForm")};
+ const recentTags=useMemo(()=>recentSubjectTags(data.lists,draftList.subject_id),[data.lists,draftList.subject_id]);
+ const tagMatches=useMemo(()=>matchingSubjectTags(data.lists,draftList.subject_id,tagText,draftList.tags),[data.lists,draftList.subject_id,tagText,draftList.tags]);
+ const addDraftTag=(value:string)=>{
+   const tag=value.trim();
+   if(tag&&!draftList.tags.some(existing=>existing.toLocaleLowerCase()===tag.toLocaleLowerCase()))
+     setDraftList(previous=>({...previous,tags:[...previous.tags,tag]}));
+   setTagText("");
+ };
+ const handleTagTyping=(value:string)=>{
+   if(value.includes(",")){
+     const tokens=value.split(",");
+     const completed=tokens.slice(0,-1).map(token=>token.trim()).filter(Boolean);
+     if(completed.length)setDraftList(previous=>({...previous,tags:[...new Set([...previous.tags,...completed])]}));
+     setTagText(tokens[tokens.length-1]);
+   }else setTagText(value);
+ };
  const saveListForm=(e:FormEvent)=>{e.preventDefault();void run(async()=>{const id=await saveList({...draftList,answer_label:languageSubject(data,draftList.subject_id)?.title||draftList.answer_label,tags:[...new Set([...draftList.tags,...tagText.split(",").map(x=>x.trim()).filter(Boolean)])]},listEditing||undefined);setSelectedSubject(draftList.subject_id);setSelectedList(id);setScreen("list");setListEditing(null);})};
  const saveCardForm=(e:FormEvent)=>{
   e.preventDefault();
@@ -622,7 +642,29 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
       <form className="v-form" onSubmit={saveListForm}>
      <label>{t("title")} *<input required maxLength={200} value={draftList.title} onChange={e=>setDraftList({...draftList,title:e.target.value})}/></label>
      <label>{t("subject")} *<select required value={draftList.subject_id} onChange={e=>changeListSubject(e.target.value)}><option value="" disabled>{t("chooseSubject")}</option>{groups.flatMap(g=>data.subjects.filter(s=>s.group_id===g.id).map(s=><option key={s.id} value={s.id}>{s.emoji} {s.title}</option>))}</select></label>
-     <label>{t("tags")}<div className="v-tag-editor"><div className="v-tag-row">{draftList.tags.map(tag=><button className="v-tag" key={tag} type="button" onClick={()=>setDraftList({...draftList,tags:draftList.tags.filter(a=>a!==tag)})}>{tag} ×</button>)}</div><input placeholder={t("addTag")+" (,)"} value={tagText} onChange={e=>setTagText(e.target.value)} /></div></label>
+     <div className="v-tag-field"><label htmlFor="v-tags-input">{t("tags")}</label>
+       <div className="v-tag-editor">
+         <div className="v-tag-row">{draftList.tags.map(tag=><button className="v-tag" key={tag} type="button"
+           onClick={()=>setDraftList(previous=>({...previous,tags:previous.tags.filter(a=>a!==tag)}))}>{tag} ×</button>)}</div>
+         <input id="v-tags-input" aria-autocomplete="list" aria-controls="v-tag-suggestions"
+           placeholder={t("addTag")+" (,)"} value={tagText} autoComplete="off"
+           onFocus={()=>setTagFocused(true)} onBlur={()=>setTagFocused(false)}
+           onChange={event=>handleTagTyping(event.target.value)}
+           onKeyDown={event=>{
+             if(event.key==="Enter"&&tagText.trim()){event.preventDefault();addDraftTag(tagMatches[0]||tagText);}
+             else if(event.key==="Tab"&&tagText.trim()&&tagMatches.length){event.preventDefault();addDraftTag(tagMatches[0]);}
+           }}/>
+       </div>
+       {recentTags.length>0&&<div className="v-tag-recent">
+         <span className="v-tag-suggestion-label">{language==="de"?"Zuletzt verwendet":language==="en"?"Recently used":t("tags")}</span>
+         {recentTags.filter(tag=>!draftList.tags.includes(tag)).map(tag=><button type="button" key={tag} className="v-tag"
+           onMouseDown={event=>event.preventDefault()} onClick={()=>addDraftTag(tag)}>{tag}</button>)}
+       </div>}
+       {tagFocused&&tagText.trim()&&tagMatches.length>0&&<div className="v-tag-autocomplete" id="v-tag-suggestions" role="listbox" aria-label={t("tags")}>
+          {tagMatches.map(tag=><button key={tag} type="button" role="option" aria-selected={false}
+             onMouseDown={event=>event.preventDefault()} onClick={()=>addDraftTag(tag)}>{tag}</button>)}
+       </div>}
+     </div>
      <div className="v-form-columns"><label>{t("questionLabel")} *<input required value={draftList.question_label} onChange={e=>setDraftList({...draftList,question_label:e.target.value})}/></label><label>{t("answerLabel")} *<input required readOnly={Boolean(languageSubject(data,draftList.subject_id))} value={languageSubject(data,draftList.subject_id)?.title||draftList.answer_label} onChange={e=>setDraftList({...draftList,answer_label:e.target.value})}/></label></div>
      <div className="v-reverse-selector">
        <label htmlFor="v-reverse-share"><span><ArrowLeftRight size={20}/>{t("reverseLevel")}</span><strong>{draftList.reverse_share} %</strong></label>

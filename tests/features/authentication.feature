@@ -47,6 +47,14 @@ Feature: Account authentication
     And I switch to the profile named "Alice"
     Then the floating profile button shows "🙂" for "Alice"
 
+  Scenario: Unique free-form emoji at profile creation
+    Given I open the Voka app
+    And I sign in as "alice@example.test" with password "correct-password"
+    When I create a profile named "Crystal" with emoji "🔮"
+    Then I cannot choose an emoji already used by another profile
+    When I return to Voka from the profile page
+    Then the floating profile button shows "🔮" for "Crystal"
+
   @de
   Scenario: German interface and unobtrusive version label
     Given my browser prefers German
