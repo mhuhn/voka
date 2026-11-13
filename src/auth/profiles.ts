@@ -12,9 +12,9 @@ export interface VokaProfile {
 export const PROFILE_EMOJIS = ["🙂","😀","🐼","🦊","🐻","🐱","🐶","🐸","🦄","🐧","🐨","🐯","🦁","🐙","🐝","🦋","🌸","🌻","🌈","⭐","🚀","⚽","🎨","🎵","🧠","📚","🍀","🍕","🐢","🦉"] as const;
 export function validProfileEmoji(input:string):boolean {
   const emoji=input.trim().normalize("NFC");
-  if(!emoji||Array.from(emoji).length>32||/\\s/u.test(emoji))return false;
+  if(!emoji||Array.from(emoji).length>32||/\s/u.test(emoji))return false;
   const segments=Array.from(new Intl.Segmenter(undefined,{granularity:"grapheme"}).segment(emoji));
-  return segments.length===1 && /[\\p{Extended_Pictographic}\\p{Regional_Indicator}\\p{Emoji_Presentation}\\u20e3]/u.test(emoji);
+  return segments.length===1 && /[\p{Extended_Pictographic}\p{Regional_Indicator}\p{Emoji_Presentation}\u20e3]/u.test(emoji);
 }
 export function availableEmoji(profiles:Pick<VokaProfile,"emoji">[],excludeId?:string,allProfiles?:VokaProfile[]):string {
   const used=new Set(profiles.filter((p,i)=>!excludeId||!allProfiles||allProfiles[i]?.id!==excludeId).map(p=>p.emoji));
