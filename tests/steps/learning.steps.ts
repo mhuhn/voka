@@ -32,7 +32,7 @@ Then("learning hides the list workspace and shows a question only",async functio
   expect(back).not.toBeNull();expect(title).not.toBeNull();
   expect(Math.abs(back!.y-title!.y)).toBeLessThanOrEqual(16);
   const points=header.locator(".v-learning-points");
-  await expect(points).toHaveAttribute("aria-label","Points: 2 / 4");
+  await expect(points).toHaveAttribute("aria-label","points: 2 / 4");
   await expect(points.locator(".v-learning-point")).toHaveCount(4);
   await expect(points.locator(".v-learning-point.is-filled")).toHaveCount(2);
   await expect(this.page.locator(".v-learning-back")).toHaveAttribute("aria-hidden","true");
