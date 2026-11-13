@@ -6,6 +6,7 @@ import {
   type LearningEntry, type LearningResult, type Subject, type VokaCard, type VokaList
 } from "./data";
 import { reverseMaxPoints } from "./learning";
+import { playLearningSound, unlockLearningAudio } from "./feedbackAudio";
 
 type LearningSession = { queryId: string; cards: LearningEntry[] };
 
@@ -115,14 +116,18 @@ export default function LearningScreen({
 
   async function grade(result:LearningResult){
     if(!currentCard||busy||!revealed||editing)return;
+    unlockLearningAudio();
     setBusy(true);setError("");
     try {
       const gradeResult=mixed?await gradeMixedLearning(session.queryId,currentCard.id,reverse,result):await gradeLearning(session.queryId,currentCard.id,reverse,result);
       await onRefresh();
-      if(gradeResult.finished||index+1>=total){
+      const isLast=gradeResult.finished||index+1>=total;
+      if(isLast){
         if(!gradeResult.finished)await finishLearning(session.queryId);
+        playLearningSound("complete");
         onExit();
       }else{
+        playLearningSound(result);
         setIndex(value=>value+1);
         setRevealed(false);
       }
@@ -166,6 +171,26 @@ export default function LearningScreen({
     }finally{setBusy(false)}
   }
 
+  useEffect(()=>{
+    const onKeyDown=(event:KeyboardEvent)=>{
+      if(event.key!=="Enter" && event.key!==" " && event.code!=="Space")return;
+      if(event.repeat||event.isComposing||event.altKey||event.ctrlKey||event.metaKey||event.shiftKey)return;
+      if(busy||editing||transition||!currentCard)return;
+      const target=event.target;
+      // Never intercept editing controls, dialogs, or explicitly focused
+      // actions: Tab+Enter should still operate the focused button normally.
+      if(target instanceof Element &&
+         target.closest('input,textarea,select,button,a,[role="button"],[contenteditable="true"],[role="dialog"]'))return;
+      event.preventDefault();
+      if(!revealed)setRevealed(true);
+      else void grade("known");
+    };
+    window.addEventListener("keydown",onKeyDown);
+    return ()=>window.removeEventListener("keydown",onKeyDown);
+  // grade captures the current session/card and is deliberately refreshed.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[busy,editing,transition,revealed,currentCard,index,reverse,session.queryId]);
+
   return <section className="v-learning" aria-label={mixed?(activeSubject?.title||activeList.title):list.title}>
     <header className="v-learning-header">
       <button type="button" className="v-learning-exit" onClick={()=>void leave()} disabled={busy}>
@@ -202,6 +227,14 @@ export default function LearningScreen({
         onClick={()=>setRevealed(true)}>
         <RotateCcw size={21}/>{t.reveal}
       </button>:<>
+        <div className="v-learning-result-actions" role="group" aria-label={t.stage}>
+          <button className="v-learning-result is-unknown" type="button" disabled={busy}
+            onClick={()=>void grade("unknown")}><X size={19}/>{t.unknown}</button>
+          <button className="v-learning-result is-unsure" type="button" disabled={busy}
+            onClick={()=>void grade("unsure")}>?<span>{t.unsure}</span></button>
+          <button className="v-learning-result is-known" type="button" disabled={busy}
+            onClick={()=>void grade("known")}><Check size={19}/>{t.known}</button>
+        </div>
         <div className="v-learning-card-tools">
           <button type="button" className={"v-learning-tool"+(currentCard.marked?" is-marked":"")}
             aria-label={currentCard.marked?t.unmark:t.marked} aria-pressed={currentCard.marked}
@@ -212,14 +245,6 @@ export default function LearningScreen({
           <button className="v-learning-tool" type="button" onClick={startEditing} disabled={busy}>
             <Pencil size={20}/><span>{t.edit}</span>
           </button>
-        </div>
-        <div className="v-learning-result-actions" role="group" aria-label={t.stage}>
-          <button className="v-learning-result is-unknown" type="button" disabled={busy}
-            onClick={()=>void grade("unknown")}><X size={19}/>{t.unknown}</button>
-          <button className="v-learning-result is-unsure" type="button" disabled={busy}
-            onClick={()=>void grade("unsure")}>?<span>{t.unsure}</span></button>
-          <button className="v-learning-result is-known" type="button" disabled={busy}
-            onClick={()=>void grade("known")}><Check size={19}/>{t.known}</button>
         </div>
       </>}
     </div>:<div className="v-empty">{t.noCard}</div>}

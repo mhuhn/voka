@@ -2,7 +2,7 @@ import { authManager } from "../auth/manager";
 
 export interface SubjectGroup { id: string; user_id: string; title: string }
 export interface Subject { id: string; user_id: string; group_id: string; title: string; emoji: string }
-export interface VokaList { id: string; user_id: string; subject_id: string; title: string; tags: string[]; question_label: string; answer_label: string; learn_both_directions: boolean; reverse_share: number; learning_paused_until: string | null; last_learning_at: string | null; learning_timezone: string; updated_at: string; created_at: string }
+export interface VokaList { id: string; user_id: string; subject_id: string; title: string; tags: string[]; question_label: string; answer_label: string; learn_both_directions: boolean; reverse_share: number; learning_pause_skipped: boolean; learning_paused_until: string | null; last_learning_at: string | null; learning_timezone: string; updated_at: string; created_at: string }
 export interface VokaCard { id: string; user_id: string; list_id: string; question: string; answer: string; marked: boolean; success_count: number; position: number; reverse_success_count: number; reverse_position: number; created_at: string; updated_at: string }
 export interface Usage { list_id: string; user_id: string; last_used_at: string | null }
 export interface VokaLearningState { list_id: string; min_position: number | null; calendar_pause_until: string | null }
@@ -44,6 +44,10 @@ export async function saveList(value:ListInput,id?:string) {
   if(id) { await check(c.from("voka_lists").update(value).eq("id",id)); return id; }
   const row=await check<{id:string}>(c.from("voka_lists").insert(value).select("id").single());
   return row.id;
+}
+/** Allow the list owner to begin exactly one round before the cooldown expires. */
+export async function skipLearningPause(listId:string):Promise<void>{
+  await check(client().rpc("voka_skip_learning_pause",{p_list_id:listId}));
 }
 export async function deleteList(id:string) { await check(client().from("voka_lists").delete().eq("id",id)); }
 export type CardInput = Pick<VokaCard,"list_id"|"question"|"answer"|"marked">;

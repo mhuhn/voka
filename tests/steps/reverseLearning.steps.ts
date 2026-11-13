@@ -6,7 +6,7 @@ Then("the list detail shows separate reverse learning points",async function(thi
   const row=this.page.locator(".v-card-list .v-card-open").first();
   await expect(row.locator(".v-reverse-score")).toBeVisible();
   await expect(row.locator(".v-reverse-dots i")).toHaveCount(1);
-  await expect(row.locator(".v-reverse-score")).toContainText("0 P");
+  await expect(row.locator(".v-reverse-score i.filled")).toHaveCount(0);
   await expect(this.page.locator(".v-progress")).toContainText("0 %");
 });
 
@@ -46,8 +46,8 @@ When("I grade the reverse orientation as known",async function(this:VokaWorld){
 
 Then("the two independent score tracks are updated",async function(this:VokaWorld){
   const row=this.page.locator(".v-card-list .v-card-open").first();
-  await expect(row).toContainText("1 P");
-  await expect(row.locator(".v-reverse-score")).toContainText("1 P");
+  await expect(row.locator(".v-dots i.filled")).toHaveCount(1);
+  await expect(row.locator(".v-reverse-score i.filled")).toHaveCount(1);
   await expect(this.page.locator(".v-progress")).toContainText("40 %");
 });
 

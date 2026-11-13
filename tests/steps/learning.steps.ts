@@ -80,7 +80,7 @@ Then("all three answers save the rules and finish the list",async function(this:
   await expect(this.page.locator(".v-list-detail-pane")).toBeVisible();
   await expect(this.page.getByRole("button",{name:/Pause:.*(?:min|h) left/})).toBeDisabled();
   await expect(this.page.locator(".v-card-list .v-card-open")).toHaveCount(3);
-  await expect(this.page.locator(".v-card-list .v-card-open").filter({hasText:"choose corrected"})).toContainText("3 P");
+  await expect(this.page.locator(".v-card-list .v-card-open").filter({hasText:"choose corrected"}).locator(".v-dots i.filled")).toHaveCount(3);
 });
 
 Then("the two-hour pause survives a page reload",async function(this:VokaWorld){

@@ -60,6 +60,7 @@ Before(async function (this: VokaWorld, { pickle }) {
   let importedList: Record<string,unknown> | null = null;
   let importedCards: Record<string,unknown>[] = [];
   let learningPausedUntil:string|null=null;
+  let pauseSkipped=false;
   let lastLearningAt:string|null=calendarBlocked?new Date().toISOString():calendarReady?new Date(Date.now()-10*86_400_000).toISOString():null;
   const learningTimezone="UTC";
   let activeLearningQuery:string|null=null;
@@ -258,6 +259,13 @@ Before(async function (this: VokaWorld, { pickle }) {
       mixedQueryId=null;
       await route.fulfill(json(null));return;
     }
+    if(learningData&&path==="/rest/v1/rpc/voka_skip_learning_pause"&&method==="POST"){
+      const body=request.postDataJSON() as {p_list_id:string};
+      if(body.p_list_id!==englishListId){await route.fulfill(json({message:"Access denied"},403));return;}
+      learningPausedUntil=null;
+      pauseSkipped=true;
+      await route.fulfill(json(null));return;
+    }
     if(learningData && path==="/rest/v1/rpc/voka_begin_learning_v2" && method==="POST"){
       const body=request.postDataJSON() as {p_list_id:string;p_timezone?:string};
       const unlearned=learningCards.filter(c=>c.success_count<4);
@@ -265,8 +273,8 @@ Before(async function (this: VokaWorld, { pickle }) {
         await route.fulfill(json({all_learned:true,cards:[]}));return;
       }
       const dayUntil=nextCalendarPause();
-      if((learningPausedUntil && Date.parse(learningPausedUntil)>Date.now()) ||
-         (dayUntil && Date.parse(dayUntil)>Date.now())){
+      if(!pauseSkipped&&((learningPausedUntil && Date.parse(learningPausedUntil)>Date.now()) ||
+         (dayUntil && Date.parse(dayUntil)>Date.now()))){
         await route.fulfill(json({paused_until:learningPausedUntil,calendar_pause_until:dayUntil,cards:[]}));return;
       }
       const min=Math.min(...unlearned.map(c=>c.position));
@@ -274,6 +282,7 @@ Before(async function (this: VokaWorld, { pickle }) {
       const due=learningCards.filter(c=>c.position===0&&c.success_count<4);
       const reverseDue=reverseData?learningCards.filter(c=>c.reverse_position===0&&c.reverse_success_count<1):[];
       lastLearningAt=new Date().toISOString();
+      pauseSkipped=false;
       if(!body.p_timezone){
         await route.fulfill(json({message:"Timezone required"},400));return;
       }
@@ -380,7 +389,7 @@ Before(async function (this: VokaWorld, { pickle }) {
           {id:"20000000-0000-4000-8000-000000000002",user_id:users[0].id,group_id:"10000000-0000-4000-8000-000000000002",title:"Mathe",emoji:"➗"}
         ],
         voka_lists: [
-          {id:"30000000-0000-4000-8000-000000000001",user_id:users[0].id,subject_id:"20000000-0000-4000-8000-000000000001",title:"Irregular Verbs",tags:["Verben","Unit 3"],question_label:"Infinitiv",answer_label:"Englisch",learn_both_directions:reverseData||(!learningData&&!mixedData),reverse_share:reverseData?25:0,learning_paused_until:mixedData&&mixedPaused.has(englishListId)?new Date(Date.now()+120*60_000).toISOString():learningPausedUntil,last_learning_at:lastLearningAt,learning_timezone:learningTimezone,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
+          {id:"30000000-0000-4000-8000-000000000001",user_id:users[0].id,subject_id:"20000000-0000-4000-8000-000000000001",title:"Irregular Verbs",tags:["Verben","Unit 3"],question_label:"Infinitiv",answer_label:"Englisch",learn_both_directions:reverseData||(!learningData&&!mixedData),reverse_share:reverseData?25:0,learning_paused_until:mixedData&&mixedPaused.has(englishListId)?new Date(Date.now()+120*60_000).toISOString():learningPausedUntil,learning_pause_skipped:pauseSkipped,last_learning_at:lastLearningAt,learning_timezone:learningTimezone,created_at:"2026-11-12T09:00:00Z",updated_at:"2026-11-12T09:00:00Z"},
           ...(importedList?[importedList]:[]),
           ...(mixedData?mixedLists.map(l=>({...l,learning_paused_until:mixedPaused.has(l.id)?new Date(Date.now()+120*60_000).toISOString():null})):[])
         ],
@@ -397,7 +406,7 @@ Before(async function (this: VokaWorld, { pickle }) {
           ...importedCards
         ],
         voka_list_usage: [],
-        voka_list_learning_state: [{list_id:"30000000-0000-4000-8000-000000000001",min_position:learningData?Math.min(...learningCards.filter(c=>c.success_count<4).map(c=>c.position)):1,calendar_pause_until:learningData?nextCalendarPause():null},
+        voka_list_learning_state: [{list_id:"30000000-0000-4000-8000-000000000001",min_position:learningData?Math.min(...learningCards.filter(c=>c.success_count<4).map(c=>c.position)):1,calendar_pause_until:learningData&&!pauseSkipped?nextCalendarPause():null},
           ...(mixedData?mixedLists.map(l=>({list_id:l.id,min_position:Math.min(...mixedCards.filter(c=>c.list_id===l.id).map(c=>c.position)),calendar_pause_until:null})):[])]
       };
       await route.fulfill(json(sampleData ? fixtures[path.split("/").pop() || ""] || [] : []));
