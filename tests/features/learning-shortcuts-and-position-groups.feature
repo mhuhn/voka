@@ -19,9 +19,9 @@ Feature: Position groups and compact learning controls
     And I open the English subject
     And I open the irregular verbs list
     And I start learning the open list
-    Then the grade controls are shown above marking and editing
     When I reveal the hidden card with Enter
-    And I grade the revealed card with Space
+    Then the grade controls are shown above marking and editing
+    When I grade the revealed card with Space
     Then the next learning question is shown
     When I reveal the hidden card with Space
     And I grade the revealed card with Enter
