@@ -113,7 +113,7 @@ export default function MixedLearningPicker({
       {subjects.length>0&&displayedCount===0&&<p className="v-mixed-empty">{t.none}</p>}
       <button type="button" className="v-primary v-mixed-start v-learn-cta"
         disabled={busy||subjects.length===0||displayedCount<=0}
-        onClick={()=>onStart(subjects,validTags)}><Play size={19}/>{t.start}</button>
+        onClick={()=>onStart(subjects,validTags)}><Play size={19}/><span className="v-learn-cta-label">{t.start}</span></button>
     </div>
   </section>;
 }

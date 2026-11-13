@@ -397,21 +397,32 @@ Then("the tablet list overview back arrow returns directly to My subjects",async
   await expect(this.page.locator(".v-list-detail-pane")).toHaveCount(0);
 });
 
-Then("the main learning action uses the logo orange and underline",async function(this:VokaWorld){
+Then("the main learning action uses a white background and short orange text underline",async function(this:VokaWorld){
   const button=this.page.locator(".v-home-learn");
+  const label=button.locator(".v-learn-cta-label");
   await expect(button).toHaveClass(/v-learn-cta/);
+  await expect(label).toHaveText("Learn");
   const visual=await button.evaluate(element=>{
-    const style=getComputedStyle(element),underline=getComputedStyle(element,"::after");
+    const style=getComputedStyle(element);
+    const text=element.querySelector(".v-learn-cta-label")!;
+    const underline=getComputedStyle(text,"::after");
     return {
-      background:style.backgroundImage,
-      underlineColor:underline.backgroundColor,
-      underlineHeight:parseFloat(underline.height),
+      background:style.backgroundColor,
+      foreground:style.color,
+      fontWeight:getComputedStyle(text).fontWeight,
+      lineColor:underline.backgroundColor,
+      lineWidth:parseFloat(underline.width),
+      lineHeight:parseFloat(underline.height),
+      textWidth:text.getBoundingClientRect().width,
       accent:getComputedStyle(element.closest(".v-app")!).getPropertyValue("--v-orange").trim()
     };
   });
-  expect(visual.background).toContain("linear-gradient");
-  expect(visual.background).toContain("255");
-  expect(visual.underlineColor).toBe("rgb(255, 158, 0)");
-  expect(visual.underlineHeight).toBeGreaterThanOrEqual(4);
+  expect(visual.background).toBe("rgb(255, 255, 255)");
+  expect(visual.foreground).toBe("rgb(16, 16, 16)");
+  expect(Number(visual.fontWeight)).toBeGreaterThanOrEqual(800);
+  expect(visual.lineColor).toBe("rgb(255, 158, 0)");
+  expect(visual.lineWidth).toBeLessThanOrEqual(76);
+  expect(visual.lineWidth).toBeLessThan(visual.textWidth);
+  expect(visual.lineHeight).toBeGreaterThanOrEqual(5);
   expect(visual.accent).toBe("#ff9e00");
 });

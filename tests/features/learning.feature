@@ -16,6 +16,7 @@ Feature: Learning cards in Voka
     When I correct and star the revealed card
     Then all three answers save the rules and finish the list
     And the two-hour pause survives a page reload
+    And the paused learning button keeps a short underline under its text
 
   Scenario: Stopping early keeps grades and lets the user finish later
     Given I open the Voka app

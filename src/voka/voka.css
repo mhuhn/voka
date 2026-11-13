@@ -424,40 +424,55 @@
 @media(prefers-reduced-motion:reduce){.v-learning-transition{animation:none}}
 
 
-/* Primary learning actions share the orange accent and hand-drawn underline
-   of the Voka wordmark, while secondary actions remain blue. */
+/* The learning action echoes the Voka wordmark: white, bold dark text,
+   and a short, slightly tilted orange stroke beneath the LABEL only.
+   Limiting the stroke to 76px keeps cooldown messages from acquiring a
+   full-width decorative rule. */
 .v-app .v-learn-cta{
-  position:relative;
-  isolation:isolate;
-  background:linear-gradient(155deg,#ffbb50 0%,var(--v-orange) 70%,#ef8d00 100%);
-  color:#142441;
-  font-weight:850;
-  box-shadow:0 7px 19px #e9900038;
+  background:#fff;
+  border:1px solid #dce5f2;
+  color:#101010;
+  font-weight:900;
+  letter-spacing:-.15px;
+  box-shadow:0 3px 12px #15345e16;
   overflow:visible;
 }
-.v-app .v-learn-cta::after{
+.v-app .v-learn-cta::after{content:none}
+.v-app .v-learn-cta-label{
+  display:inline-block;
+  position:relative;
+  padding:2px 0 7px;
+  color:inherit;
+  font-weight:900;
+  line-height:1.25;
+  text-align:center;
+}
+.v-app .v-learn-cta-label::after{
   content:"";
   position:absolute;
-  left:17%;
-  bottom:-8px;
-  width:66%;
+  left:50%;
+  bottom:0;
+  width:min(80%,76px);
   height:5px;
-  border-radius:99px;
   background:var(--v-orange);
-  transform:rotate(-3deg);
+  border-radius:10px;
+  transform:translateX(-50%) rotate(-6deg);
   pointer-events:none;
 }
 .v-app .v-learn-cta:hover:not(:disabled){
-  background:linear-gradient(155deg,#ffc666 0%,#ffad23 70%,#f69806 100%);
-  box-shadow:0 9px 20px #e9900050;
+  background:#fff;
+  border-color:#ffbe62;
+  box-shadow:0 5px 16px #15345e24;
 }
-.v-app .v-learn-cta:focus-visible{outline:3px solid var(--v-blue);outline-offset:4px}
-.v-app .v-learn-cta:disabled{opacity:.56;box-shadow:none;cursor:not-allowed}
-.v-app .v-learn-cta:disabled::after{opacity:.55}
+.v-app .v-learn-cta:focus-visible{outline:3px solid var(--v-blue);outline-offset:3px}
+.v-app .v-learn-cta:disabled{opacity:1;color:#101010;background:#fff;box-shadow:none;cursor:not-allowed}
+.v-app .v-learn-cta:disabled .v-learn-cta-label::after{opacity:1}
 .v-app .v-home-learn{width:auto;flex:0 0 auto}
 @media(min-width:700px) and (pointer:coarse){
-  .v-app .v-learn-cta::after{height:6px;bottom:-9px}
+  .v-app .v-learn-cta-label::after{height:6px}
 }
 @media(prefers-color-scheme:dark){
-  .v-app .v-learn-cta{color:#17243c}
+  .v-app .v-learn-cta,
+  .v-app .v-learn-cta:hover:not(:disabled){background:#fff;color:#101010}
+  .v-app .v-learn-cta:disabled{color:#101010;background:#fff}
 }
