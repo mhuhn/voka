@@ -519,3 +519,70 @@
  .v-learning-back .v-learning-face-label{color:#285f9e}
  .v-learning-back .v-learning-face-text{color:#123451}
 }
+
+
+/* Compact, single-row card filters and sort controls. Narrow screens can
+   swipe the toolbar horizontally instead of stacking four tall sections. */
+.v-list-detail-pane .v-filter-area{
+  display:flex;align-items:center;flex-wrap:nowrap;gap:10px;
+  overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;
+  padding:7px 9px;margin-bottom:11px
+}
+.v-filter-switches{display:flex;align-items:center;gap:5px;flex:0 0 auto}
+.v-filter-area .v-filter-switches .v-toggle{
+  min-height:32px;flex:0 0 auto;gap:5px;padding:4px 6px;
+  border:1px solid var(--v-line);border-radius:8px;
+  background:var(--v-card);font-size:11px;font-weight:650;
+  white-space:nowrap
+}
+.v-filter-area .v-filter-switches .v-toggle+.v-toggle{border-top:1px solid var(--v-line)}
+.v-filter-switches .v-toggle>span:first-child{flex:0 0 auto}
+.v-filter-switches .v-slider{width:29px;height:17px;border-radius:14px}
+.v-filter-switches .v-slider:after{width:12px;height:12px;left:1px;top:1px}
+.v-filter-switches .v-toggle input:checked+.v-slider:after{transform:translateX(12px)}
+.v-filter-switches .v-toggle input{right:6px;width:29px;height:17px}
+.v-filter-area .v-sort{
+  display:flex;align-items:center;gap:6px;flex:0 0 auto;
+  margin:0;padding:0;border:0
+}
+.v-filter-area .v-sort label{display:block;margin:0;font-size:11px;white-space:nowrap}
+.v-filter-area .v-sort .v-segments{
+  display:flex;align-items:center;gap:3px;grid-template-columns:none
+}
+.v-filter-area .v-sort .v-segments button{
+  flex:0 0 auto;width:auto;min-width:0;padding:6px 7px;
+  font-size:11px;white-space:nowrap;border-radius:7px
+}
+/* Headings appear only for position sorting, inside the scrollable list. */
+.v-position-heading{
+  position:sticky;top:0;z-index:2;margin:0;
+  padding:9px 14px 8px;border-top:1px solid var(--v-line);
+  border-bottom:1px solid var(--v-line);
+  background:#eaf2ff;color:#355b8a;font-size:12px;
+  font-weight:850;letter-spacing:.02em
+}
+.v-position-heading:first-child{border-top:0}
+.v-card-list .v-score-pair{gap:5px;flex-wrap:nowrap}
+.v-card-list .v-reverse-score{
+  border-left:1px solid var(--v-line);
+  margin-left:6px;padding-left:10px
+}
+.v-card-list .v-dots,.v-card-list .v-reverse-dots{gap:4px}
+.v-card-list .v-dots i,.v-card-list .v-reverse-dots i{width:10px;height:10px}
+.v-skip-pause:disabled{opacity:.35;cursor:not-allowed}
+.v-skip-pause:not(:disabled){color:var(--v-blue);border-color:var(--v-blue)}
+@media(max-width:600px){
+ .v-filter-area .v-filter-switches .v-toggle{font-size:11px;padding:4px}
+ .v-position-heading{font-size:12px}
+ .v-card-list .v-dots i,.v-card-list .v-reverse-dots i{width:9px;height:9px}
+}
+@media(min-width:700px) and (pointer:coarse){
+ .v-filter-area .v-filter-switches .v-toggle{font-size:13px;min-height:43px;padding:6px 9px}
+ .v-filter-area .v-sort label,.v-filter-area .v-sort .v-segments button{font-size:13px}
+ .v-filter-area .v-sort .v-segments button{min-height:43px;padding:7px 8px}
+ .v-position-heading{font-size:15px;padding:11px 15px}
+}
+@media(prefers-color-scheme:dark){
+ .v-position-heading{background:#25395a;color:#bfd9fc}
+ .v-filter-area .v-filter-switches .v-toggle{background:#192742}
+}
