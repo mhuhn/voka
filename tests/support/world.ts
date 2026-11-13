@@ -217,8 +217,17 @@ Before(async function (this: VokaWorld, { pickle }) {
       return;
     }
 
+    if(path==="/rest/v1/rpc/voka_ensure_profiles"&&method==="POST"){
+      await route.fulfill(json(null));return;
+    }
     if(path==="/rest/v1/profiles"&&method==="GET"){
-      await route.fulfill(json(profilesByUser.get(signedInUser(request).id)||[]));return;
+      const rows=profilesByUser.get(signedInUser(request).id)||[];
+      // Supabase returns only requested identity fields: no Voka emoji in shared profiles.
+      await route.fulfill(json(rows.map(({emoji:unusedEmoji,...profile})=>profile)));return;
+    }
+    if(path==="/rest/v1/voka_profiles"&&method==="GET"){
+      const rows=profilesByUser.get(signedInUser(request).id)||[];
+      await route.fulfill(json(rows.map(profile=>({id:profile.id,user_id:profile.user_id,emoji:profile.emoji}))));return;
     }
     if(path==="/rest/v1/rpc/voka_create_profile"&&method==="POST"){
       const user=signedInUser(request),body=request.postDataJSON() as {p_first_name:string;p_last_name:string};
