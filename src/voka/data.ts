@@ -53,6 +53,12 @@ export async function saveCard(value:CardInput,id?:string) {
   if(id) await check(client().from("voka_cards").update(value).eq("id",id));
   else await check(client().from("voka_cards").insert({...value,success_count:0,position:0}));
 }
+/** Server-side atomic import: ID collisions in the current list update, others reject. */
+export async function importCsvCards(listId:string,cards:import("./cardCsv").CsvCard[]):Promise<{added:number;updated:number}>{
+  return await check<{added:number;updated:number}>(
+    client().rpc("voka_import_cards_csv",{p_list_id:listId,p_cards:cards})
+  );
+}
 export async function markCard(id:string,marked:boolean) { await check(client().from("voka_cards").update({marked}).eq("id",id)); }
 export async function deleteCard(id:string) { await check(client().from("voka_cards").delete().eq("id",id)); }
 export function usageDate(data:VokaData, listId:string): number {

@@ -1,8 +1,9 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, CheckCircle2, ChevronRight, Eye, Home, ListOrdered, ArrowDownAZ, Pencil, Plus, Search, Settings, Share2, SkipForward, Star, Trash2, X, Play } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, CheckCircle2, ChevronRight, Download, Upload, Eye, Home, ListOrdered, ArrowDownAZ, Pencil, Plus, Search, Settings, Share2, SkipForward, Star, Trash2, X, Play } from "lucide-react";
 import type { Language } from "../lib/i18n";
-import { emptyData, loadVoka, beginLearning, beginMixedLearning, skipLearningPause, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type LearningEntry, type Subject, type SubjectGroup, type ListInput } from "./data";
+import { emptyData, loadVoka, beginLearning, beginMixedLearning, skipLearningPause, importCsvCards, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type LearningEntry, type Subject, type SubjectGroup, type ListInput } from "./data";
 import "./voka.css";
+import { exportCardsCsv, parseCardsCsv } from "./cardCsv";
 import LearningScreen from "./LearningScreen";
 import MixedLearningPicker from "./MixedLearningPicker";
 import { learningProgress, effectiveLearningPause, calendarPauseDay, formatLearningPause, reverseMaxPoints, cardTotalPoints, cardNextPosition, isCardLearned, REVERSE_LEVELS } from "./learning";
@@ -21,6 +22,14 @@ const positionGroupWords:Record<Language,{position:string;completed:string;norma
  nl:{position:"Positie",completed:"Geleerd",normalPoints:"Normale punten",reversePoints:"Omgekeerde punten"},
  da:{position:"Position",completed:"Lært",normalPoints:"Normale point",reversePoints:"Omvendte point"},
  it:{position:"Posizione",completed:"Apprese",normalPoints:"Punti normali",reversePoints:"Punti inversi"}
+};
+const csvWords:Record<Language,{export:string;import:string;success:(a:number,u:number)=>string;invalid:string}> = {
+ de:{export:"Liste als CSV exportieren",import:"CSV in Liste importieren",success:(a,u)=>`CSV importiert: ${a} hinzugefügt, ${u} aktualisiert.`,invalid:"CSV-Import fehlgeschlagen"},
+ en:{export:"Export list as CSV",import:"Import CSV into list",success:(a,u)=>`CSV imported: ${a} added, ${u} updated.`,invalid:"CSV import failed"},
+ fr:{export:"Exporter la liste en CSV",import:"Importer un CSV dans la liste",success:(a,u)=>`CSV importé : ${a} ajoutées, ${u} mises à jour.`,invalid:"Échec de l'import CSV"},
+ nl:{export:"Lijst als CSV exporteren",import:"CSV in lijst importeren",success:(a,u)=>`CSV geïmporteerd: ${a} toegevoegd, ${u} bijgewerkt.`,invalid:"CSV-import mislukt"},
+ da:{export:"Eksporter liste som CSV",import:"Importer CSV til liste",success:(a,u)=>`CSV importeret: ${a} tilføjet, ${u} opdateret.`,invalid:"CSV-import mislykkedes"},
+ it:{export:"Esporta lista come CSV",import:"Importa CSV nella lista",success:(a,u)=>`CSV importato: ${a} aggiunte, ${u} aggiornate.`,invalid:"Importazione CSV non riuscita"}
 };
 const cardSingular: Record<Language,string> = {de:"Karte",en:"Card",fr:"Carte",nl:"Kaart",da:"Kort",it:"Scheda"};
 const translations: Record<Language, Words> = {
@@ -204,6 +213,9 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
   return ()=>{window.removeEventListener("keydown",onKeyDown);document.body.style.overflow=previousOverflow;previouslyFocused?.focus();};
  },[manageModalOpen]);
  const [working,setWorking]=useState(false);
+ const csvFileRef=useRef<HTMLInputElement>(null);
+ const [csvBusy,setCsvBusy]=useState(false);
+ const [csvStatus,setCsvStatus]=useState("");
  const [shareStatus,setShareStatus]=useState("");
  const [shareFallbackUrl,setShareFallbackUrl]=useState<string|null>(null);
  const [incomingSharedId,setIncomingSharedId]=useState<string|null>(pendingSharedListId);
@@ -272,6 +284,36 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
   }catch{setShareFallbackUrl(url);}
  };
 
+ const exportSelectedListCsv=()=>{
+  if(!currentList)return;
+  const contents=exportCardsCsv(data.cards.filter(c=>c.list_id===currentList.id));
+  const blob=new Blob([contents],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement("a");
+  link.href=url;
+  link.download=(currentList.title.replace(/[\\/:*?"<>|\x00-\x1f]/g,"_").trim()||"voka")+".csv";
+  document.body.appendChild(link);link.click();link.remove();
+  window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+ };
+ const importSelectedListCsv=async(file:File)=>{
+  const listId=currentList?.id;
+  if(!listId||csvBusy)return;
+  setCsvBusy(true);setCsvStatus("");setError("");
+  try{
+    if(file.size>3_000_000)throw new Error("CSV exceeds 3 MB");
+    const cards=parseCardsCsv(await file.text());
+    const result=await importCsvCards(listId,cards);
+    await refresh();
+    setCsvStatus(csvWords[language].success(result.added,result.updated));
+  }catch(err){setError(csvWords[language].invalid+": "+(err instanceof Error?err.message:String(err)));}
+  finally{setCsvBusy(false);if(csvFileRef.current)csvFileRef.current.value="";}
+ };
+ const csvButtons=(size:number)=><>
+   <IconButton label={csvWords[language].export} onClick={exportSelectedListCsv}><Download size={size}/></IconButton>
+   <button type="button" className="v-icon-button" disabled={csvBusy}
+     title={csvWords[language].import} aria-label={csvWords[language].import}
+     onClick={()=>csvFileRef.current?.click()}><Upload size={size}/></button>
+ </>;
  const refresh=useCallback(async()=>{try {setData(await loadVoka());setError("");}catch(e){setError(e instanceof Error?e.message:String(e));}},[]);
  useEffect(()=>{let alive=true;loadVoka().then(result=>{if(alive)setData(result)}).catch(e=>{if(alive)setError(String(e instanceof Error?e.message:e))}).finally(()=>{if(alive)setLoading(false)});return()=>{alive=false};},[]);
  const groups=useMemo(()=>[...data.groups].sort((a,b)=>groupUsage(data,b.id)-groupUsage(data,a.id)||defaultGroupRank(a.title)-defaultGroupRank(b.title)||a.title.localeCompare(b.title)),[data]);
@@ -460,6 +502,9 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
     </section>;
  return <div className={"v-app"+(screen==="cardForm"?" v-card-form-active":"")+(screen==="learn"?" v-learning-active":"")}>
   {screen!=="learn"&&actions}
+  <input ref={csvFileRef} className="v-csv-file-input" type="file" accept=".csv,text/csv"
+    aria-label={csvWords[language].import} tabIndex={-1}
+    onChange={event=>{const file=event.currentTarget.files?.[0];if(file)void importSelectedListCsv(file);}}/>
   <div className="v-content">
    {error&&<div role="alert" className="v-error">{error}<button onClick={()=>void refresh()}>↻</button></div>}
    {loading?<div className="v-empty">{t("loading")}</div>:<>
@@ -468,6 +513,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
     <h1>{screen==="home"?<span className="v-logo">Voka</span>:wide&&(screen==="subject"||screen==="list"||screen==="cardForm"||(screen==="listForm"&&Boolean(listEditing)))?<span>{currentSubject?.emoji} {currentSubject?.title}</span>:screen==="subject"?currentSubject?.title:screen==="list"?listTitle:screen==="listForm"?(listEditing?t("editList"):t("createList")):screen==="cardForm"?(selectedCard?t("editCard"):t("addCard")):t("manage")}</h1>
     {!wide&&(screen==="list"||screen==="cardForm")&&currentList&&<div className="v-detail-header-actions">
        <IconButton label={t("share")} onClick={()=>void shareSelectedList()}><Share2 size={19}/></IconButton>
+       {screen==="list"&&csvButtons(19)}
        {screen==="list"&&<button className="v-icon-button v-skip-pause" type="button"
          title={t("skipPause")} aria-label={t("skipPause")}
          disabled={!effectivePause||everyCardLearned||working} onClick={skipSelectedListPause}><SkipForward size={19}/></button>}
@@ -503,6 +549,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
      <section className="v-list-detail-pane">
      {wide&&<div className="v-pane-list-heading"><h2>{listTitle}</h2><div className="v-detail-header-actions">
       <IconButton label={t("share")} onClick={()=>void shareSelectedList()}><Share2 size={18}/></IconButton>
+      {screen==="list"&&csvButtons(18)}
       <button className="v-icon-button v-skip-pause" type="button"
         title={t("skipPause")} aria-label={t("skipPause")}
         disabled={!effectivePause||everyCardLearned||working} onClick={skipSelectedListPause}><SkipForward size={18}/></button>
@@ -512,6 +559,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
       <div className="v-list-actions"><button className="v-primary v-learn-cta" type="button" title={learningButtonLabel} aria-label={learningButtonLabel} disabled={learningUnavailable} onClick={()=>void startLearning()}><Play size={19} fill="currentColor"/><span className="v-learn-cta-label">{learningButtonLabel}</span></button><div className="v-progress"><BarChart3 size={21}/><span>{t("progress")}<b>{learningProgress(listCardsForProgress,currentList.reverse_share??0)} %</b></span></div>
      </div>
      {shareStatus&&<p className="v-share-status" role="status">{shareStatus}</p>}
+     {csvStatus&&<p className="v-share-status" role="status">{csvStatus}</p>}
      <div className="v-filter-area v-icon-filter-toolbar" aria-label={t("sorting")}>
        <div className="v-icon-filter-group" role="group" aria-label={t("sorting")}>
          <button type="button" className="v-icon-filter-button" aria-pressed={sort==="position"} aria-label={t("position")} title={t("position")} onClick={()=>setSort("position")}><ListOrdered size={19}/></button>
