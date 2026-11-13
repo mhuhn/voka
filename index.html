@@ -594,7 +594,7 @@ function parseListImport(text) {
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
 const VERSION = '2.25';
-const BUILD_TIME = '2026-11-09T21:03:00Z';   // Zeitpunkt des Commits dieser Version (wird beim Commit gesetzt)
+const BUILD_TIME = '2026-11-13T08:19:00Z';   // Zeitpunkt des Commits dieser Version (wird beim Commit gesetzt)
 let db = loadDb();
 function loadDb() {
   let raw = null;
@@ -864,8 +864,7 @@ function viewList() {
   const allDone = s.total > 0 && s.open === 0;
   let note = '';
   if (s.total) note = allDone ? 'Alle Karten sind gelernt.' : nn(pendingCount(l), 'Karte', 'Karten') + (left ? ' in ' + lockText(left) : ' bereit');
-  const doneN = l.cards.filter(isDone).length;
-  const visible=l.cards.filter(c=>(showDone||!isDone(c))&&(!onlyMarkedCards||c.mark));
+    const visible=l.cards.filter(c=>(showDone||!isDone(c))&&(!onlyMarkedCards||c.mark));
   visible.sort((a,b)=>cardSort==='alphabet'?a.de.localeCompare(b.de,'de'):cardSort==='points'?a.streak-b.streak||a.de.localeCompare(b.de,'de'):cardPosition(a,l)-cardPosition(b,l)||a.de.localeCompare(b.de,'de'));
   let lastPosition=null;
   const cards=visible.map(c=>{
