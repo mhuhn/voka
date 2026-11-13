@@ -1,4 +1,4 @@
-import { authManager } from "../auth/manager";
+import { profileManager } from "../auth/profiles";
 
 export interface SubjectGroup { id: string; user_id: string; title: string }
 export interface Subject { id: string; user_id: string; group_id: string; title: string; emoji: string }
@@ -10,9 +10,7 @@ export interface VokaData { groups: SubjectGroup[]; subjects: Subject[]; lists: 
 export const emptyData = (): VokaData => ({ groups: [], subjects: [], lists: [], cards: [], usage: [], learningStates: [] });
 
 function client() {
-  const c = authManager.activeClient;
-  if (!c) throw new Error("No active account");
-  return c;
+  return profileManager.client;
 }
 async function check<T>(promise: PromiseLike<{ data: T | null; error: { message: string } | null }>): Promise<T> {
   const {data,error} = await promise;

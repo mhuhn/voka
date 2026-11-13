@@ -51,13 +51,47 @@ Then("I see the sign-in form", async function (this: VokaWorld) {
   await expect(this.page.getByRole("heading", { name: "Sign in" })).toBeVisible();
 });
 
-When("I add another user", async function (this: VokaWorld) {
-  await this.page.getByRole("button", { name: "Add another user" }).click();
+When("I create a profile named {string}", async function(this:VokaWorld,name:string) {
+  await this.page.getByRole("button",{name:"New profile"}).click();
+  await this.page.getByRole("textbox",{name:"First name"}).fill(name);
+  await this.page.getByRole("button",{name:"Create profile"}).click();
+  await expect(this.page.getByRole("button",{name:"Switch profile: "+name})).toBeVisible();
 });
 
-When("I switch to {string}", async function (this: VokaWorld, email: string) {
-  await this.page.getByRole("button", { name: "Switch to " + email }).click();
+Then("I can switch to the profile named {string}", async function(this:VokaWorld,name:string) {
+  await expect(this.page.getByRole("button",{name:"Switch profile: "+name})).toBeVisible();
+});
+
+When("I switch to the profile named {string}", async function(this:VokaWorld,name:string) {
+  await this.page.getByRole("button",{name:"Switch profile: "+name}).click();
+  await expect(this.page.locator(".v-home")).toBeVisible();
+});
+
+Then("I can delete the profile named {string}", async function(this:VokaWorld,name:string) {
+  this.page.once("dialog",dialog=>void dialog.accept());
+  await this.page.getByRole("button",{name:"Delete profile: "+name}).click();
+  await expect(this.page.getByRole("button",{name:"Switch profile: "+name})).toHaveCount(0);
+});
+
+Then("I cannot delete the last profile", async function(this:VokaWorld) {
+  await expect(this.page.getByRole("button",{name:/Delete profile:/})).toBeDisabled();
+});
+
+When("I return to Voka from the profile page", async function(this:VokaWorld) {
+  await this.page.getByRole("button",{name:"Voka",exact:true}).click();
+});
+
+When("I open the profile page", async function(this:VokaWorld) {
   await this.page.locator(".v-floats button").last().click();
+});
+
+Then("no lists from the default profile are visible", async function(this:VokaWorld) {
+  await expect(this.page.getByRole("button",{name:/Irregular Verbs/})).toHaveCount(0);
+  await expect(this.page.getByRole("button",{name:/Englisch/})).toHaveCount(0);
+});
+
+Then("the original lists are visible again", async function(this:VokaWorld) {
+  await expect(this.page.getByRole("button",{name:/Englisch/})).toBeVisible();
 });
 
 When("I reload the app", async function (this: VokaWorld) {
