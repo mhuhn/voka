@@ -16,8 +16,7 @@ Before the first run:
    - Secret `IOS_DISTRIBUTION_P12_PASSWORD`: Password for that `.p12`.
    - Secret `IOS_APP_STORE_PROFILE_BASE64`: Base64-encoded bytes of the `.mobileprovision` profile.
    - Variable `IOS_APP_STORE_PROFILE_NAME`: Exact provisioning-profile name in the Apple Developer portal.
-   - Variable `APPSTORE_API_KEY_ID`: App Store Connect API Key ID.
-   - Variable `APPSTORE_ISSUER_ID`: App Store Connect Issuer ID (not the Team ID).
+   - The nonsecret App Store Connect Key ID (`27TM6KXCGU`) and Issuer ID (`69a6de81-6434-47e3-e053-5b8c7c11a4d1`) are configured in the workflow; no GitHub variables are needed for these IDs.
    - Secret `APPSTORE_API_PRIVATE_KEY`: Full text of the downloaded `AuthKey_*.p8` (not Base64).
 5. In Supabase Authentication → URL Configuration → Redirect URLs add `de.mhuhn.voka://auth/callback`. The Apple Services ID callback remains the Supabase Auth endpoint, not this deep link.
 6. In GitHub Actions run **Publish Voka iOS to TestFlight** manually.
