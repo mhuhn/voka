@@ -1,12 +1,8 @@
-name: Deploy both Voka versions to GitHub Pages
+name: Deploy Voka React to GitHub Pages
 
 on:
   push:
     branches: [main]
-  workflow_run:
-    workflows: ["React application checks"]
-    branches: [react]
-    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -21,68 +17,44 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Check out existing static site
+      - name: Check out main
         uses: actions/checkout@v4
         with:
-          ref: main
-          path: main-site
-          persist-credentials: false
-
-      - name: Check out React application
-        uses: actions/checkout@v4
-        with:
-          ref: react
           fetch-depth: 0
-          path: react-source
           persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
 
-      - name: Assemble existing main version
-        shell: bash
-        run: |
-          mkdir -p published
-          rsync -a --exclude='.git/' --exclude='.github/' main-site/ published/
-          touch published/.nojekyll
-
-      - name: Install React dependencies
-        working-directory: react-source
+      - name: Install dependencies
         run: npm install --no-audit
 
-      - name: Build React for its GitHub Pages subdirectory
-        working-directory: react-source
+      - name: Build React for /voka/
         env:
-          VITE_PAGES_BASE: /voka/react/
+          VITE_PAGES_BASE: /voka/
         run: npm run build
 
-      - name: Add React site without replacing the original
-        shell: bash
+      - name: Verify Pages artifact
         run: |
-          mkdir -p published/react
-          cp -a react-source/dist/. published/react/
-          test -f published/index.html
-          test -f published/react/index.html
-          test -f published/react/sw.js
+          test -f dist/index.html
+          test -f dist/sw.js
+          touch dist/.nojekyll
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload combined Pages artifact
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: published
+          path: dist
 
-      # GitHub's artifact index can lag behind successful uploads.
-      # A fresh run avoids duplicate github-pages artifacts from job reruns.
-      - name: Wait until the Pages artifact is indexed
+      - name: Wait for Pages artifact to be indexed
         uses: actions/github-script@v7
         with:
           script: |
@@ -98,17 +70,15 @@ jobs:
                 artifact => artifact.name === "github-pages" && !artifact.expired
               );
               if (matches.length > 1) {
-                throw new Error("Multiple github-pages artifacts in this run. Trigger a fresh workflow run instead of rerunning the failed job.");
+                throw new Error("Multiple github-pages artifacts; trigger a fresh workflow run");
               }
               if (matches.length === 1) {
-                core.info("Pages artifact is indexed: " + matches[0].id);
                 await sleep(3000);
                 return;
               }
-              core.info("Waiting for Pages artifact to appear (" + attempt + "/20)");
               await sleep(3000);
             }
-            throw new Error("Pages artifact is not visible in the Actions API after 60 seconds");
+            throw new Error("Pages artifact is not visible after 60 seconds");
 
       - name: Deploy Pages
         id: deployment

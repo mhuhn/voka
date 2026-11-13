@@ -1,0 +1,15 @@
+image: node:22
+
+pages:
+  stage: deploy
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  script:
+    - npm install --no-audit
+    - VITE_PAGES_BASE=/voka/ npm run build
+    - test -f dist/index.html
+    - test -f dist/sw.js
+    - mv dist public
+  artifacts:
+    paths:
+      - public
