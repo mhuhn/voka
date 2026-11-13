@@ -17,6 +17,8 @@ Feature: Learning cards in Voka
     Then all three answers save the rules and finish the list
     And the two-hour pause survives a page reload
     And the paused learning button keeps a short underline under its text
+    When I skip the learning pause
+    Then the next learning round is available immediately
 
   Scenario: Stopping early keeps grades and lets the user finish later
     Given I open the Voka app
