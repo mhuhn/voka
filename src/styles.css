@@ -98,3 +98,14 @@ body:has(.v-auth-shell){background:#f8faff}
  .v-profile-back{color:#9dc8ff}
  .v-profile-back:hover{background:#253d61}
 }
+.v-profile-shell{--v-navy:#091b42;--v-line:#dbe4f2;min-height:100dvh;padding:calc(12px + env(safe-area-inset-top)) 22px calc(92px + env(safe-area-inset-bottom));font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color:var(--v-navy);background:linear-gradient(155deg,#f7faff,#fff 48%)}
+.v-profile-shell>.v-profile-heading,.v-profile-shell>.v-profile{width:100%;max-width:1320px;margin-left:auto;margin-right:auto}
+.v-profile-shell .v-profile-heading{min-height:63px;display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.v-profile-shell .v-profile-heading h1{font-size:24px;font-weight:760;letter-spacing:-.6px}
+.v-profile-shell .v-profile-heading .v-profile-back{width:46px;height:46px;min-width:46px;border:1px solid var(--v-line);border-radius:50%;background:#fff;color:#0d367b;display:inline-flex;justify-content:center;align-items:center}
+.v-profile-shell .v-profile{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
+.v-profile-shell .v-profile-card{min-width:0}
+@media(max-width:899px){.v-profile-shell .v-profile{grid-template-columns:1fr}}
+@media(max-width:600px){.v-profile-shell{padding:calc(3px + env(safe-area-inset-top)) 14px calc(92px + env(safe-area-inset-bottom))}.v-profile-shell .v-profile-heading{min-height:61px;margin-bottom:12px}.v-profile-shell .v-profile-heading h1{font-size:19px}}
+@media(min-width:700px) and (pointer:coarse){.v-profile-shell{padding:30px 30px 126px}.v-profile-shell .v-profile-heading{min-height:73px;margin-bottom:24px}.v-profile-shell .v-profile-heading h1{font-size:29px}.v-profile-shell .v-profile-heading .v-profile-back{width:52px;height:52px;min-width:52px}}
+@media(prefers-color-scheme:dark){.v-profile-shell{--v-navy:#e9f0ff;--v-line:#34466c;background:#101a2d}.v-profile-shell .v-profile-heading .v-profile-back{background:#192742;color:#b9d8ff;border-color:#34466c}}
