@@ -404,7 +404,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const newList=(subjectId=selectedSubject||data.subjects.find(s=>s.title==="Englisch"&&languageSubject(data,s.id))?.id||data.subjects[0]?.id||"")=>{
    setListEditing(null);
    setDraftList({...newListValue(subjectId),...listLabels(subjectId),reverse_share:previousReverseLevel(subjectId)});
-   setTagText("");setScreen("listForm");
+   setTagText("");setTagFocused(false);setScreen("listForm");
  };
  const changeListSubject=(subjectId:string)=>{
   const wasLanguage=Boolean(languageSubject(data,draftList.subject_id));
@@ -416,7 +416,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
     reverse_share:listEditing?draftList.reverse_share:previousReverseLevel(subjectId)
   });
  };
- const editList=(l:VokaList)=>{setSelectedList(l.id);setListEditing(l.id);setDraftList({subject_id:l.subject_id,title:l.title,tags:[...l.tags],question_label:l.question_label,answer_label:languageSubject(data,l.subject_id)?.title||l.answer_label,reverse_share:l.reverse_share??(l.learn_both_directions?50:0)});setTagText("");setScreen("listForm")};
+ const editList=(l:VokaList)=>{setSelectedList(l.id);setListEditing(l.id);setDraftList({subject_id:l.subject_id,title:l.title,tags:[...l.tags],question_label:l.question_label,answer_label:languageSubject(data,l.subject_id)?.title||l.answer_label,reverse_share:l.reverse_share??(l.learn_both_directions?50:0)});setTagText("");setTagFocused(false);setScreen("listForm")};
  const openCard=(card?:VokaCard)=>{setSelectedCard(card?.id||null);setDraftCard({question:card?.question||"",answer:card?.answer||"",marked:card?.marked||false});setScreen("cardForm")};
  const recentTags=useMemo(()=>matchingSubjectTags(data.lists,draftList.subject_id,"",draftList.tags).slice(0,3),[data.lists,draftList.subject_id,draftList.tags]);
  const tagMatches=useMemo(()=>matchingSubjectTags(data.lists,draftList.subject_id,tagText,draftList.tags),[data.lists,draftList.subject_id,tagText,draftList.tags]);
