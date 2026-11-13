@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, ChevronRight, CircleUserRound, Home, Pencil, Plus, Search, Settings, Share2, Star, Trash2, X, Play } from "lucide-react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, ChevronRight, CircleUserRound, Home, Pencil, Plus, Search, Settings, Share2, SkipForward, Star, Trash2, X, Play } from "lucide-react";
 import type { Language } from "../lib/i18n";
-import { emptyData, loadVoka, beginLearning, beginMixedLearning, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type LearningEntry, type Subject, type SubjectGroup, type ListInput } from "./data";
+import { emptyData, loadVoka, beginLearning, beginMixedLearning, skipLearningPause, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type LearningEntry, type Subject, type SubjectGroup, type ListInput } from "./data";
 import "./voka.css";
 import LearningScreen from "./LearningScreen";
 import MixedLearningPicker from "./MixedLearningPicker";
@@ -13,6 +13,14 @@ import { clearPendingSharedList, fetchSharedList, importSharedList, pendingShare
 
 type Screen = "home" | "subject" | "list" | "listForm" | "cardForm" | "manage" | "learn" | "mixedSelect";
 type Words = Record<string, string>;
+const positionGroupWords:Record<Language,{position:string;completed:string;normalPoints:string;reversePoints:string}>={
+ de:{position:"Position",completed:"Gelernt",normalPoints:"Normale Punkte",reversePoints:"Umgedrehte Punkte"},
+ en:{position:"Position",completed:"Learned",normalPoints:"Forward points",reversePoints:"Reverse points"},
+ fr:{position:"Position",completed:"Apprises",normalPoints:"Points normaux",reversePoints:"Points inversés"},
+ nl:{position:"Positie",completed:"Geleerd",normalPoints:"Normale punten",reversePoints:"Omgekeerde punten"},
+ da:{position:"Position",completed:"Lært",normalPoints:"Normale point",reversePoints:"Omvendte point"},
+ it:{position:"Posizione",completed:"Apprese",normalPoints:"Punti normali",reversePoints:"Punti inversi"}
+};
 const cardSingular: Record<Language,string> = {de:"Karte",en:"Card",fr:"Carte",nl:"Kaart",da:"Kort",it:"Scheda"};
 const translations: Record<Language, Words> = {
  de: { mySubjects:"Meine Fächer", createList:"Liste erstellen", addCard:"Karte hinzufügen", saveCard:"Karte speichern", saveList:"Liste speichern", empty:"Noch keine Listen", emptyInfo:"Erstelle deine erste Vokabelliste und lerne effektiv mit digitalen Karteikarten.", groups:"Fachgruppen & Fächer", addGroup:"Fachgruppe hinzufügen", addSubject:"Fach hinzufügen", edit:"Bearbeiten", delete:"Löschen", cancel:"Abbrechen", save:"Speichern", title:"Titel", subject:"Fach", tags:"Tags", addTag:"Tag hinzufügen", questionLabel:"Frage-Label", answerLabel:"Antwort-Label", both:"In beide Richtungen lernen", bothInfo:"Die Karteikarten werden sowohl vorwärts als auch rückwärts abgefragt.", question:"Frage", answer:"Antwort", marked:"Markiert", markedOnly:"Nur Markierte", showLearned:"Gelernte anzeigen", showAnswers:"Antworten anzeigen", sorting:"Sortieren", alpha:"Alphabetisch", points:"Nach Punkten", position:"Nach Position", learn:"Lernen", progress:"Fortschritt", cards:"Karten", noCards:"Noch keine Karten", noMatching:"Keine Karten für diese Filter", listInfo:"Listeneigenschaften", lists:"Listen", learning:"Lernen", search:"Suchen", statistics:"Statistik", settings:"Einstellungen", manage:"Fächer verwalten", groupName:"Name der Fachgruppe", emoji:"Emoji", confirmDelete:"Wirklich löschen? Zugehörige Inhalte werden ebenfalls gelöscht.", noSubject:"Lege zuerst ein Fach an.", editCard:"Karte bearbeiten", editList:"Liste bearbeiten", updated:"Zuletzt", total:"Listen", automatic:"Lernpunkte werden automatisch verwaltet. Die Punktzahl (0–4) passt sich beim Lernen an.", profile:"Profil", loading:"Lade deine Listen…", chooseSubject:"Fach auswählen", newList:"Neue Liste", newCard:"Neue Karte", create:"Erstellen", starred:"Markierte", none:"Keine Listen in diesem Fach" },
@@ -20,12 +28,12 @@ const translations: Record<Language, Words> = {
  fr:{},nl:{},da:{},it:{}
 };
 const learningButtonWords: Record<Language,Record<string,string>>={
- de:{paused:"Noch",minutesPause:"min Pause",hoursPause:"Pause",pausedTomorrow:"bis morgen pausiert",pausedDayPrefix:"bis ",pausedDaySuffix:" pausiert",allLearned:"Alle Karten gelernt",starting:"Wird gestartet…"},
- en:{paused:"Pause:",minutesPause:"min left",hoursPause:"left",pausedTomorrow:"Paused until tomorrow",pausedDayPrefix:"Paused until ",pausedDaySuffix:"",allLearned:"All cards learned",starting:"Starting…"},
- fr:{paused:"Pause :",minutesPause:"min restantes",hoursPause:"restantes",pausedTomorrow:"En pause jusqu’à demain",pausedDayPrefix:"En pause jusqu’à ",pausedDaySuffix:"",allLearned:"Toutes les cartes apprises",starting:"Démarrage…"},
- nl:{paused:"Pauze:",minutesPause:"min over",hoursPause:"over",pausedTomorrow:"Gepauzeerd tot morgen",pausedDayPrefix:"Gepauzeerd tot ",pausedDaySuffix:"",allLearned:"Alle kaarten geleerd",starting:"Starten…"},
- da:{paused:"Pause:",minutesPause:"min tilbage",hoursPause:"tilbage",pausedTomorrow:"Pause til i morgen",pausedDayPrefix:"Pause til ",pausedDaySuffix:"",allLearned:"Alle kort lært",starting:"Starter…"},
- it:{paused:"Pausa:",minutesPause:"min rimasti",hoursPause:"rimasti",pausedTomorrow:"In pausa fino a domani",pausedDayPrefix:"In pausa fino a ",pausedDaySuffix:"",allLearned:"Tutte le schede apprese",starting:"Avvio…"}
+ de:{skipPause:"Pause überspringen",paused:"Noch",minutesPause:"min Pause",hoursPause:"Pause",pausedTomorrow:"bis morgen pausiert",pausedDayPrefix:"bis ",pausedDaySuffix:" pausiert",allLearned:"Alle Karten gelernt",starting:"Wird gestartet…"},
+ en:{skipPause:"Skip learning pause",paused:"Pause:",minutesPause:"min left",hoursPause:"left",pausedTomorrow:"Paused until tomorrow",pausedDayPrefix:"Paused until ",pausedDaySuffix:"",allLearned:"All cards learned",starting:"Starting…"},
+ fr:{skipPause:"Passer la pause",paused:"Pause :",minutesPause:"min restantes",hoursPause:"restantes",pausedTomorrow:"En pause jusqu’à demain",pausedDayPrefix:"En pause jusqu’à ",pausedDaySuffix:"",allLearned:"Toutes les cartes apprises",starting:"Démarrage…"},
+ nl:{skipPause:"Pauze overslaan",paused:"Pauze:",minutesPause:"min over",hoursPause:"over",pausedTomorrow:"Gepauzeerd tot morgen",pausedDayPrefix:"Gepauzeerd tot ",pausedDaySuffix:"",allLearned:"Alle kaarten geleerd",starting:"Starten…"},
+ da:{skipPause:"Spring pausen over",paused:"Pause:",minutesPause:"min tilbage",hoursPause:"tilbage",pausedTomorrow:"Pause til i morgen",pausedDayPrefix:"Pause til ",pausedDaySuffix:"",allLearned:"Alle kort lært",starting:"Starter…"},
+ it:{skipPause:"Salta la pausa",paused:"Pausa:",minutesPause:"min rimasti",hoursPause:"rimasti",pausedTomorrow:"In pausa fino a domani",pausedDayPrefix:"In pausa fino a ",pausedDaySuffix:"",allLearned:"Tutte le schede apprese",starting:"Avvio…"}
 };
 
 const sharingWords: Record<Language,Record<string,string>> = {
@@ -166,7 +174,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const cardAnswerRef=useRef<HTMLTextAreaElement>(null);
  const [tagText,setTagText]=useState("");
  const [showAnswers,setShowAnswers]=useState(false),[markedOnly,setMarkedOnly]=useState(false),[showLearned,setShowLearned]=useState(false);
- const [sort,setSort]=useState<"alpha"|"points"|"position">("alpha");
+ const [sort,setSort]=useState<"alpha"|"points"|"position">("position");
  const [manageType,setManageType]=useState<"group"|"subject">("subject");
  const [manageId,setManageId]=useState<string|null>(null);
  const [manageGroup,setManageGroup]=useState("");
@@ -238,7 +246,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
     const updated=await loadVoka();
     setData(updated);
     setSelectedSubject(importSubject);setSelectedList(id);setSelectedCard(null);
-    setSort("alpha");setShowAnswers(false);setMarkedOnly(false);setShowLearned(false);
+    setSort("position");setShowAnswers(false);setMarkedOnly(false);setShowLearned(false);
     setScreen("list");dismissSharedImport();
    }catch(err){
     setSharedError(err instanceof Error?err.message:t("importError"));
@@ -282,6 +290,9 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
       cardTotalPoints(a,share)-cardTotalPoints(b,share)||a.question.localeCompare(b.question));
  },[data.cards,selectedList,markedOnly,showLearned,sort,currentList?.reverse_share]);
  const run=async(fn:()=>Promise<void>)=>{setWorking(true);setError("");try{await fn();await refresh()}catch(e){setError(e instanceof Error?e.message:String(e))}finally{setWorking(false)}};
+ const skipSelectedListPause=()=>{if(currentList&&!working&&effectivePause)
+    void run(()=>skipLearningPause(currentList.id));
+ };
  const startLearning=async()=>{
   if(!currentList||startingLearn)return;
   setStartingLearn(true);setError("");
@@ -319,7 +330,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
    setLearningSession(null);setScreen(destination);
  };
  const back=()=>{if(screen==="cardForm"){setSelectedCard(null);setScreen(wide?"home":"list");}else if(screen==="listForm")setScreen(listEditing?"list":selectedSubject?"subject":"home");else if(screen==="list")setScreen(wide?"home":"subject");else if(screen==="subject"||screen==="manage")setScreen("home");else setScreen("home")};
- const openList=(id:string)=>{setSelectedList(id);setShowAnswers(false);setMarkedOnly(false);setShowLearned(false);setSort("alpha");setSelectedCard(null);setScreen("list")};
+ const openList=(id:string)=>{setSelectedList(id);setShowAnswers(false);setMarkedOnly(false);setShowLearned(false);setSort("position");setSelectedCard(null);setScreen("list")};
  const listLabels=(subjectId:string)=>{const subject=languageSubject(data,subjectId);return subject?{question_label:"Deutsch",answer_label:subject.title}:{question_label:t("question"),answer_label:t("answer")};};
  const previousReverseLevel=(subjectId:string)=>[...data.lists]
    .filter(list=>list.subject_id===subjectId)
@@ -455,6 +466,9 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
     <h1>{screen==="home"?<span className="v-logo">Voka</span>:wide&&(screen==="subject"||screen==="list"||screen==="cardForm"||(screen==="listForm"&&Boolean(listEditing)))?<span>{currentSubject?.emoji} {currentSubject?.title}</span>:screen==="subject"?currentSubject?.title:screen==="list"?listTitle:screen==="listForm"?(listEditing?t("editList"):t("createList")):screen==="cardForm"?(selectedCard?t("editCard"):t("addCard")):t("manage")}</h1>
     {!wide&&(screen==="list"||screen==="cardForm")&&currentList&&<div className="v-detail-header-actions">
        <IconButton label={t("share")} onClick={()=>void shareSelectedList()}><Share2 size={19}/></IconButton>
+       {screen==="list"&&<button className="v-icon-button v-skip-pause" type="button"
+         title={t("skipPause")} aria-label={t("skipPause")}
+         disabled={!effectivePause||everyCardLearned||working} onClick={skipSelectedListPause}><SkipForward size={19}/></button>}
        {screen==="list"&&<IconButton label={t("editList")} onClick={()=>editList(currentList)}><Pencil size={19}/></IconButton>}
      </div>}
    </header>}
@@ -487,6 +501,9 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
      <section className="v-list-detail-pane">
      {wide&&<div className="v-pane-list-heading"><h2>{listTitle}</h2><div className="v-detail-header-actions">
       <IconButton label={t("share")} onClick={()=>void shareSelectedList()}><Share2 size={18}/></IconButton>
+      <button className="v-icon-button v-skip-pause" type="button"
+        title={t("skipPause")} aria-label={t("skipPause")}
+        disabled={!effectivePause||everyCardLearned||working} onClick={skipSelectedListPause}><SkipForward size={18}/></button>
       <IconButton label={t("editList")} onClick={()=>editList(currentList)}><Pencil size={18}/></IconButton></div></div>}
     <div className="v-list-main">
      {currentList.tags.length>0&&<div className="v-list-summary"><div className="v-tag-row">{currentList.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div>}
@@ -494,14 +511,39 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
      </div>
      {shareStatus&&<p className="v-share-status" role="status">{shareStatus}</p>}
      <div className="v-filter-area">
-       <Toggle label={answerVisibilityLabel} value={showAnswers} onChange={setShowAnswers}/>
-       <Toggle label={t("markedOnly")} value={markedOnly} onChange={setMarkedOnly}/>
-       <Toggle label={t("showLearned")} value={showLearned} onChange={setShowLearned}/>
+       <div className="v-filter-switches">
+         <Toggle label={answerVisibilityLabel} value={showAnswers} onChange={setShowAnswers}/>
+         <Toggle label={t("markedOnly")} value={markedOnly} onChange={setMarkedOnly}/>
+         <Toggle label={t("showLearned")} value={showLearned} onChange={setShowLearned}/>
+       </div>
        <div className="v-sort"><label>{t("sorting")}:</label><div className="v-segments"><button className={sort==="alpha"?"active":""} onClick={()=>setSort("alpha")}>{t("alpha")}</button><button className={sort==="points"?"active":""} onClick={()=>setSort("points")}>{t("points")}</button><button className={sort==="position"?"active":""} onClick={()=>setSort("position")}>{t("position")}</button></div></div>
      </div>
      <div className="v-list-count">{cardCount(listCards.length)}</div>
-     <div className="v-card-list">{listCards.map(c=><div key={c.id} className={"v-card-row "+(selectedCard===c.id?"selected":"")}><button className="v-card-star" aria-label={t("marked")} onClick={()=>void run(()=>markCard(c.id,!c.marked))}><Star size={19} fill={c.marked?"#ff9b00":"none"} stroke={c.marked?"#ff9b00":"currentColor"}/></button><button className="v-card-open" onClick={()=>openCard(c)}><span className="v-card-question">{c.question}{showAnswers&&<span className="v-card-answer">{c.answer}</span>}</span><span className="v-score-pair"><span className="v-dots">{[0,1,2,3].map(n=><i key={n} className={n<c.success_count?"filled":""}/>)}</span><b>{c.success_count} P</b>
-      {(currentList.reverse_share??0)>0&&<span className="v-reverse-score" aria-label={t("reverseLevel")}><span className="v-reverse-dots">{Array.from({length:reverseMaxPoints(currentList.reverse_share)},(_,n)=><i key={n} className={n<(c.reverse_success_count??0)?"filled":""}/>)}</span><b>↔ {Math.min(reverseMaxPoints(currentList.reverse_share),c.reverse_success_count??0)} P</b></span>}</span></button></div>)}</div>
+     <div className="v-card-list">{listCards.map((c,index)=>{
+       const position=cardNextPosition(c,currentList.reverse_share??0);
+       const previous=index>0?cardNextPosition(listCards[index-1],currentList.reverse_share??0):null;
+       const heading=sort==="position"&&(index===0||previous!==position);
+       return <Fragment key={c.id}>
+         {heading&&<h3 className="v-position-heading">{Number.isFinite(position)?positionGroupWords[language].position+" "+position:positionGroupWords[language].completed}</h3>}
+         <div className={"v-card-row "+(selectedCard===c.id?"selected":"")}>
+           <button className="v-card-star" aria-label={t("marked")} onClick={()=>void run(()=>markCard(c.id,!c.marked))}>
+             <Star size={19} fill={c.marked?"#ff9b00":"none"} stroke={c.marked?"#ff9b00":"currentColor"}/>
+           </button>
+           <button className="v-card-open" onClick={()=>openCard(c)}>
+             <span className="v-card-question">{c.question}{showAnswers&&<span className="v-card-answer">{c.answer}</span>}</span>
+             <span className="v-score-pair">
+               <span className="v-dots" aria-label={positionGroupWords[language].normalPoints+": "+c.success_count+" / 4"}>
+                 {[0,1,2,3].map(n=><i key={n} aria-hidden="true" className={n<c.success_count?"filled":""}/>)}
+               </span>
+               {(currentList.reverse_share??0)>0&&<span className="v-reverse-score"
+                 aria-label={positionGroupWords[language].reversePoints+": "+Math.min(reverseMaxPoints(currentList.reverse_share),c.reverse_success_count??0)+" / "+reverseMaxPoints(currentList.reverse_share)}>
+                 <span className="v-reverse-dots">{Array.from({length:reverseMaxPoints(currentList.reverse_share)},(_,n)=><i key={n} aria-hidden="true" className={n<(c.reverse_success_count??0)?"filled":""}/>)}</span>
+               </span>}
+             </span>
+           </button>
+         </div>
+       </Fragment>;
+     })}</div>
      {listCards.length===0&&<p className="v-empty">{data.cards.some(c=>c.list_id===selectedList)?t("noMatching"):t("noCards")}</p>}
      <button className="v-primary v-add-card" onClick={()=>openCard()}><Plus size={18}/>{t("addCard")}</button>
     </div>
