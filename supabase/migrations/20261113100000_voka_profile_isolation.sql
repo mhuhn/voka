@@ -88,7 +88,6 @@ begin
   if uid is null or pid is null or not public.can_access_app('voka') then
     raise exception 'Voka profile access denied' using errcode='42501';
   end if;
-  insert into public.voka_profiles(id) values(pid) on conflict(id) do nothing;
   insert into public.voka_settings(user_id,profile_id) values(uid,pid)
     on conflict(profile_id) do nothing returning profile_id into seed_created;
   if seed_created is null then return; end if;
