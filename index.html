@@ -969,7 +969,7 @@ function viewQuiz() {
     '<main class="stage"><div class="flip' + (open ? ' on' : '') + '" data-a="quiz-flip" role="button" tabindex="0" aria-label="Karte umdrehen"><div class="flip-in">' +
     '<div class="face front"><div class="face-head"><span>' + mix + esc(lst.labelQ) + '</span><span class="hd">' + dots(c) + '</span></div>' +
     '<div class="face-body">' + w(c.de) + '<span class="hint">' + (browse ? 'Schon abgefragt · tippen zum Umdrehen' : 'Tippen zum Umdrehen') + '</span></div></div>' +
-    '<div class="face back"><div class="face-head"><span>' + mix + esc(lst.labelA) + '</span><span class="hd"><button type="button" class="markbtn editbtn" data-a="quiz-edit" aria-label="Karte korrigieren">' + svg(IC.pencil) + '</button>' + markBtn(c) + dots(c) + '</span></div>' +
+    '<div class="face back"><div class="face-head"><span>' + mix + esc(lst.labelA) + '</span><span class="hd">' + dots(c) + '</span></div>' +
     '<div class="face-body">' + w(c.fl) + '</div></div>' +
     '</div></div></main><div class="quiz-bottom"><footer class="actions' + (!browse && s.revealed ? ' three' : '') + '" id="actions">' + (browse ? '<button class="btn primary" data-a="quiz-current">Zur aktuellen Frage</button>' : actionsHtml(s)) + '</footer><div class="quiz-utilities"><button class="btn quiet small" data-a="quiz-mark" aria-pressed="' + !!c.mark + '">' + (c.mark ? '★ Markiert' : '☆ Markieren') + '</button><button class="btn quiet small" data-a="quiz-edit">Bearbeiten</button></div></div></div>';
 }
