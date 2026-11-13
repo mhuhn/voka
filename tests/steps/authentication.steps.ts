@@ -54,7 +54,10 @@ Then("I see the sign-in form", async function (this: VokaWorld) {
 When("I create a profile named {string}", async function(this:VokaWorld,name:string) {
   await this.page.getByRole("button",{name:"New profile"}).click();
   await this.page.getByRole("textbox",{name:"Profile name"}).fill(name);
-  await this.page.getByRole("button",{name:"Create profile"}).click();
+  const createButton=this.page.getByRole("button",{name:"Create profile"});
+  try{await expect(createButton).toBeEnabled({timeout:4000});}
+  catch(error){throw new Error("Create profile disabled: "+(await this.page.locator("body").innerText()).slice(0,1200)+" / "+String(error));}
+  await createButton.click();
   await expect(this.page.getByRole("button",{name:"Switch profile: "+name})).toBeVisible();
 });
 
@@ -62,7 +65,10 @@ When("I create a profile named {string} with emoji {string}", async function(thi
   await this.page.getByRole("button",{name:"New profile"}).click();
   await this.page.getByRole("textbox",{name:"Profile name"}).fill(name);
   await this.page.getByRole("textbox",{name:"Profile emoji"}).fill(emoji);
-  await this.page.getByRole("button",{name:"Create profile"}).click();
+  const createButton=this.page.getByRole("button",{name:"Create profile"});
+  try{await expect(createButton).toBeEnabled({timeout:4000});}
+  catch(error){throw new Error("Create profile disabled: "+(await this.page.locator("body").innerText()).slice(0,1200)+" / "+String(error));}
+  await createButton.click();
   await expect(this.page.getByRole("button",{name:"Switch profile: "+name})).toBeVisible();
 });
 
