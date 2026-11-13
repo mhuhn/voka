@@ -27,7 +27,7 @@ Feature: Position groups and compact learning controls
     And I grade the revealed card with Enter
     Then the third learning question is shown
 
-  @calendar-blocked
+  @learning @calendar-blocked
   Scenario: Skip the calendar-day learning break without losing the next due cards
     Given I open the Voka app
     When I sign in as "alice@example.test" with password "correct-password"
