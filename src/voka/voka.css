@@ -629,3 +629,13 @@
  .v-heading .v-detail-header-actions>.v-icon-button{width:32px;height:32px;min-width:32px}
  .v-heading .v-detail-header-actions>.v-icon-button svg{width:17px;height:17px}
 }
+
+/* Last-used tags and autocomplete scoped to the selected subject. */
+.v-tag-field{position:relative;display:flex;flex-direction:column;gap:6px;min-width:0}
+.v-tag-field>label{font-weight:600}
+.v-tag-recent{display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-top:2px}
+.v-tag-suggestion-label{font-size:12px;color:var(--v-muted);margin-right:5px}
+.v-tag-recent>.v-tag{cursor:pointer;min-height:30px}
+.v-tag-autocomplete{position:absolute;z-index:45;top:100%;left:0;right:0;display:flex;flex-direction:column;gap:0;max-height:200px;overflow:auto;background:var(--v-card);border:1px solid var(--v-line);border-radius:10px;box-shadow:0 9px 20px #0002}
+.v-tag-autocomplete button{text-align:left;padding:10px 12px;color:var(--v-navy);background:transparent;border:0;cursor:pointer}
+.v-tag-autocomplete button:hover,.v-tag-autocomplete button:focus-visible{background:var(--v-bg)}
