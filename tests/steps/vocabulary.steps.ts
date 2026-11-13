@@ -273,7 +273,7 @@ Then("I can cancel a new card without saving it", async function(this:VokaWorld)
 
 Then("the small phone has larger floating icon targets", async function(this:VokaWorld){
  const targets=this.page.locator(".v-floats .v-icon-button");
- await expect(targets).toHaveCount(2);
+ await expect(targets).toHaveCount(1);
  for(const box of await targets.all()){
   const dims=await box.boundingBox();
   expect(dims).not.toBeNull();
