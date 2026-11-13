@@ -161,14 +161,16 @@ All three entry points for learning (home, individual list, and multi-subject pi
 
 Each list now stores `reverse_share` in `{0,25,50,75,100}`; the old boolean switch is replaced by a five-stop slider. New lists inherit the percentage from the most recently **created** list in the same subject, falling back to 0 when no such list exists. Existing lists with the old two-directions setting enabled are migrated to **50%**, and older installed PWAs remain supported through a compatibility trigger.
 
-Each card has independent `reverse_success_count` and `reverse_position`. Existing normal `success_count` and `position` keep their original values and meaning; reverse scores start at 0, position 0. At 0%, reverse scores are inactive but stored for possible future reactivation. The maximum available reverse points are 1/2/3/4 for 25/50/75/100%, respectively. On **known**, increase only the active direction's points by one and set its position according to the points *before* grading:
+Each card has independent `reverse_success_count` and `reverse_position`. Existing normal `success_count` and `position` keep their original values and meaning; normal cards start at position 0 with 0 points. Reverse cards start at 0 points and at the **initial position for their reverse intensity**: 10 for 25%, 4 for 50%, 4 for 75%, and 1 for 100%. At 0%, reverse scores are inactive (and their default position remains 0), but existing reverse progress is retained for possible future reactivation. The maximum available reverse points are 1/2/3/4 for 25/50/75/100%, respectively.
 
-| Reverse intensity | 0 points → 1 | 1 point → 2 | 2 points → 3 | 3 points → 4 |
-| --- | ---: | ---: | ---: | ---: |
-| 25% | 10 | — | — | — |
-| 50% | 4 | 13 | — | — |
-| 75% | 4 | 12 | 24 | — |
-| 100% | 1 | 4 | 10 | 24 |
+After a **known** reverse answer, increment only the reverse score and use the position for the **newly attained score**. For example, a card with 0 reverse points in a 75% list initially has reverse position 4; after it is answered correctly it has 1 point and is scheduled at position 12; after another correct answer it has 2 points and is scheduled at position 24. Once the maximum points for that intensity are attained, that direction is complete and needs no new waiting position.
+
+| Reverse intensity | Initial position (0 points) | Position with 1 point | Position with 2 points | Position with 3 points | Maximum reverse points |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 25% | 10 | — (complete) | — | — | 1 |
+| 50% | 4 | 13 | — (complete) | — | 2 |
+| 75% | 4 | 12 | 24 | — (complete) | 3 |
+| 100% | 1 | 4 | 10 | 24 | 4 |
 
 Unknown resets the active direction's points to 0 and sets its position to 1. Unsure keeps the active direction's points and sets its position to 1. The inactive direction's points and position are never modified by individual scoring. When a round finishes, **both** schedules advance by one position (minimum 0), followed by the usual two-hour pause. On the next permitted learning start, the minimum position across all unfinished normal and enabled reverse card orientations is subtracted from **both** schedules. Calendar-day pauses use that same minimum. A card can be included twice in one round if both directions are due at the same position: **all normal orientations first, then all reverse orientations**, shuffled within each direction. For mixed-subject learning, the existing subject/list ordering remains the primary order, with normal before reverse inside each list.
 
@@ -179,4 +181,5 @@ A list's progress is `sum(min(normal_score,4)+min(reverse_score,reverse_max)) / 
 - `supabase/migrations/20261113080000_voka_reverse_tracks_schema.sql` adds the list selector, per-card reverse fields, a direction flag to `voka_query_cards`, and a new composite PK `(query_id,card_id,reverse)` so both orientations of one card can coexist in one query. It updates the owner-RLS-aware `voka_list_learning_state` view and the privileged private shared-list copy functions to preserve list reverse settings while resetting both learning tracks.
 - `supabase/migrations/20261113081000_voka_directional_learning_rpc.sql` adds versioned v2, SECURITY INVOKER RPCs for single-list start, mixed-list preview/start and directional grading. The shared private invoker helpers validate owner access and app authorization and use row locks to preserve atomic grading, two-hour and day-based pauses. The former RPC signatures are kept for installed legacy PWAs.
 - The frontend passes a direction for every graded entry. The grade history stores both directions distinctly and does not infer direction probabilistically at render time.
+- `supabase/migrations/20261113083000_voka_reverse_initial_stage_fix.sql` corrects the 0.9.0 off-by-one-stage interpretation. A `BEFORE INSERT` trigger on `voka_cards` sets the initial reverse position from the list's current intensity, including cards inserted through older PWAs and shared-list imports. The reverse grader uses the attained point count instead of the old point count when selecting the next waiting stage. Changing the list percentage reinitializes untouched reverse tracks but preserves already reviewed ones; existing untouched reverse cards are backfilled to their initial positions, and waiting times after earlier successful reverse grades are adjusted by the difference between the old and corrected schedules without erasing elapsed decrements. The normal direction is unchanged.
 
