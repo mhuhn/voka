@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, ChevronRight, CircleUserRound, Home, Pencil, Plus, Search, Settings, Share2, SkipForward, Star, Trash2, X, Play } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, CheckCircle2, ChevronRight, CircleUserRound, Eye, Home, ListOrdered, ArrowDownAZ, Pencil, Plus, Search, Settings, Share2, SkipForward, Star, Trash2, X, Play } from "lucide-react";
 import type { Language } from "../lib/i18n";
 import { emptyData, loadVoka, beginLearning, beginMixedLearning, skipLearningPause, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type LearningEntry, type Subject, type SubjectGroup, type ListInput } from "./data";
 import "./voka.css";
@@ -510,13 +510,18 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
       <div className="v-list-actions"><button className="v-primary v-learn-cta" type="button" title={learningButtonLabel} aria-label={learningButtonLabel} disabled={learningUnavailable} onClick={()=>void startLearning()}><Play size={19} fill="currentColor"/><span className="v-learn-cta-label">{learningButtonLabel}</span></button><div className="v-progress"><BarChart3 size={21}/><span>{t("progress")}<b>{learningProgress(listCardsForProgress,currentList.reverse_share??0)} %</b></span></div>
      </div>
      {shareStatus&&<p className="v-share-status" role="status">{shareStatus}</p>}
-     <div className="v-filter-area">
-       <div className="v-filter-switches">
-         <Toggle label={answerVisibilityLabel} value={showAnswers} onChange={setShowAnswers}/>
-         <Toggle label={t("markedOnly")} value={markedOnly} onChange={setMarkedOnly}/>
-         <Toggle label={t("showLearned")} value={showLearned} onChange={setShowLearned}/>
+     <div className="v-filter-area v-icon-filter-toolbar" aria-label={t("sorting")}>
+       <div className="v-icon-filter-group" role="group" aria-label={t("sorting")}>
+         <button type="button" className="v-icon-filter-button" aria-pressed={sort==="position"} aria-label={t("position")} title={t("position")} onClick={()=>setSort("position")}><ListOrdered size={19}/></button>
+         <button type="button" className="v-icon-filter-button" aria-pressed={sort==="alpha"} aria-label={t("alpha")} title={t("alpha")} onClick={()=>setSort("alpha")}><ArrowDownAZ size={19}/></button>
+         <button type="button" className="v-icon-filter-button" aria-pressed={sort==="points"} aria-label={t("points")} title={t("points")} onClick={()=>setSort("points")}><BarChart3 size={19}/></button>
        </div>
-       <div className="v-sort"><label>{t("sorting")}:</label><div className="v-segments"><button className={sort==="alpha"?"active":""} onClick={()=>setSort("alpha")}>{t("alpha")}</button><button className={sort==="points"?"active":""} onClick={()=>setSort("points")}>{t("points")}</button><button className={sort==="position"?"active":""} onClick={()=>setSort("position")}>{t("position")}</button></div></div>
+       <span className="v-icon-filter-separator" aria-hidden="true"/>
+       <div className="v-icon-filter-group" role="group" aria-label={t("showAnswers")}>
+         <button type="button" className="v-icon-filter-button" aria-pressed={showAnswers} aria-label={answerVisibilityLabel} title={answerVisibilityLabel} onClick={()=>setShowAnswers(value=>!value)}><Eye size={19}/></button>
+         <button type="button" className="v-icon-filter-button" aria-pressed={showLearned} aria-label={t("showLearned")} title={t("showLearned")} onClick={()=>setShowLearned(value=>!value)}><CheckCircle2 size={19}/></button>
+         <button type="button" className="v-icon-filter-button" aria-pressed={markedOnly} aria-label={t("markedOnly")} title={t("markedOnly")} onClick={()=>setMarkedOnly(value=>!value)}><Star size={19}/></button>
+       </div>
      </div>
      <div className="v-list-count">{cardCount(listCards.length)}</div>
      <div className="v-card-list">{listCards.map((c,index)=>{
