@@ -11,7 +11,7 @@ begin
   -- x-client-info is an allowlisted Supabase Data API header (unlike arbitrary x-* headers).
   -- Treat its profile marker as an untrusted identifier and verify ownership below.
   v_raw := pg_catalog.split_part(
-    pg_catalog.coalesce(nullif(pg_catalog.current_setting('request.headers', true),'')::jsonb ->> 'x-client-info',''),
+    coalesce(nullif(pg_catalog.current_setting('request.headers', true),'')::jsonb ->> 'x-client-info',''),
     'voka-profile=',2
   );
   v_raw := nullif(pg_catalog.split_part(v_raw,';',1),'');
