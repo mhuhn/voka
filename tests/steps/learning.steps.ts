@@ -139,6 +139,7 @@ Then("the paused learning button keeps a short underline under its text",async f
     const line=getComputedStyle(text,"::after");
     return {
       white:getComputedStyle(element).backgroundColor,
+      black:getComputedStyle(element).color,
       textWidth:text.getBoundingClientRect().width,
       buttonWidth:element.getBoundingClientRect().width,
       lineWidth:parseFloat(line.width),
@@ -146,6 +147,7 @@ Then("the paused learning button keeps a short underline under its text",async f
     };
   });
   expect(visual.white).toBe("rgb(255, 255, 255)");
+  expect(visual.black).toBe("rgb(16, 16, 16)");
   expect(visual.lineColor).toBe("rgb(255, 158, 0)");
   expect(visual.lineWidth).toBeGreaterThan(35);
   expect(visual.lineWidth).toBeLessThanOrEqual(76);
