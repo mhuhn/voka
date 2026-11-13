@@ -16,6 +16,7 @@ export interface SharedList {
   question_label: string;
   answer_label: string;
   learn_both_directions: boolean;
+  reverse_share: number;
   cards: SharedListCard[];
 }
 
