@@ -24,6 +24,7 @@ function labelFor(user: User) {
 export class AuthManager {
   private clients = new Map<string, SupabaseClient>();
   private pending: SupabaseClient | null = null;
+  private profileClients = new Map<string, SupabaseClient>();
   private listeners = new Set<() => void>();
   private state: AuthSnapshot = {
     registry: { accounts: [], activeId: null }, users: {}, loading: true, busy: false,
@@ -80,6 +81,25 @@ export class AuthManager {
     const id = this.state.registry.activeId;
     return id && this.activeUser ? this.accountClient(id) : null;
   }
+  /** Per-profile Data API client: the bearer session stays tied to the signed-in user. */
+  clientForProfile(profileId: string): SupabaseClient {
+    if (!this.activeClient || !this.activeUser) throw new Error('Sign in first');
+    const key = this.activeUser.id + ':' + profileId;
+    let result = this.profileClients.get(key);
+    if (!result) {
+      result = createClient(supabaseUrl,supabaseKey,{
+        global:{headers:{'x-voka-profile-id':profileId}},
+        accessToken: async () => {
+          const {data,error}=await this.activeClient!.auth.getSession();
+          if(error)throw error;
+          return data.session?.access_token ?? null;
+        },
+        auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}
+      });
+      this.profileClients.set(key,result);
+    }
+    return result;
+  }
 
   initialize(): Promise<void> {
     return this.initializePromise ??= this.initializeInternal();
@@ -87,8 +107,14 @@ export class AuthManager {
 
   private async initializeInternal(): Promise<void> {
     try {
-      const registry = readRegistry();
-      this.patch({ registry });
+      const oldRegistry = readRegistry();
+      // A Voka device keeps at most one authenticated account; profile switching is separate.
+      const registry = {accounts:oldRegistry.accounts.filter(a=>a.id===oldRegistry.activeId),activeId:oldRegistry.activeId};
+      for(const account of oldRegistry.accounts)if(account.id!==oldRegistry.activeId){
+        try { await this.accountClient(account.id).auth.signOut({scope:'local'}); } catch { /* obsolete session */ }
+        this.clients.delete(account.id);
+      }
+      this.persist(registry);
       if (!isConfigured) return;
       const users: Record<string, User> = {};
       await Promise.all(registry.accounts.map(async account => {
@@ -116,6 +142,12 @@ export class AuthManager {
 
   private async adopt(session: Session) {
     const user = session.user;
+    // A login replaces any previous account instead of adding a second switchable user.
+    for(const account of this.state.registry.accounts)if(account.id!==user.id){
+      try { await this.accountClient(account.id).auth.signOut({scope:'local'}); } catch { /* old session */ }
+      this.clients.delete(account.id);
+    }
+    this.profileClients.clear();
     const client = this.accountClient(user.id);
     const { data, error } = await client.auth.setSession({
       access_token: session.access_token,
@@ -124,9 +156,9 @@ export class AuthManager {
     if (error || !data.user) throw error || new Error("Session could not be saved.");
     const finalUser = data.user;
     const record: AccountRecord = { id: finalUser.id, email: finalUser.email || "", name: labelFor(finalUser) };
-    this.persist(addAccount(this.state.registry, record));
+    this.persist({accounts:[record],activeId:record.id});
     this.patch({
-      users: { ...this.state.users, [finalUser.id]: finalUser },
+      users: { [finalUser.id]: finalUser },
       adding: false, screen: "login", error: null, message: null
     });
     // Never sign out the pending client: even a local sign-out revokes the copied
@@ -268,6 +300,7 @@ export class AuthManager {
       const users = { ...this.state.users };
       delete users[id];
       this.clients.delete(id);
+      this.profileClients.clear();
       this.persist(removeAccount(this.state.registry, id));
       this.patch({ users, adding: false, screen: "login" });
     });
@@ -277,6 +310,7 @@ export class AuthManager {
     await this.perform(async () => {
       try { await this.accountClient(id).auth.signOut({ scope: "local" }); } catch { /* Expired local session */ }
       this.clients.delete(id);
+      this.profileClients.clear();
       const users = { ...this.state.users };
       delete users[id];
       this.persist(removeAccount(this.state.registry, id));
