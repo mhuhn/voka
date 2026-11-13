@@ -56,10 +56,11 @@ const texts:Record<Language,Record<string,string>>={
 };
 
 export default function LearningScreen({
-  language, list, cards, session, mixed, onRefresh, onExit
+  language, list, subject, cards, session, mixed, onRefresh, onExit
 }:{
   language: Language;
   list: VokaList;
+  subject?: Subject;
   cards: VokaCard[];
   session: LearningSession;
   mixed?: {lists:VokaList[];subjects:Subject[]};
@@ -82,7 +83,7 @@ export default function LearningScreen({
   const currentCard=cards.find(card=>card.id===currentId);
   const total=session.cards.length;
   const activeList=(mixed?.lists.find(entry=>entry.id===currentCard?.list_id)||list);
-  const activeSubject=mixed?.subjects.find(subject=>subject.id===activeList.subject_id);
+  const activeSubject=mixed?.subjects.find(subject=>subject.id===activeList.subject_id)||subject;
   const faceQuestion=reverse?currentCard?.answer:currentCard?.question;
   const faceAnswer=reverse?currentCard?.question:currentCard?.answer;
   const questionLabel=reverse?activeList.answer_label:activeList.question_label;
@@ -193,12 +194,11 @@ export default function LearningScreen({
 
   return <section className="v-learning" aria-label={mixed?(activeSubject?.title||activeList.title):list.title}>
     <header className="v-learning-header">
-      <button type="button" className="v-learning-exit" onClick={()=>void leave()} disabled={busy}>
-        <ArrowLeft size={20}/>{t.exit}
+      <button type="button" className="v-icon-button v-learning-exit" aria-label={t.exit} title={t.exit} onClick={()=>void leave()} disabled={busy}>
+        <ArrowLeft size={22}/>
       </button>
       <div className="v-learning-session-name">
-        <strong>{mixed?`${activeSubject?.emoji||""} ${activeSubject?.title||""} · ${activeList.title}`:list.title}</strong>
-        <span>{t.stage} {index+1} {t.of} {total}</span>
+        <strong className="v-learning-list-title">{activeSubject?.emoji&&<span className="v-learning-list-emoji" aria-hidden="true">{activeSubject.emoji}</span>}<span>{activeList.title}</span></strong>
       </div>
       <div className="v-learning-points" aria-label={t.points}>
         {reverse?(currentCard?.reverse_success_count??0):(currentCard?.success_count??0)} / {reverse?reverseMaxPoints(activeList.reverse_share):4}
