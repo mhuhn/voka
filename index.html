@@ -249,6 +249,21 @@ h2{font:700 1.1875rem/1.2 var(--display)}
 @media (prefers-reduced-motion:reduce){
   .flip-in,.sheet,.sheet-bg,.progress i{transition:none}
 }
+
+.card-controls{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:8px 0 12px}
+.card-controls label{display:flex;align-items:center;gap:5px;font-size:.8rem;color:var(--muted)}
+.card-controls select{min-height:34px;max-width:145px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);padding:5px}
+.card-filters{display:flex;gap:5px;flex-wrap:wrap}
+.filter-toggle{border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--muted);min-height:34px;padding:5px 8px;font-size:.78rem}
+.filter-toggle[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.position-heading{font-size:.82rem;font-weight:700;color:var(--muted);padding:15px 5px 6px}
+.position-dots{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:3px;max-width:72px}
+.position-dots i{width:5px;height:5px;border-radius:50%;background:var(--accent)}
+.quiz-bottom{flex:none;padding-bottom:env(safe-area-inset-bottom,0px)}
+.quiz-bottom .actions{padding-bottom:6px}
+.quiz-utilities{display:flex;justify-content:center;gap:10px;padding:0 20px 10px}
+.quiz-utilities .btn{min-height:38px;font-size:.85rem}
+@media(max-width:420px){.filter-toggle{padding:5px;font-size:.72rem}.card-controls select{max-width:125px}}
 </style>
 </head>
 <body>
@@ -578,7 +593,7 @@ function parseListImport(text) {
 
 // ---------- Speicher ----------
 const KEY = 'vokabelkarten.v1';
-const VERSION = '2.24';
+const VERSION = '2.25';
 const BUILD_TIME = '2026-11-09T21:03:00Z';   // Zeitpunkt des Commits dieser Version (wird beim Commit gesetzt)
 let db = loadDb();
 function loadDb() {
@@ -696,18 +711,15 @@ const flagsOf = l => {
   l.tags.forEach(t => { if (FLAGS[t] && !f.includes(FLAGS[t])) f.push(FLAGS[t]); });
   return f.length ? '<i class="flags" aria-hidden="true">' + f.join('') + '</i>' : '';
 };
-let showAnswers = false, showDone = false;
+let showAnswers = false, showDone = false, onlyMarkedCards = false, cardSort = 'position';
 // Tags für die Filter: Sprach-Tags (mit Flagge) zuerst, danach die übrigen, jeweils alphabetisch
 const tagList = p => { const a = tagsOfProfile(p).map(t => Object.assign({ flag: FLAGS[t.key] || '' }, t)); return a.filter(t => t.flag).concat(a.filter(t => !t.flag)); };
 const shownTags = l => l.tags.filter(t => t !== iconTag(l) && !FLAGS[t]);
 const tagChip = t => FLAGS[t] ? '<span class="tag" role="img" aria-label="' + esc(t) + '">' + FLAGS[t] + '</span>' : '<span class="tag">' + esc(t) + '</span>';
 const chipInner = t => t.flag ? '<span aria-hidden="true">' + t.flag + '</span>' : esc(t.label);
 const chipAttr = t => t.flag ? ' aria-label="' + esc(t.label) + '" title="' + esc(t.label) + '"' : '';
-const roundsBadge = (c, l) => {
-  if (isDone(c)) return '<span class="rounds done" title="gelernt" aria-label="gelernt">✓</span>';
-  const n = Math.max(1, c.due - effRound(l) + 1);
-  return '<span class="rounds" title="Wird in ' + n + (n === 1 ? ' Runde' : ' Runden') + ' wieder abgefragt" aria-label="Wird in ' + n + (n === 1 ? ' Runde' : ' Runden') + ' wieder abgefragt">' + n + '</span>';
-};
+const cardPosition = (c,l) => Math.max(1,c.due-effRound(l)+1);
+const positionDots = (c,l) => { const n=cardPosition(c,l); return '<span class="position-dots" role="img" aria-label="Position '+n+'" title="Position '+n+'">'+Array.from({length:Math.min(n,24)},()=>'<i></i>').join('')+(n>24?'…':'')+'</span>'; };
 const readyOf = (l, now, pause) => lockLeft(l, now, pause) > 0 ? 0 : pendingCount(l);
 function lockSig() {
   const now = Date.now();
@@ -853,11 +865,17 @@ function viewList() {
   let note = '';
   if (s.total) note = allDone ? 'Alle Karten sind gelernt.' : nn(pendingCount(l), 'Karte', 'Karten') + (left ? ' in ' + lockText(left) : ' bereit');
   const doneN = l.cards.filter(isDone).length;
-  const cards = l.cards.filter(c => showDone || !isDone(c)).map(c =>
-    '<li><button class="row lv' + Math.min(GOAL, c.streak) + '" data-a="edit-card" data-id="' + esc(c.id) + '"><span class="cardrow"><span class="row-text">' +
-    '<span class="row-title" style="display:block">' + esc(c.de) + (c.mark ? svg(STAR).replace('<svg ', '<svg class="rowstar" ') : '') + '</span>' +
-    (showAnswers ? '<span class="row-meta" style="display:block">' + esc(c.fl) + '</span>' : '') + '</span>' +
-    '<span class="side">' + roundsBadge(c, l) + dots(c) + '</span></span></button></li>').join('');
+  const visible=l.cards.filter(c=>(showDone||!isDone(c))&&(!onlyMarkedCards||c.mark));
+  visible.sort((a,b)=>cardSort==='alphabet'?a.de.localeCompare(b.de,'de'):cardSort==='points'?a.streak-b.streak||a.de.localeCompare(b.de,'de'):cardPosition(a,l)-cardPosition(b,l)||a.de.localeCompare(b.de,'de'));
+  let lastPosition=null;
+  const cards=visible.map(c=>{
+    const pos=cardPosition(c,l), heading=cardSort==='position'&&pos!==lastPosition?'<li class="position-heading">Position '+pos+'</li>':'';
+    lastPosition=pos;
+    return heading+'<li><button class="row lv'+Math.min(GOAL,c.streak)+'" data-a="edit-card" data-id="'+esc(c.id)+'"><span class="cardrow"><span class="row-text">'+
+      '<span class="row-title" style="display:block">'+esc(c.de)+(c.mark?svg(STAR).replace('<svg ','<svg class="rowstar" '):'')+'</span>'+
+      (showAnswers?'<span class="row-meta" style="display:block">'+esc(c.fl)+'</span>':'')+'</span>'+
+      '<span class="side">'+positionDots(c,l)+dots(c)+'</span></span></button></li>';
+  }).join('');
   return '<div class="screen"><header class="bar"><button class="icon-btn" data-a="to-home" aria-label="Zurück zu den Listen">' + I.back + '</button>' +
     '<h1 class="bar-title">' + flagsOf(l) + esc(l.title) + '</h1>' +
     '<button class="icon-btn" data-a="edit-list" aria-label="Liste bearbeiten">' + I.pencil + '</button></header>' +
@@ -869,6 +887,7 @@ function viewList() {
     (allDone ? 'Alle noch einmal abfragen' : 'Diese Liste abfragen') + '</button>' +
     (note ? '<p class="note center-note">' + note + '</p>' : '') +
     '<div class="listtools"><button class="btn quiet small" data-a="share-list"' + (s.total ? '' : ' disabled') + '>Teilen</button>' +
+    '<button class="btn quiet small" data-a="skip-pause"' + (left ? '' : ' disabled') + '>Pause überspringen</button>' +
     '<button class="btn quiet small" data-a="reset-progress"' + (l.round || l.lastEnd || l.cards.some(c => c.streak || c.due) ? '' : ' disabled') + '>Zurücksetzen</button></div>' +
     '<div class="sec-head"><h2>Neue Karte</h2></div>' +
     '<form class="addcard" data-form="add-card" autocomplete="off" novalidate>' +
@@ -877,9 +896,15 @@ function viewList() {
     '<label class="field"><span>' + esc(l.labelA) + '</span><input name="fl" maxlength="200" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done"></label>' +
     advFields(advMemory || { streak: 0, due: 0 }, l, !!advMemory) +
     '<button class="btn primary" type="submit">Karte hinzufügen</button></form>' +
-    '<div class="sec-head cards"><h2>Karten (' + s.total + ')</h2>' + (s.total ? '<span class="switches"><span class="switch">' + esc(l.labelA) + '<button type="button" role="switch" data-a="toggle-answers" aria-pressed="' + showAnswers + '" aria-label="' + esc(l.labelA) + ' anzeigen"></button></span>' +
-      (doneN ? '<span class="switch">Gelernt<button type="button" role="switch" data-a="toggle-done" aria-pressed="' + showDone + '" aria-label="Gelernte Karten anzeigen"></button></span>' : '') + '</span>' : '') + '</div>' +
-    (s.total ? '<p class="note" style="margin:-2px 0 10px">Die Zahl zeigt, in der wievielten Runde die Karte wieder abgefragt wird.</p>' : '') +
+    '<div class="sec-head cards"><h2>Karten ('+s.total+')</h2></div>'+
+    '<div class="card-controls"><label>Sortierung <select data-a="sort-cards" aria-label="Karten sortieren">'+
+    '<option value="position"'+(cardSort==='position'?' selected':'')+'>Nach Position</option>'+
+    '<option value="alphabet"'+(cardSort==='alphabet'?' selected':'')+'>Alphabetisch</option>'+
+    '<option value="points"'+(cardSort==='points'?' selected':'')+'>Nach Punkten</option></select></label>'+
+    '<div class="card-filters">'+
+    '<button class="filter-toggle" data-a="toggle-answers" aria-pressed="'+showAnswers+'">'+esc(l.labelA)+'</button>'+
+    '<button class="filter-toggle" data-a="toggle-done" aria-pressed="'+showDone+'">Gelernte</button>'+
+    '<button class="filter-toggle" data-a="toggle-card-marked" aria-pressed="'+onlyMarkedCards+'">Markierte</button></div></div>'+
     (cards ? '<ul class="rows">' + cards + '</ul>' : '<div class="empty">' + (s.total ? 'Alle Karten sind gelernt und verborgen.' : 'Hier erscheinen deine Karten.') + '</div>') +
     '<div style="margin-top:30px"><button class="btn danger" data-a="del-list">Liste löschen</button></div>' +
     '</main></div>';
@@ -943,11 +968,11 @@ function viewQuiz() {
     '<button class="icon-btn" data-a="quiz-undo" aria-label="Letzte Antwort zurücknehmen"' + (s.undo && !browse ? '' : ' disabled') + '>' + I.undo + '</button></header>' +
     '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="' + s.total + '" aria-valuenow="' + asked + '"><i style="width:' + pct + '%"></i></div>' +
     '<main class="stage"><div class="flip' + (open ? ' on' : '') + '" data-a="quiz-flip" role="button" tabindex="0" aria-label="Karte umdrehen"><div class="flip-in">' +
-    '<div class="face front"><div class="face-head"><span>' + mix + esc(lst.labelQ) + '</span><span class="hd">' + markBtn(c) + dots(c) + '</span></div>' +
+    '<div class="face front"><div class="face-head"><span>' + mix + esc(lst.labelQ) + '</span><span class="hd">' + dots(c) + '</span></div>' +
     '<div class="face-body">' + w(c.de) + '<span class="hint">' + (browse ? 'Schon abgefragt · tippen zum Umdrehen' : 'Tippen zum Umdrehen') + '</span></div></div>' +
     '<div class="face back"><div class="face-head"><span>' + mix + esc(lst.labelA) + '</span><span class="hd"><button type="button" class="markbtn editbtn" data-a="quiz-edit" aria-label="Karte korrigieren">' + svg(IC.pencil) + '</button>' + markBtn(c) + dots(c) + '</span></div>' +
     '<div class="face-body">' + w(c.fl) + '</div></div>' +
-    '</div></div></main><footer class="actions' + (!browse && s.revealed ? ' three' : '') + '" id="actions">' + (browse ? '<button class="btn primary" data-a="quiz-current">Zur aktuellen Frage</button>' : actionsHtml(s)) + '</footer></div>';
+    '</div></div></main><div class="quiz-bottom"><footer class="actions' + (!browse && s.revealed ? ' three' : '') + '" id="actions">' + (browse ? '<button class="btn primary" data-a="quiz-current">Zur aktuellen Frage</button>' : actionsHtml(s)) + '</footer><div class="quiz-utilities"><button class="btn quiet small" data-a="quiz-mark" aria-pressed="' + !!c.mark + '">' + (c.mark ? '★ Markiert' : '☆ Markieren') + '</button><button class="btn quiet small" data-a="quiz-edit">Bearbeiten</button></div></div></div>';
 }
 
 function viewResult() {
@@ -1020,7 +1045,7 @@ function refreshLocks() {
 }
 setInterval(refreshLocks, 15000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLocks(); });
-const go = (r) => { if (r.name === 'list' && route.name !== 'list') showAnswers = showDone = false; route = r; render(); };
+const go = (r) => { if (r.name === 'list' && route.name !== 'list') showAnswers = showDone = onlyMarkedCards = false; route = r; render(); };
 // ---------- Google-Drive-Abgleich ----------
 // Jede Liste liegt als eine JSON-Datei im Drive-Ordner des Profils (über die Apps-Script-Brücke).
 // Jede Liste trägt einen Änderungszeitpunkt (mod); die neuere Fassung gewinnt.
@@ -1417,6 +1442,9 @@ const actions = {
   'open-list'(el) { showAnswers = showDone = false; advMemory = null; go({ name: 'list', id: el.dataset.id }); },
   'toggle-answers'() { showAnswers = !showAnswers; render(); },
   'toggle-done'() { showDone = !showDone; render(); },
+  'toggle-card-marked'() { onlyMarkedCards = !onlyMarkedCards; render(); },
+  'sort-cards'(el) { cardSort = el.value; render(); },
+  'skip-pause'() { const l = L(); if (!l) return; l.lastEnd = 0; save(); startQuiz([l], countCards([l]).open === 0, { name: 'list', id: l.id }); },
   'edit-list'() { sheetList(route.id); },
   'add-tag-text'(el) {
     const inp = $('.sheet input[name=tags]'); if (!inp) return;
@@ -1536,7 +1564,7 @@ const actions = {
   'quiz-mark'() {
     const s = session; if (!s || route.name !== 'quiz') return;
     const c = s.cards[shownId(s)]; c.mark = !c.mark; save();
-    document.querySelectorAll('.markbtn').forEach(b => b.setAttribute('aria-pressed', String(!!c.mark)));
+    document.querySelectorAll('[data-a=quiz-mark]').forEach(b => { b.setAttribute('aria-pressed', String(!!c.mark)); b.textContent = c.mark ? '★ Markiert' : '☆ Markieren'; });
   },
   'quiz-yes'() { reply(true); },
   'quiz-no'() { reply(false); },
@@ -1572,10 +1600,32 @@ function startQuiz(lists, includeDone, origin, onlyMarked) {
   s.origin = origin; session = s; save();
   go({ name: 'quiz' });
 }
+let soundContext=null;
+function playFeedback(kind) {
+  try {
+    const Audio=window.AudioContext||window.webkitAudioContext;
+    if(!Audio)return;
+    if(!soundContext)soundContext=new Audio();
+    if(soundContext.state==='suspended')soundContext.resume().catch(()=>{});
+    const now=soundContext.currentTime;
+    const notes=kind==='yes'?[[523,0],[659,.075]]:kind==='no'?[[330,0],[277,.11]]:kind==='maybe'?[[392,0]]:[[523,0],[659,.09],[784,.19]];
+    notes.forEach(([pitch,delay])=>{
+      const osc=soundContext.createOscillator(),gain=soundContext.createGain(),t=now+delay;
+      osc.type='sine';osc.frequency.value=pitch;
+      gain.gain.setValueAtTime(.0001,t);
+      gain.gain.exponentialRampToValueAtTime(.025,t+.015);
+      gain.gain.exponentialRampToValueAtTime(.0001,t+.17);
+      osc.connect(gain);gain.connect(soundContext.destination);
+      osc.start(t);osc.stop(t+.18);
+    });
+  }catch(_){} // Ton optional
+}
 function reply(knew) {
   const s = session; if (!s || !s.revealed || s.view != null) return;
+  playFeedback(knew === true ? 'yes' : knew === 'unsure' ? 'maybe' : 'no');
   const last = answer(s, knew);
   if (last) {
+    playFeedback('finish');
     const now = Date.now(), pr = P();
     finishSession(s, now);
     const ready = pr.lists.reduce((n, l) => n + readyOf(l, now, pr.pause), 0);
@@ -1701,6 +1751,7 @@ document.addEventListener('click', e => {
   if (fn) fn(el, e);
 });
 document.addEventListener('change', e => {
+  if (e.target.matches('select[data-a=sort-cards]')) { actions['sort-cards'](e.target); return; }
   if (e.target.matches('input[type=checkbox][data-a]')) actions[e.target.dataset.a](e.target);
 });
 document.addEventListener('input', e => {
@@ -1729,7 +1780,9 @@ document.addEventListener('keydown', e => {
   }
   if (route.name !== 'quiz' || !session || session.view != null || $('.sheet-wrap')) return;
   if (e.key === ' ' || e.key === 'Enter') {
-    if (!session.revealed) { e.preventDefault(); actions['quiz-flip'](); }
+    if (e.repeat || (e.target.closest && e.target.closest('button,input,textarea,select,[contenteditable="true"]'))) return;
+    e.preventDefault();
+    if (!session.revealed) actions['quiz-flip'](); else reply(true);
   } else if (session.revealed && e.key === 'ArrowRight') reply(true);
   else if (session.revealed && e.key === 'ArrowLeft') reply(false);
 });
