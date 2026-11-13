@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowLeftRight, BarChart3, BookOpen, Check, CheckCircle2, Ch
 import type { Language } from "../lib/i18n";
 import { emptyData, loadVoka, loadProfileStreak, dismissStreakNotice, type ProfileStreak, beginLearning, beginMixedLearning, skipLearningPause, importCsvCards, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type LearningEntry, type Subject, type SubjectGroup, type ListInput } from "./data";
 import "./voka.css";
-import { recentSubjectTags, matchingSubjectTags } from "./tagSuggestions";
+import { matchingSubjectTags } from "./tagSuggestions";
 import { exportCardsCsv, parseCardsCsv } from "./cardCsv";
 import LearningScreen from "./LearningScreen";
 import StreakCard from "./StreakCard";
@@ -404,7 +404,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const newList=(subjectId=selectedSubject||data.subjects.find(s=>s.title==="Englisch"&&languageSubject(data,s.id))?.id||data.subjects[0]?.id||"")=>{
    setListEditing(null);
    setDraftList({...newListValue(subjectId),...listLabels(subjectId),reverse_share:previousReverseLevel(subjectId)});
-   setTagText("");setScreen("listForm");
+   setTagText("");setTagFocused(false);setScreen("listForm");
  };
  const changeListSubject=(subjectId:string)=>{
   const wasLanguage=Boolean(languageSubject(data,draftList.subject_id));
@@ -416,10 +416,11 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
     reverse_share:listEditing?draftList.reverse_share:previousReverseLevel(subjectId)
   });
  };
- const editList=(l:VokaList)=>{setSelectedList(l.id);setListEditing(l.id);setDraftList({subject_id:l.subject_id,title:l.title,tags:[...l.tags],question_label:l.question_label,answer_label:languageSubject(data,l.subject_id)?.title||l.answer_label,reverse_share:l.reverse_share??(l.learn_both_directions?50:0)});setTagText("");setScreen("listForm")};
+ const editList=(l:VokaList)=>{setSelectedList(l.id);setListEditing(l.id);setDraftList({subject_id:l.subject_id,title:l.title,tags:[...l.tags],question_label:l.question_label,answer_label:languageSubject(data,l.subject_id)?.title||l.answer_label,reverse_share:l.reverse_share??(l.learn_both_directions?50:0)});setTagText("");setTagFocused(false);setScreen("listForm")};
  const openCard=(card?:VokaCard)=>{setSelectedCard(card?.id||null);setDraftCard({question:card?.question||"",answer:card?.answer||"",marked:card?.marked||false});setScreen("cardForm")};
- const recentTags=useMemo(()=>recentSubjectTags(data.lists,draftList.subject_id),[data.lists,draftList.subject_id]);
+ const recentTags=useMemo(()=>matchingSubjectTags(data.lists,draftList.subject_id,"",draftList.tags).slice(0,3),[data.lists,draftList.subject_id,draftList.tags]);
  const tagMatches=useMemo(()=>matchingSubjectTags(data.lists,draftList.subject_id,tagText,draftList.tags),[data.lists,draftList.subject_id,tagText,draftList.tags]);
+ const visibleTagSuggestions=tagText.trim()?tagMatches:recentTags;
  const addDraftTag=(value:string)=>{
    const tag=value.trim();
    if(tag&&!draftList.tags.some(existing=>existing.toLocaleLowerCase()===tag.toLocaleLowerCase()))
@@ -654,10 +655,17 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
      <label>{t("title")} *<input required maxLength={200} value={draftList.title} onChange={e=>setDraftList({...draftList,title:e.target.value})}/></label>
      <label>{t("subject")} *<select required value={draftList.subject_id} onChange={e=>changeListSubject(e.target.value)}><option value="" disabled>{t("chooseSubject")}</option>{groups.flatMap(g=>data.subjects.filter(s=>s.group_id===g.id).map(s=><option key={s.id} value={s.id}>{s.emoji} {s.title}</option>))}</select></label>
      <div className="v-tag-field"><label htmlFor="v-tags-input">{t("tags")}</label>
+       {!tagFocused&&recentTags.length>0&&<div className="v-tag-recent" aria-label={language==="de"?"Zuletzt verwendete Tags":"Recently used tags"}>
+         <span className="v-tag-suggestion-label">{language==="de"?"Zuletzt verwendet":language==="en"?"Recently used":t("tags")}</span>
+         {recentTags.map(tag=><button type="button" key={tag} className="v-tag v-tag-suggestion"
+           onClick={()=>addDraftTag(tag)}>{tag}</button>)}
+       </div>}
        <div className="v-tag-editor">
          <div className="v-tag-row">{draftList.tags.map(tag=><button className="v-tag" key={tag} type="button"
            onClick={()=>setDraftList(previous=>({...previous,tags:previous.tags.filter(a=>a!==tag)}))}>{tag} ×</button>)}</div>
-         <input id="v-tags-input" aria-autocomplete="list" aria-controls="v-tag-suggestions"
+         <input id="v-tags-input" aria-autocomplete="list"
+           aria-expanded={tagFocused&&visibleTagSuggestions.length>0}
+           aria-controls={tagFocused&&visibleTagSuggestions.length>0?"v-tag-suggestions":undefined}
            placeholder={t("addTag")+" (,)"} value={tagText} autoComplete="off"
            onFocus={()=>setTagFocused(true)} onBlur={()=>setTagFocused(false)}
            onChange={event=>handleTagTyping(event.target.value)}
@@ -666,14 +674,9 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
              else if(event.key==="Tab"&&tagText.trim()&&tagMatches.length){event.preventDefault();addDraftTag(tagMatches[0]);}
            }}/>
        </div>
-       {recentTags.length>0&&<div className="v-tag-recent">
-         <span className="v-tag-suggestion-label">{language==="de"?"Zuletzt verwendet":language==="en"?"Recently used":t("tags")}</span>
-         {recentTags.filter(tag=>!draftList.tags.includes(tag)).map(tag=><button type="button" key={tag} className="v-tag"
-           onMouseDown={event=>event.preventDefault()} onClick={()=>addDraftTag(tag)}>{tag}</button>)}
-       </div>}
-       {tagFocused&&tagText.trim()&&tagMatches.length>0&&<div className="v-tag-autocomplete" id="v-tag-suggestions" role="listbox" aria-label={t("tags")}>
-          {tagMatches.map(tag=><button key={tag} type="button" role="option" aria-selected={false}
-             onMouseDown={event=>event.preventDefault()} onClick={()=>addDraftTag(tag)}>{tag}</button>)}
+       {tagFocused&&visibleTagSuggestions.length>0&&<div className="v-tag-autocomplete" id="v-tag-suggestions" role="listbox" aria-label={t("tags")}>
+          {visibleTagSuggestions.map(tag=><button key={tag} type="button" role="option" aria-selected={false}
+             onPointerDown={event=>event.preventDefault()} onClick={()=>addDraftTag(tag)}>{tag}</button>)}
        </div>}
      </div>
      <div className="v-form-columns"><label>{t("questionLabel")} *<input required value={draftList.question_label} onChange={e=>setDraftList({...draftList,question_label:e.target.value})}/></label><label>{t("answerLabel")} *<input required readOnly={Boolean(languageSubject(data,draftList.subject_id))} value={languageSubject(data,draftList.subject_id)?.title||draftList.answer_label} onChange={e=>setDraftList({...draftList,answer_label:e.target.value})}/></label></div>

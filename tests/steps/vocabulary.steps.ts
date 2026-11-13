@@ -91,6 +91,11 @@ Then("the new list form suggests recent English tags and completes typed tags",a
   await expect(field.getByRole("button",{name:"Unit 3"})).toBeVisible();
   await expect(field.getByRole("button",{name:"Verben"})).toBeVisible();
   const input=field.getByRole("textbox",{name:"Tags"});
+  await input.focus();
+  await expect(field.getByRole("option",{name:"Unit 3"})).toBeVisible();
+  await field.getByRole("option",{name:"Unit 3"}).click();
+  await expect(field.locator(".v-tag-row").getByRole("button",{name:/Unit 3/})).toBeVisible();
+  await expect(field.getByRole("option",{name:"Unit 3"})).toHaveCount(0);
   await input.fill("Ve");
   await expect(field.getByRole("option",{name:"Verben"})).toBeVisible();
   await input.press("Enter");

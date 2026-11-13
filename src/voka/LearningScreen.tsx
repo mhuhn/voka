@@ -84,6 +84,8 @@ export default function LearningScreen({
   const total=session.cards.length;
   const activeList=(mixed?.lists.find(entry=>entry.id===currentCard?.list_id)||list);
   const activeSubject=mixed?.subjects.find(subject=>subject.id===activeList.subject_id)||subject;
+  const maxPoints=reverse?reverseMaxPoints(activeList.reverse_share):4;
+  const earnedPoints=Math.max(0,Math.min(maxPoints,reverse?(currentCard?.reverse_success_count??0):(currentCard?.success_count??0)));
   const faceQuestion=reverse?currentCard?.answer:currentCard?.question;
   const faceAnswer=reverse?currentCard?.question:currentCard?.answer;
   const questionLabel=reverse?activeList.answer_label:activeList.question_label;
@@ -198,10 +200,13 @@ export default function LearningScreen({
         <ArrowLeft size={22}/>
       </button>
       <div className="v-learning-session-name">
-        <strong className="v-learning-list-title">{activeSubject?.emoji&&<span className="v-learning-list-emoji" aria-hidden="true">{activeSubject.emoji}</span>}<span>{activeList.title}</span></strong>
+        <h1 className="v-heading-list-title">
+          {activeSubject?.emoji&&<span className="v-emoji" aria-hidden="true">{activeSubject.emoji}</span>}
+          <span className="v-heading-title-text">{activeList.title}</span>
+        </h1>
       </div>
-      <div className="v-learning-points" aria-label={t.points}>
-        {reverse?(currentCard?.reverse_success_count??0):(currentCard?.success_count??0)} / {reverse?reverseMaxPoints(activeList.reverse_share):4}
+      <div className={"v-learning-points"+(reverse?" is-reverse":"")} role="img" aria-label={t.points+": "+earnedPoints+" / "+maxPoints}>
+        {Array.from({length:maxPoints},(_,point)=><span key={point} className={"v-learning-point"+(point<earnedPoints?" is-filled":"")} aria-hidden="true"/>)}
       </div>
     </header>
     <div className="v-learning-progress-block">

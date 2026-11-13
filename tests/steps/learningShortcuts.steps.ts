@@ -80,6 +80,9 @@ When("I skip the learning pause",async function(this:VokaWorld){
   await this.page.getByRole("button",{name:"More actions"}).click();
    const button=this.page.locator(".v-detail-actions-popover").getByRole("button",{name:"Skip learning pause"});
   await expect(button).toBeEnabled();
+  const regularBorder=await this.page.locator(".v-heading > .v-icon-button").evaluate(el=>getComputedStyle(el).borderColor);
+  const skipBorder=await button.evaluate(el=>getComputedStyle(el).borderColor);
+  expect(skipBorder).toBe(regularBorder);
   const request=this.page.waitForRequest(req=>
     new URL(req.url()).pathname==="/rest/v1/rpc/voka_skip_learning_pause");
   await button.click();
