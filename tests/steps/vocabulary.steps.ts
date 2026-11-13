@@ -1,6 +1,63 @@
 import { When, Then } from "@cucumber/cucumber";
+import { readFile } from "node:fs/promises";
 import { expect } from "@playwright/test";
 import type { VokaWorld } from "../support/world";
+
+Then("the list CSV download includes card IDs and both progress directions",async function(this:VokaWorld){
+  const [download]=await Promise.all([
+    this.page.waitForEvent("download"),
+    this.page.getByRole("button",{name:"Export list as CSV"}).last().click()
+  ]);
+  expect(download.suggestedFilename()).toBe("Irregular Verbs.csv");
+  const csv=await readFile((await download.path())!,"utf8");
+  expect(csv).toContain("id,question,answer,marked,position,success_count,reverse_position,reverse_success_count");
+  expect(csv).toContain('40000000-0000-4000-8000-000000000001');
+  expect(csv).toContain('"go"');
+  expect(csv).toContain('"went"');
+  // Exports all cards, even the already learned/hidden ones.
+  expect(csv).toContain('40000000-0000-4000-8000-000000000002');
+});
+
+When("I import CSV with one existing and one new card",async function(this:VokaWorld){
+  const existing="40000000-0000-4000-8000-000000000001";
+  let captured=false;
+  await this.page.route("**/rest/v1/rpc/voka_import_cards_csv",async route=>{
+    const body=route.request().postDataJSON() as {p_list_id:string;p_cards:Array<{id:string;question:string;reverse_position:number;reverse_success_count:number}>};
+    expect(body.p_list_id).toBe("30000000-0000-4000-8000-000000000001");
+    expect(body.p_cards).toHaveLength(2);
+    expect(body.p_cards[0].id).toBe(existing);
+    expect(body.p_cards[0].question).toBe("go updated");
+    expect(body.p_cards[0].reverse_position).toBe(3);
+    expect(body.p_cards[0].reverse_success_count).toBe(2);
+    expect(body.p_cards[1].id).toBe("");
+    captured=true;
+    await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({added:1,updated:1}),
+      headers:{"access-control-allow-origin":"*"}});
+  });
+  const csv=[
+    "id,question,answer,marked,position,success_count,reverse_position,reverse_success_count",
+    existing+",go updated,went,true,2,1,3,2",
+    ",fresh,neu,false,0,0,0,0"
+  ].join("\r\n");
+  await this.page.locator('input[type="file"].v-csv-file-input').setInputFiles({
+    name:"cards.csv",mimeType:"text/csv",buffer:Buffer.from(csv,"utf8")
+  });
+  await expect(this.page.getByText("CSV imported: 1 added, 1 updated.")).toBeVisible();
+  expect(captured).toBe(true);
+});
+
+Then("the CSV importer updates one card and adds one card",async function(this:VokaWorld){
+  await expect(this.page.getByText("CSV imported: 1 added, 1 updated.")).toBeVisible();
+});
+
+Then("CSV export and import buttons are visible in the phone list header",async function(this:VokaWorld){
+  const header=this.page.locator(".v-heading .v-detail-header-actions");
+  await expect(header.getByRole("button",{name:"Export list as CSV"})).toBeVisible();
+  await expect(header.getByRole("button",{name:"Import CSV into list"})).toBeVisible();
+  const bounds=await header.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.x+bounds!.width).toBeLessThanOrEqual(375);
+});
 
 When("I return to vocabulary home", async function (this: VokaWorld) {
   await this.page.getByRole("button", { name: "Voka", exact: true }).click();
