@@ -78,6 +78,23 @@ Then("I cannot delete the last profile", async function(this:VokaWorld) {
   await expect(this.page.getByRole("button",{name:/Delete profile:/})).toBeDisabled();
 });
 
+When("I return to Voka from the profile page", async function(this:VokaWorld) {
+  await this.page.getByRole("button",{name:"Voka",exact:true}).click();
+});
+
+When("I open the profile page", async function(this:VokaWorld) {
+  await this.page.locator(".v-floats button").last().click();
+});
+
+Then("no lists from the default profile are visible", async function(this:VokaWorld) {
+  await expect(this.page.getByRole("button",{name:/Irregular Verbs/})).toHaveCount(0);
+  await expect(this.page.getByRole("button",{name:/Englisch/})).toHaveCount(0);
+});
+
+Then("the original lists are visible again", async function(this:VokaWorld) {
+  await expect(this.page.getByRole("button",{name:/Englisch/})).toBeVisible();
+});
+
 When("I reload the app", async function (this: VokaWorld) {
   await this.page.reload();
   await this.page.locator(".v-floats button").last().click();
