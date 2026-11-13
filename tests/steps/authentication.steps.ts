@@ -121,7 +121,7 @@ Then("the current profile is managed only in My profile", async function(this:Vo
   await expect(switchCard.getByRole("button",{name:"Edit current profile"})).toHaveCount(0);
   await expect(switchCard.getByRole("button",{name:"Delete profile"})).toHaveCount(0);
   await expect(switchCard.getByRole("button",{name:"New profile"})).toBeVisible();
-  const current=await currentCard.locator("[data-slot=card-description]").innerText();
+  const current=await currentCard.locator("[data-slot=card-title]").innerText();
   await expect(switchCard.getByRole("button",{name:"Switch profile: "+current.trim()})).toHaveCount(0);
 });
 
@@ -220,8 +220,8 @@ When("I sign in using the current locale as {string} with password {string}", as
   await this.page.locator(".v-floats button").last().click();
 });
 
-Then("the profile heading is {string}", async function (this: VokaWorld, title: string) {
-  await expect(this.page.getByRole("heading", { name: title })).toBeVisible();
+Then("the active profile heading shows {string}", async function (this: VokaWorld, name: string) {
+  await expect(this.page.locator(".v-profile-card").first().locator('[data-slot="card-title"]')).toHaveText(name);
 });
 
 Then("the profile sign-out button is {string}", async function (this: VokaWorld, label: string) {
