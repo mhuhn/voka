@@ -106,7 +106,7 @@ function Profile({ language, onClose }: { language: Language; onClose: () => voi
     try{await profileManager.delete(id);setEditing(false);}catch{ /* Show server error. */ }
   };
   const openEditor=()=>{
-    if(!active||!hasMultiple)return;
+    if(!active)return;
     setEditName(profileName(active));setEditEmoji(profileEmoji(active));
     setCreating(false);setEditing(true);
   };
@@ -137,14 +137,14 @@ function Profile({ language, onClose }: { language: Language; onClose: () => voi
             <span className="block min-w-0 truncate text-sm font-semibold">{profileName(profile)}</span>
             {profile.id===active?.id&&<Check size={18} className="ml-auto shrink-0 text-blue-600"/>}
           </button>
-          {hasMultiple&&profile.id===active?.id&&<button type="button" className="rounded-lg p-2" disabled={profiles.busy}
+          {profile.id===active?.id&&<button type="button" className="rounded-lg p-2" disabled={profiles.busy}
             title={p.edit} aria-label={p.edit} onClick={openEditor}><Pencil size={17}/></button>}
           <button type="button" className="rounded-lg p-2 text-red-700 disabled:opacity-30" disabled={profiles.busy||!hasMultiple}
             title={!hasMultiple?p.lastProfile:p.deleteProfile}
             aria-label={p.deleteProfile+": "+profileName(profile)}
             onClick={()=>void remove(profile.id)}><Trash2 size={17}/></button>
         </div>)}
-        {editing&&active&&hasMultiple&&<form className="space-y-3 rounded-lg border border-stone-200 p-3" onSubmit={event=>void save(event)}>
+        {editing&&active&&<form className="space-y-3 rounded-lg border border-stone-200 p-3" onSubmit={event=>void save(event)}>
           <div className="space-y-1"><Label htmlFor="profile-edit-name">{p.name}</Label><Input id="profile-edit-name" value={editName} onChange={event=>setEditName(event.target.value)} maxLength={120} required/></div>
           <fieldset className="space-y-2"><legend className="text-sm font-medium">{p.emoji}</legend>
             <Input aria-label={p.emoji} value={editEmoji} onChange={event=>setEditEmoji(event.target.value)} maxLength={64} placeholder="🐼" autoComplete="off"/>
