@@ -55,12 +55,23 @@ class ProfileManager {
     if(!client || authManager.activeUser?.id!==userId){this.reset();return;}
     this.patch({loading:true,error:null});
     try{
-      const {data,error}=await client.from("profiles")
-        .select("id,user_id,first_name,last_name,display_name,emoji,is_default").eq("user_id",userId)
-        .order("created_at",{ascending:true});
-      if(error)throw error;
+      // Shared profiles contain identity; Voka-specific emojis live only in voka_profiles.
+      // Provision missing extension rows for default/existing shared profiles on first use.
+      const {error:ensureError}=await client.rpc("voka_ensure_profiles");
+      if(ensureError)throw ensureError;
+      const [shared,voka]=await Promise.all([
+        client.from("profiles")
+          .select("id,user_id,first_name,last_name,display_name,is_default").eq("user_id",userId)
+          .order("created_at",{ascending:true}),
+        client.from("voka_profiles").select("id,emoji").eq("user_id",userId)
+      ]);
+      if(shared.error)throw shared.error;
+      if(voka.error)throw voka.error;
       if(authManager.activeUser?.id!==userId)return;
-      const profiles=(data||[]) as VokaProfile[];
+      const emojis=new Map((voka.data||[]).map(row=>[row.id,row.emoji]));
+      const profiles=(shared.data||[]).map(row=>({
+        ...row,emoji:emojis.get(row.id)||"🙂"
+      })) as VokaProfile[];
       let preferred:string|null=null;
       try {preferred=localStorage.getItem(this.storageKey(userId));}catch{}
       const active=profiles.find(p=>p.id===preferred) || profiles.find(p=>p.id===this.state.activeId)
