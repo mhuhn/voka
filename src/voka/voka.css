@@ -656,3 +656,8 @@
 .v-streak-dialog{width:min(calc(100% - 32px),500px);max-height:90dvh;overflow:auto;background:var(--v-card,#fff);border-radius:18px;padding:24px;box-shadow:0 18px 60px #0004;color:var(--v-navy)}
 .v-streak-dialog h2{font-size:21px;margin:0 0 16px}.v-streak-dialog p{margin:0 0 14px;line-height:1.5}.v-streak-dialog button{margin-top:12px}
 @media(prefers-color-scheme:dark){.v-streak-notice{background:#3b2f17;color:#ffcf80}}
+
+/* No bottom navigation: preserve safe-area space without an empty nav gutter. */
+.v-app .v-content{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+@media(min-width:850px){.v-app .v-content{padding-bottom:36px}}
+@media(min-width:1200px){.v-app .v-content{padding-bottom:40px}}
