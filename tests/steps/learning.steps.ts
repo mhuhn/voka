@@ -128,3 +128,27 @@ Then("the smallest active card position has been normalized to zero",async funct
   await this.page.getByRole("button",{name:"Finish learning"}).click();
   await expect(this.page.locator(".v-learning")).toHaveCount(0);
 });
+
+Then("the paused learning button keeps a short underline under its text",async function(this:VokaWorld){
+  const button=this.page.locator(".v-list-actions .v-learn-cta");
+  await expect(button).toBeDisabled();
+  const label=button.locator(".v-learn-cta-label");
+  await expect(label).toContainText(/Pause:.*h left/);
+  const visual=await button.evaluate(element=>{
+    const text=element.querySelector(".v-learn-cta-label")!;
+    const line=getComputedStyle(text,"::after");
+    return {
+      white:getComputedStyle(element).backgroundColor,
+      textWidth:text.getBoundingClientRect().width,
+      buttonWidth:element.getBoundingClientRect().width,
+      lineWidth:parseFloat(line.width),
+      lineColor:line.backgroundColor
+    };
+  });
+  expect(visual.white).toBe("rgb(255, 255, 255)");
+  expect(visual.lineColor).toBe("rgb(255, 158, 0)");
+  expect(visual.lineWidth).toBeGreaterThan(35);
+  expect(visual.lineWidth).toBeLessThanOrEqual(76);
+  expect(visual.lineWidth).toBeLessThan(visual.textWidth);
+  expect(visual.lineWidth).toBeLessThan(visual.buttonWidth/2);
+});
