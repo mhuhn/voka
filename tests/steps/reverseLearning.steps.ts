@@ -7,7 +7,7 @@ Then("the list detail shows separate reverse learning points",async function(thi
   await expect(row.locator(".v-reverse-score")).toBeVisible();
   await expect(row.locator(".v-reverse-dots i")).toHaveCount(1);
   await expect(row.locator(".v-reverse-score i.filled")).toHaveCount(0);
-  await expect(this.page.locator(".v-progress")).toContainText("0 %");
+  await expect(this.page.locator(".v-detail-progress")).toHaveAttribute("aria-valuenow","0");
 });
 
 Then("the normal orientation is first",async function(this:VokaWorld){
@@ -48,7 +48,7 @@ Then("the two independent score tracks are updated",async function(this:VokaWorl
   const row=this.page.locator(".v-card-list .v-card-open").first();
   await expect(row.locator(".v-dots i.filled")).toHaveCount(1);
   await expect(row.locator(".v-reverse-score i.filled")).toHaveCount(1);
-  await expect(this.page.locator(".v-progress")).toContainText("40 %");
+  await expect(this.page.locator(".v-detail-progress")).toHaveAttribute("aria-valuenow","40");
 });
 
 Then("the new list inherits its subject's reverse percentage",async function(this:VokaWorld){
