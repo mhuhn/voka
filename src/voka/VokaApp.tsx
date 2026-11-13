@@ -291,7 +291,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
   const url=URL.createObjectURL(blob);
   const link=document.createElement("a");
   link.href=url;
-  link.download=(currentList.title.replace(/[\\/:*?"<>|\\x00-\\x1f]/g,"_").trim()||"voka")+".csv";
+  link.download=(currentList.title.replace(/[\\/:*?"<>|\x00-\x1f]/g,"_").trim()||"voka")+".csv";
   document.body.appendChild(link);link.click();link.remove();
   window.setTimeout(()=>URL.revokeObjectURL(url),1000);
  };
