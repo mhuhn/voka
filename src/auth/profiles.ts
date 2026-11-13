@@ -5,7 +5,16 @@ export interface VokaProfile {
   user_id: string;
   first_name: string;
   last_name: string;
+  display_name: string | null;
+  emoji: string;
   is_default: boolean;
+}
+export const PROFILE_EMOJIS = ["🙂","😀","🐼","🦊","🐻","🐱","🐶","🐸","🦄","🐧","🐨","🐯","🦁","🐙","🐝","🦋","🌸","🌻","🌈","⭐","🚀","⚽","🎨","🎵","🧠","📚","🍀","🍕","🐢","🦉"] as const;
+export function profileName(profile: VokaProfile): string {
+  return profile.display_name?.trim() || [profile.first_name,profile.last_name].filter(Boolean).join(" ").trim() || "Profil";
+}
+export function profileEmoji(profile: VokaProfile | null | undefined): string {
+  return profile?.emoji || "🙂";
 }
 export interface ProfileSnapshot {
   profiles: VokaProfile[];
@@ -37,7 +46,7 @@ class ProfileManager {
     this.patch({loading:true,error:null});
     try{
       const {data,error}=await client.from("profiles")
-        .select("id,user_id,first_name,last_name,is_default").eq("user_id",userId)
+        .select("id,user_id,first_name,last_name,display_name,emoji,is_default").eq("user_id",userId)
         .order("created_at",{ascending:true});
       if(error)throw error;
       if(authManager.activeUser?.id!==userId)return;
@@ -57,17 +66,34 @@ class ProfileManager {
     try{localStorage.setItem(this.storageKey(this.state.userId),id);}catch{}
     this.patch({activeId:id,error:null});
   }
-  async create(firstName:string,lastName="") {
+  async create(name:string) {
     const userId=authManager.activeUser?.id;
     const client=authManager.activeClient;
     if(!client||!userId)throw new Error("Sign in first");
-    if(!firstName.trim())throw new Error("Profile name required");
+    if(!name.trim()||name.trim().length>120)throw new Error("Invalid profile name");
     this.patch({busy:true,error:null});
     try{
-      const {data,error}=await client.rpc("voka_create_profile",{p_first_name:firstName.trim(),p_last_name:lastName.trim()});
+      const {data,error}=await client.rpc("voka_create_profile",{p_first_name:name.trim(),p_last_name:""});
       if(error)throw error;
       await this.refresh(userId);
       if(typeof data==="string")this.select(data);
+    }catch(e){this.patch({error:e instanceof Error?e.message:String(e)});throw e;}
+    finally{this.patch({busy:false});}
+  }
+  async updateCurrent(name:string,emoji:string) {
+    const userId=authManager.activeUser?.id;
+    const current=this.activeProfile;
+    if(!userId || !current)throw new Error("No active profile");
+    if(this.state.profiles.length<2)throw new Error("Editing requires at least two profiles");
+    if(!name.trim()||name.trim().length>120)throw new Error("Invalid profile name");
+    if(!PROFILE_EMOJIS.some(e=>e===emoji))throw new Error("Invalid profile emoji");
+    this.patch({busy:true,error:null});
+    try{
+      const {error}=await this.client.rpc("voka_update_profile",{
+        p_profile_id:current.id,p_name:name.trim(),p_emoji:emoji
+      });
+      if(error)throw error;
+      await this.refresh(userId);
     }catch(e){this.patch({error:e instanceof Error?e.message:String(e)});throw e;}
     finally{this.patch({busy:false});}
   }

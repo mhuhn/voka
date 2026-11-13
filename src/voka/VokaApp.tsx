@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, CheckCircle2, ChevronRight, CircleUserRound, Eye, Home, ListOrdered, ArrowDownAZ, Pencil, Plus, Search, Settings, Share2, SkipForward, Star, Trash2, X, Play } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, BarChart3, Bell, BookOpen, Check, CheckCircle2, ChevronRight, Eye, Home, ListOrdered, ArrowDownAZ, Pencil, Plus, Search, Settings, Share2, SkipForward, Star, Trash2, X, Play } from "lucide-react";
 import type { Language } from "../lib/i18n";
 import { emptyData, loadVoka, beginLearning, beginMixedLearning, skipLearningPause, saveList, deleteList, saveCard, deleteCard, markCard, insertGroup, updateGroup, deleteGroup, insertSubject, updateSubject, deleteSubject, usageDate, subjectUsage, groupUsage, type VokaData, type VokaCard, type VokaList, type LearningEntry, type Subject, type SubjectGroup, type ListInput } from "./data";
 import "./voka.css";
@@ -7,6 +7,7 @@ import LearningScreen from "./LearningScreen";
 import MixedLearningPicker from "./MixedLearningPicker";
 import { learningProgress, effectiveLearningPause, calendarPauseDay, formatLearningPause, reverseMaxPoints, cardTotalPoints, cardNextPosition, isCardLearned, REVERSE_LEVELS } from "./learning";
 import { getUserAvatarColor } from "../auth/userColors";
+import { profileEmoji, profileManager, profileName } from "../auth/profiles";
 import { authManager } from "../auth/manager";
 import { suggestSubjectEmoji } from "./subjectEmoji";
 import { clearPendingSharedList, fetchSharedList, importSharedList, pendingSharedListId, shareUrlForList, type SharedList } from "./sharing";
@@ -417,6 +418,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const listCount=(subjectId:string)=>data.lists.filter(l=>l.subject_id===subjectId).length;
  const cardCount=(count:number)=>`${count} ${count===1?cardSingular[language]:t("cards")}`;
  const avatarColor=getUserAvatarColor(authManager.activeUser?.id||"");
+ const activeProfile=profileManager.activeProfile;
  const answerVisibilityLabel=currentList?(
    language==="de"?currentList.answer_label+" anzeigen":
    language==="en"?"Show "+currentList.answer_label:
@@ -450,7 +452,7 @@ export default function VokaApp({language,onProfile}:{language:Language;onProfil
  const learningButtonLabel=startingLearn?t("starting"):effectivePause?pauseLabel:
    everyCardLearned?t("allLearned"):listCardsForProgress.length===0?t("noCards"):t("learn");
  const listTitle=currentList?<span className="v-heading-list-title"><span className="v-emoji" aria-hidden="true">{data.subjects.find(s=>s.id===currentList.subject_id)?.emoji||"📘"}</span><span className="v-heading-title-text">{currentList.title}</span></span>:null;
- const actions=<div className="v-floats">{screen==="cardForm"&&<button className="v-icon-button v-floating-star" type="button" title={t("marked")} aria-label={t("marked")} aria-pressed={draftCard.marked} onClick={()=>setDraftCard({...draftCard,marked:!draftCard.marked})}><Star size={19} fill={draftCard.marked?"#ff9b00":"none"} stroke={draftCard.marked?"#ff9b00":"currentColor"}/></button>}<IconButton label={t("notifications")} onClick={()=>{}}><Bell size={19}/></IconButton><IconButton label={t("profile")} className="v-user-float" style={{color:avatarColor,backgroundColor:avatarColor+"24",borderColor:avatarColor+"66"}} onClick={onProfile}><CircleUserRound size={23}/></IconButton></div>;
+ const actions=<div className="v-floats">{screen==="cardForm"&&<button className="v-icon-button v-floating-star" type="button" title={t("marked")} aria-label={t("marked")} aria-pressed={draftCard.marked} onClick={()=>setDraftCard({...draftCard,marked:!draftCard.marked})}><Star size={19} fill={draftCard.marked?"#ff9b00":"none"} stroke={draftCard.marked?"#ff9b00":"currentColor"}/></button>}<IconButton label={t("notifications")} onClick={()=>{}}><Bell size={19}/></IconButton><IconButton label={activeProfile?`${t("profile")}: ${profileName(activeProfile)}`:t("profile")} className="v-user-float v-profile-emoji-button" style={{backgroundColor:avatarColor+"24",borderColor:avatarColor+"66"}} onClick={onProfile}><span aria-hidden="true" className="v-profile-emoji">{profileEmoji(activeProfile)}</span></IconButton></div>;
  const listOverview = <section className="v-page v-lists-pane"><div className="v-section-header"><h2>{wide?t("lists"):`${currentSubject?.emoji||""} ${currentSubject?.title||""} · ${t("lists")}`}</h2></div>
     <div className="v-list-grid">{data.lists.filter(l=>l.subject_id===selectedSubject).sort((a,b)=>usageDate(data,b.id)-usageDate(data,a.id)||a.title.localeCompare(b.title)).map(l=>{const listPercent=learningProgress(data.cards.filter(c=>c.list_id===l.id),l.reverse_share??0);return <button className={"v-list-row"+(l.id===selectedList&&screen!=="subject"?" selected":"")} aria-current={l.id===selectedList&&screen!=="subject"?"true":undefined} key={l.id} onClick={()=>openList(l.id)}><div><strong>{l.title}</strong><small>{cardCount(data.cards.filter(c=>c.list_id===l.id).length)} · {stamp(usageDate(data,l.id),language)}</small><div className="v-list-progress-label"><span>{t("progress")}</span><b>{listPercent} %</b></div><div className="v-list-progress-track" role="progressbar" aria-label={t("progress")} aria-valuenow={listPercent} aria-valuemin={0} aria-valuemax={100}><span style={{width:listPercent+"%"}}/></div><div className="v-tag-row">{l.tags.map(tag=><span className="v-tag" key={tag}>{tag}</span>)}</div></div><ChevronRight size={21}/></button>})}</div>
     {!data.lists.some(l=>l.subject_id===selectedSubject)&&<div className="v-empty">{t("none")}</div>}

@@ -53,9 +53,28 @@ Then("I see the sign-in form", async function (this: VokaWorld) {
 
 When("I create a profile named {string}", async function(this:VokaWorld,name:string) {
   await this.page.getByRole("button",{name:"New profile"}).click();
-  await this.page.getByRole("textbox",{name:"First name"}).fill(name);
+  await this.page.getByRole("textbox",{name:"Profile name"}).fill(name);
   await this.page.getByRole("button",{name:"Create profile"}).click();
   await expect(this.page.getByRole("button",{name:"Switch profile: "+name})).toBeVisible();
+});
+
+Then("the single profile has no edit button", async function(this:VokaWorld) {
+  await expect(this.page.getByRole("button",{name:"Edit current profile"})).toHaveCount(0);
+});
+
+When("I edit the current profile to {string} with emoji {string}", async function(this:VokaWorld,name:string,emoji:string) {
+  await this.page.getByRole("button",{name:"Edit current profile"}).click();
+  await this.page.getByRole("textbox",{name:"Profile name"}).fill(name);
+  await this.page.getByRole("group",{name:"Profile emoji"}).getByRole("button",{name:emoji}).click();
+  await this.page.getByRole("button",{name:"Save",exact:true}).click();
+  await expect(this.page.getByRole("button",{name:"Switch profile: "+name})).toBeVisible();
+});
+
+Then("the floating profile button shows {string} for {string}", async function(this:VokaWorld,emoji:string,name:string) {
+  const button=this.page.locator(".v-user-float");
+  await expect(button).toHaveAttribute("aria-label","Profile: "+name);
+  await expect(button.locator(".v-profile-emoji")).toHaveText(emoji);
+  await expect(button.locator("svg")).toHaveCount(0);
 });
 
 Then("I can switch to the profile named {string}", async function(this:VokaWorld,name:string) {
