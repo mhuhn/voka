@@ -23,6 +23,39 @@ Before the first run:
 
 The unsigned simulator workflow (`ios.yml`) does not need signing secrets. The signing/upload workflow has been validated with a successful TestFlight upload. Never paste Apple private keys, certificate passwords, or provisioning files into chat.
 
+## Export compliance / Verschlüsselung
+
+Der TestFlight-Workflow erzeugt das Capacitor-iOS-Projekt bei jedem Release neu.
+Deshalb setzt er nach `npx cap add ios` in der generierten
+`ios/App/App/Info.plist` automatisch den booleschen Eintrag:
+
+```xml
+<key>ITSAppUsesNonExemptEncryption</key>
+<false/>
+```
+
+Damit erklärt Voka, dass die App **einschließlich eingebundener Bibliotheken**
+keine nicht von der Exportdokumentation ausgenommene Verschlüsselung nutzt.
+Dies passt zum derzeitigen Voka-Stack, der auf der üblichen Plattform-/
+Browser-Verschlüsselung für HTTPS/TLS aufbaut und keine eigens implementierten
+Verschlüsselungsalgorithmen verwendet. Nach dem Xcode-Archivieren prüft ein
+zusätzlicher Workflow-Schritt, dass `ITSAppUsesNonExemptEncryption = NO`
+**wirklich in der archivierten App** enthalten ist, bevor die IPA hochgeladen wird.
+
+Apple verwendet die Deklaration, um künftig bei neuen Builds die wiederholte
+Export-Compliance-Frage zu vermeiden. **Bereits hochgeladene Builds werden
+nicht rückwirkend geändert**; für diese muss eine eventuell fehlende
+Compliance-Angabe noch manuell in App Store Connect gemacht werden.
+
+**Wichtig:** Falls Voka in Zukunft eigene kryptografische Funktionen,
+nicht ausgenommene Verschlüsselung oder neue Bibliotheken mit entsprechender
+Funktionalität integriert, muss die Einstufung vor dem nächsten Release erneut
+geprüft und dieser Eintrag gegebenenfalls angepasst werden. Die Deklaration
+ersetzt keine eventuell erforderlichen sonstigen rechtlichen Pflichten.
+
+Apple-Dokumentation: [ITSAppUsesNonExemptEncryption](https://developer.apple.com/documentation/bundleresources/information-property-list/itsappusesnonexemptencryption) · [Export compliance for beta builds](https://developer.apple.com/help/app-store-connect/test-a-beta-version/provide-export-compliance-information-for-beta-builds).
+
+
 ## Publishing a tagged TestFlight build
 
 Publish the desired commit to `main`, then create and push a new tag using a three-part iOS version number:
