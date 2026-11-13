@@ -50,7 +50,7 @@ Then("I can import the shared list with my chosen subject title and tags",async 
  await expect(modal).toHaveCount(0);
  await expect(this.page.locator(".v-pane-list-heading")).toContainText("My copy of verbs");
  await expect(this.page.locator(".v-card-list .v-card-open")).toHaveCount(2);
- await expect(this.page.locator(".v-card-list .v-card-open").first()).toContainText("0 P");
+ await expect(this.page.locator(".v-card-list .v-card-open").first().locator(".v-dots i.filled")).toHaveCount(0);
  await expect(this.page).not.toHaveURL(/importList=/);
 });
 
