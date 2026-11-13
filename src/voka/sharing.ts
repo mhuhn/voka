@@ -1,4 +1,4 @@
-import { authManager } from "../auth/manager";
+import { profileManager } from "../auth/profiles";
 
 const LINK_PARAMETER = "importList";
 const SESSION_KEY = "voka:pending-shared-list";
@@ -62,9 +62,7 @@ export function clearPendingSharedList(): void {
 }
 
 function activeClient() {
-  const client = authManager.activeClient;
-  if (!client) throw new Error("An active account is required");
-  return client;
+  return profileManager.client;
 }
 
 export async function fetchSharedList(id: string): Promise<SharedList | null> {
