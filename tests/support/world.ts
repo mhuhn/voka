@@ -1,7 +1,13 @@
-import { Before, After, setDefaultTimeout, World } from "@cucumber/cucumber";
+import { Before, After, BeforeAll, AfterAll, setDefaultTimeout, World } from "@cucumber/cucumber";
 import { chromium, type Browser, type BrowserContext, type Page, type Route } from "@playwright/test";
 
 setDefaultTimeout(30_000);
+
+// Share the Chromium process, but isolate browser contexts and mocked API state per scenario.
+// Repeated process launches previously exhausted the CI runner during the full E2E suite.
+let suiteBrowser: Browser | undefined;
+BeforeAll(async () => { suiteBrowser = await chromium.launch({headless:true}); });
+AfterAll(async () => { await suiteBrowser?.close(); suiteBrowser=undefined; });
 
 const users = [
   { id: "00000000-0000-4000-8000-000000000001", email: "alice@example.test", name: "Alice" },
@@ -41,7 +47,8 @@ export class VokaWorld extends World {
 }
 
 Before(async function (this: VokaWorld, { pickle }) {
-  this.browser = await chromium.launch({ headless: true });
+  if(!suiteBrowser)throw new Error("Chromium not initialized for E2E suite");
+  this.browser=suiteBrowser;
   const locales: Record<string, string> = {
     "@de": "de-DE", "@fr": "fr-FR", "@nl": "nl-NL",
     "@da": "da-DK", "@it": "it-IT"
@@ -503,5 +510,4 @@ Before(async function (this: VokaWorld, { pickle }) {
 
 After(async function (this: VokaWorld) {
   await this.context?.close();
-  await this.browser?.close();
 });
