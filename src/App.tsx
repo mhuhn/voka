@@ -184,6 +184,6 @@ export default function App() {
     {state.message && <div role="status" className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">{state.message === "Check your email to confirm your address, then sign in." ? t.emailConfirmation : state.message === "If an account exists for this email, a reset link has been sent." ? t.resetSent : state.message}</div>}
     {state.loading || (!showAuth && profileState.loading) ? <Card><CardContent className="p-8 text-center">{t.loading}</CardContent></Card> : showAuth ? <>
       <AuthForm language={language}/>
-    </> : profileState.activeId ? <Profile language={language} onClose={()=>setProfileOpen(false)}/> : <Card><CardContent className="p-6"><p role="alert">{profileState.error || t.loading}</p><Button className="mt-4" onClick={()=>user&&void profileManager.refresh(user.id)}>{t.retry || t.back}</Button></CardContent></Card>}
+    </> : profileState.activeId ? <Profile language={language} onClose={()=>setProfileOpen(false)}/> : <Card><CardContent className="p-6"><p role="alert">{profileState.error || t.loading}</p><Button className="mt-4" onClick={()=>user&&void profileManager.refresh(user.id)}>{t.back}</Button></CardContent></Card>}
   </main>}<VersionFooter language={language}/></>;
 }
