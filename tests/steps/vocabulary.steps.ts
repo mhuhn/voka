@@ -260,7 +260,9 @@ When("I switch to iPad landscape width", async function (this: VokaWorld) {
 });
 
 When("I open list editing from its details", async function(this:VokaWorld){
- await this.page.locator(".v-pane-list-heading").getByRole("button",{name:"Edit list"}).click();
+ const header=this.page.locator(".v-pane-list-heading");
+ await header.getByRole("button",{name:"More actions"}).click();
+ await header.getByRole("button",{name:"Edit list"}).click();
 });
 
 Then("the list editor stays beside the list overview", async function(this:VokaWorld){
