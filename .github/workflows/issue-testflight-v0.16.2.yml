@@ -1,0 +1,55 @@
+# One-shot release request. The GitHub connector cannot create git tags directly.
+# A GITHUB_TOKEN-created tag does not emit a workflow-triggering push event,
+# so dispatch the existing TestFlight workflow explicitly after creating it.
+name: Issue TestFlight patch v0.16.2
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/issue-testflight-v0.16.2.yml
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: issue-testflight-v0.16.2
+  cancel-in-progress: false
+
+jobs:
+  issue-tag:
+    name: Tag v0.16.2 and launch TestFlight
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Verify version and create tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          if [[ "$VERSION" != "0.16.2" ]]; then
+            echo "::error::Expected package version 0.16.2 but found $VERSION"
+            exit 1
+          fi
+          TAG="testflight-v0.16.2"
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" >/dev/null 2>&1; then
+            echo "::error::Tag ${TAG} already exists; refusing to release twice."
+            exit 1
+          fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+            -f ref="refs/tags/${TAG}" \
+            -f sha="${GITHUB_SHA}"
+          echo "### Tagged ${GITHUB_SHA} as ${TAG}" >> "$GITHUB_STEP_SUMMARY"
+      - name: Dispatch existing iOS TestFlight workflow
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run testflight.yml --repo "$GITHUB_REPOSITORY" --ref "testflight-v0.16.2"
+          echo "Started testflight.yml for testflight-v0.16.2" >> "$GITHUB_STEP_SUMMARY"
