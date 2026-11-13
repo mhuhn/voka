@@ -76,6 +76,9 @@ jobs:
           if not any("de.mhuhn.voka" in t.get("CFBundleURLSchemes", []) for t in types):
               types.append({"CFBundleURLName": "de.mhuhn.voka", "CFBundleURLSchemes": ["de.mhuhn.voka"]})
           data["CFBundleURLTypes"] = types
+          # Voka uses exempt platform/browser encryption (e.g. HTTPS/TLS);
+          # declare this on every freshly generated Capacitor iOS project.
+          data["ITSAppUsesNonExemptEncryption"] = False
           with p.open("wb") as f: plistlib.dump(data, f)
           PY
       - name: Set Voka native app icon
@@ -157,6 +160,23 @@ jobs:
             MARKETING_VERSION="$APP_VERSION" \
             CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
             archive
+      - name: Verify archived export compliance declaration
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os
+          import plistlib
+          from pathlib import Path
+          applications = Path(os.environ["RUNNER_TEMP"]) / "Voka.xcarchive" / "Products" / "Applications"
+          apps = list(applications.glob("*.app"))
+          if len(apps) != 1:
+              raise SystemExit(f"Expected one archived iOS app, found {len(apps)}")
+          with (apps[0] / "Info.plist").open("rb") as f:
+              info = plistlib.load(f)
+          if info.get("ITSAppUsesNonExemptEncryption") is not False:
+              raise SystemExit("Missing or incorrect ITSAppUsesNonExemptEncryption in archived app")
+          print("Verified ITSAppUsesNonExemptEncryption=NO in archived iOS app")
+          PY
       - name: Export IPA
         run: |
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
